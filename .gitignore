@@ -11,7 +11,7 @@ venta-pizzas-ecos.json
 backend/pizzas-ecos
 
 # Directorio de módulos Go
-go.sum
+
 
 # IDE
 .vscode/
