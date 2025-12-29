@@ -2,7 +2,7 @@ services:
   - type: web
     name: pizzas-ecos-backend
     env: go
-    buildCommand: "cd backend && GOTOOLCHAIN=auto go build -o pizzas-ecos"
+    buildCommand: "cd backend && go build -o pizzas-ecos"
     startCommand: "backend/pizzas-ecos"
     plan: free
     region: oregon

@@ -1,6 +1,6 @@
 module github.com/leomorabito02/pizzas-ecos
 
-go 1.25.5
+go 1.25
 
 require (
 	golang.org/x/oauth2 v0.34.0
