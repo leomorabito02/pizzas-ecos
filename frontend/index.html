@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Ventas - Pizzas ECOS</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🍕 Sistema de Ventas</h1>
+            <p class="subtitle">Pizzas ECOS</p>
+            <button id="btnVerVentas" class="btn-ver-ventas">📊 Ver Estadísticas</button>
+        </div>
+
+        <form id="ventaForm" class="form">
+            <!-- Sección 1: Vendedor y Cliente -->
+            <fieldset class="form-section">
+                <legend>📋 Datos del Vendedor</legend>
+                
+                <div class="form-group">
+                    <label for="vendedor">Vendedor:</label>
+                    <div class="vendedor-container">
+                        <select id="vendedor" name="vendedor" required>
+                            <option value="">⏳ Cargando vendedores...</option>
+                        </select>
+                        <span id="vendedor-loader" class="loader"></span>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="cliente">Cliente:</label>
+                    <div class="cliente-input-container">
+                        <input 
+                            type="text" 
+                            id="cliente" 
+                            name="cliente" 
+                            placeholder="Ingresa un cliente" 
+                            required
+                        >
+                        <!-- Panel desplegable de clientes del vendedor -->
+                        <div id="clientes-dropdown" class="clientes-dropdown hidden">
+                            <div class="clientes-dropdown-header">
+                                <span class="clientes-dropdown-title">Clientes de este vendedor:</span>
+                                <button type="button" class="btn-close-dropdown">✕</button>
+                            </div>
+                            <div id="clientes-list" class="clientes-list"></div>
+                        </div>
+                    </div>
+                </div>
+            </fieldset>
+
+            <!-- Sección 2: Selección de Pizzas -->
+            <fieldset class="form-section">
+                <legend>🍕 Agregar Combos a la Venta</legend>
+                
+                <div class="combos-list" id="combosList">
+                    <!-- Se agregan dinámicamente -->
+                </div>
+
+                <button type="button" class="btn-add-combo" id="btnAddCombo">
+                    ➕ Agregar Combo
+                </button>
+                <p class="btn-add-combo-hint">Completa el combo anterior antes de agregar uno nuevo</p>
+
+                <!-- Resumen de la venta -->
+                <div class="venta-summary">
+                    <h3>📊 Resumen de Venta</h3>
+                    <div id="resumenCombos" class="resumen-detalles"></div>
+                    <div class="total-venta">
+                        <label>Total Venta:</label>
+                        <span id="totalVenta">$0.00</span>
+                    </div>
+                </div>
+            </fieldset>
+
+            <!-- Sección 3: Método de Pago y Estado -->
+            <fieldset class="form-section">
+                <legend>💳 Detalles de Pago</legend>
+                
+                <div class="form-group">
+                    <label for="payment_method">Método de Pago:</label>
+                    <select id="payment_method" name="payment_method" required>
+                        <option value="">Selecciona un método</option>
+                        <option value="efectivo">💵 Efectivo</option>
+                        <option value="transferencia">🏦 Transferencia</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="estado">Estado:</label>
+                    <select id="estado" name="estado" required>
+                        <option value="">Selecciona un estado</option>
+                        <option value="sin pagar">⏳ Pendiente</option>
+                        <option value="pagada">✓ Pagada</option>
+                    </select>
+                </div>
+            </fieldset>
+
+            <!-- Sección 4: Tipo de Entrega -->
+            <fieldset class="form-section">
+                <legend>🚗 Tipo de Entrega</legend>
+                
+                <div class="delivery-selector">
+                    <div class="delivery-option">
+                        <input type="radio" id="tipo-retiro" name="tipo_entrega" value="retiro" required>
+                        <label for="tipo-retiro" class="delivery-label">
+                            <span class="delivery-icon">🏪</span>
+                            <span class="delivery-text">Retiro en la parroquia</span>
+                        </label>
+                    </div>
+                    
+                    <div class="delivery-option">
+                        <input type="radio" id="tipo-envio" name="tipo_entrega" value="envio" required>
+                        <label for="tipo-envio" class="delivery-label">
+                            <span class="delivery-icon">🚚</span>
+                            <span class="delivery-text">Envío a domicilio / con un joven</span>
+                        </label>
+                    </div>
+                </div>
+            </fieldset>
+
+            <!-- Botón Enviar -->
+            <button type="submit" class="btn-submit">
+                <span class="btn-text">Guardar Venta</span>
+                <span class="btn-spinner hidden">⏳</span>
+            </button>
+        </form>
+
+        <!-- Mensaje de Resultado -->
+        <div id="mensaje" class="mensaje hidden"></div>
+    </div>
+    
+    <script src="form.js"></script>
+</body>
+</html>

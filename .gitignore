@@ -1,0 +1,27 @@
+# Credenciales y secretos
+venta-pizzas-ecos.json
+.env
+.env.local
+
+# Binarios Go
+*.exe
+*.dll
+*.so
+*.dylib
+backend/pizzas-ecos
+
+# Directorio de módulos Go
+go.sum
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Node (si lo usas)
+node_modules/
+package-lock.json
+
+# Otros
+.DS_Store

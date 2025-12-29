@@ -1,0 +1,1096 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.container {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    padding: 40px;
+    max-width: 600px;
+    width: 100%;
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 30px;
+    border-bottom: 3px solid #667eea;
+    padding-bottom: 20px;
+}
+
+.header h1 {
+    color: #333;
+    font-size: 32px;
+    margin-bottom: 5px;
+}
+
+.header .subtitle {
+    color: #666;
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 15px;
+}
+
+.btn-ver-ventas {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 14px;
+}
+
+.btn-ver-ventas:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+.form-section {
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 20px;
+    background-color: #f9f9f9;
+}
+
+.form-section legend {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+    padding: 0 10px;
+    margin-left: -10px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+.form-group:last-child {
+    margin-bottom: 0;
+}
+
+label {
+    font-weight: 600;
+    color: #555;
+    font-size: 14px;
+}
+
+input[type="text"],
+input[type="number"],
+select {
+    padding: 12px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+    transition: all 0.3s ease;
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus,
+select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    background-color: #fff;
+}
+
+.readonly-input,
+.total-input {
+    background-color: #f5f5f5;
+    cursor: not-allowed;
+    font-weight: 500;
+    color: #333;
+}
+
+.total-group {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 15px;
+    border-radius: 8px;
+    margin-top: 10px;
+}
+
+.total-group label {
+    color: white;
+    font-size: 16px;
+}
+
+.total-group .total-input {
+    background-color: rgba(255, 255, 255, 0.9);
+    font-size: 18px;
+    font-weight: bold;
+    color: #667eea;
+    padding: 12px;
+}
+
+/* Combos List */
+.combos-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+/* Combo Item */
+.combo-item {
+    background: white;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 16px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease;
+}
+
+.combo-item:hover {
+    border-color: #667eea;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+}
+
+.combo-item > div {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.combo-item > div:last-child {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.combo-item select,
+.combo-item input {
+    padding: 12px;
+    border: 2px solid #e0e0e0;
+    border-radius: 6px;
+    font-size: 14px;
+    width: 100%;
+    transition: all 0.2s ease;
+    font-family: inherit;
+}
+
+.combo-item select:focus,
+.combo-item input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    background-color: #fff;
+}
+
+.combo-item-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #333;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.combo-item-price {
+    font-size: 18px;
+    font-weight: 700;
+    color: white;
+    text-align: center;
+    padding: 15px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+}
+
+/* Cantidad Controls - Botones +/- */
+.combo-cantidad-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.cantidad-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: center;
+    background: #f5f5f5;
+    border-radius: 6px;
+    padding: 10px;
+}
+
+.btn-cantidad-mas,
+.btn-cantidad-menos {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.btn-cantidad-mas:active,
+.btn-cantidad-menos:active {
+    transform: scale(0.95);
+}
+
+.btn-cantidad-mas:hover,
+.btn-cantidad-menos:hover {
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.cantidad-display {
+    font-weight: 700;
+    font-size: 18px;
+    color: #333;
+    min-width: 40px;
+    text-align: center;
+}
+
+.btn-remove-combo {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ff5252 100%);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 12px 16px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 700;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(255, 107, 107, 0.2);
+}
+
+.btn-remove-combo:hover {
+    background: linear-gradient(135deg, #ff5252 0%, #ff4040 100%);
+    box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
+    transform: translateY(-2px);
+}
+
+.btn-remove-combo:active {
+    transform: translateY(0);
+}
+
+.btn-add-combo {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    width: 100%;
+    margin-bottom: 8px;
+    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.2);
+}
+
+.btn-add-combo:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.btn-add-combo:disabled {
+    background: linear-gradient(135deg, #bbb 0%, #999 100%);
+    opacity: 0.6;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+.btn-add-combo:disabled:hover {
+    transform: none;
+}
+
+.btn-add-combo-hint {
+    text-align: center;
+    font-size: 12px;
+    color: #999;
+    margin-bottom: 20px;
+    font-weight: 500;
+}
+
+/* Venta Summary */
+.venta-summary {
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 20px;
+}
+
+.venta-summary h3 {
+    color: #333;
+    font-size: 16px;
+    margin-bottom: 15px;
+    border-bottom: 2px solid #667eea;
+    padding-bottom: 10px;
+}
+
+.resumen-detalles {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 15px;
+    font-size: 13px;
+}
+
+.resumen-item {
+    background: white;
+    padding: 12px 15px;
+    border-radius: 6px;
+    border-left: 4px solid #667eea;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease;
+}
+
+.resumen-item:hover {
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+}
+
+.resumen-item-label {
+    font-weight: 700;
+    color: #333;
+    font-size: 15px;
+    margin-bottom: 8px;
+}
+
+.resumen-item-value {
+    font-weight: 600;
+    color: #667eea;
+    margin-top: 6px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.resumen-combo {
+    background: #f0f4ff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #667eea;
+    border: 1px solid #e0e6ff;
+}
+
+.resumen-vacio {
+    background: #f9f9f9;
+    padding: 20px;
+    border-radius: 6px;
+    text-align: center;
+    color: #999;
+    font-weight: 600;
+    border: 2px dashed #ddd;
+    font-size: 14px;
+}
+
+.total-venta {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 15px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 600;
+    font-size: 16px;
+}
+
+.total-venta span {
+    font-size: 20px;
+    font-weight: 700;
+}
+
+/* Selector de Entrega */
+.delivery-selector {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.delivery-option input[type="radio"] {
+    display: none;
+}
+
+.delivery-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 20px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background-color: white;
+}
+
+.delivery-option input[type="radio"]:checked + .delivery-label {
+    border-color: #667eea;
+    background-color: #f0f4ff;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+}
+
+.delivery-icon {
+    font-size: 32px;
+}
+
+.delivery-text {
+    font-weight: 600;
+    color: #333;
+    font-size: 14px;
+}
+
+/* Botón Submit */
+.btn-submit {
+    padding: 14px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.btn-submit:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+}
+
+.btn-submit:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.btn-submit:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.btn-spinner {
+    display: inline-block;
+    animation: spin 1s linear infinite;
+}
+
+.btn-spinner.hidden {
+    display: none;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Mensajes */
+.mensaje {
+    padding: 16px;
+    border-radius: 8px;
+    text-align: center;
+    font-weight: 600;
+    margin-top: 20px;
+    animation: slideIn 0.3s ease;
+}
+
+.mensaje.hidden {
+    display: none;
+}
+
+.mensaje.success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 2px solid #c3e6cb;
+}
+
+.mensaje.error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 2px solid #f5c6cb;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Loader Animation */
+.loader {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #667eea;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Vendedor Container */
+.vendedor-container {
+    display: flex;
+    align-items: center;
+    position: relative;
+}
+
+.vendedor-container select {
+    flex: 1;
+}
+
+/* Cliente Input Container */
+.cliente-input-container {
+    position: relative;
+}
+
+.cliente-input-container input {
+    width: 100%;
+}
+
+/* Clientes Dropdown */
+.clientes-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 2px solid #667eea;
+    border-top: none;
+    border-radius: 0 0 6px 6px;
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.clientes-dropdown.hidden {
+    display: none;
+}
+
+.clientes-dropdown-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-weight: 600;
+    font-size: 13px;
+    border-bottom: 1px solid #ddd;
+}
+
+.clientes-dropdown-title {
+    flex: 1;
+}
+
+.btn-close-dropdown {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 0;
+    margin-left: 10px;
+}
+
+.btn-close-dropdown:hover {
+    opacity: 0.8;
+}
+
+.clientes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.cliente-item {
+    padding: 12px 15px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 14px;
+    color: #333;
+}
+
+.cliente-item:last-child {
+    border-bottom: none;
+}
+
+.cliente-item:hover {
+    background-color: #f0f4ff;
+    color: #667eea;
+    font-weight: 500;
+}
+
+.cliente-item.active {
+    background-color: #667eea;
+    color: white;
+    font-weight: 600;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .container {
+        padding: 20px;
+        border-radius: 12px;
+    }
+
+    .header {
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+    }
+
+    .header h1 {
+        font-size: 26px;
+    }
+
+    .form {
+        gap: 18px;
+    }
+
+    .form-section {
+        padding: 15px;
+    }
+
+    .form-section legend {
+        font-size: 15px;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    select {
+        padding: 14px;
+        font-size: 16px;
+    }
+
+    .resumen-detalles {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .delivery-selector {
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+
+    .delivery-label {
+        padding: 15px;
+        gap: 8px;
+    }
+
+    .delivery-icon {
+        font-size: 28px;
+    }
+
+    .delivery-text {
+        font-size: 13px;
+    }
+
+    .cliente-item {
+        padding: 14px 15px;
+        font-size: 15px;
+    }
+
+    .combo-item {
+        padding: 12px;
+        gap: 12px;
+        grid-template-columns: 1fr;
+    }
+
+    .combo-item > div:last-child {
+        grid-column: 1;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+
+    .combo-item select,
+    .combo-item input {
+        padding: 11px;
+        font-size: 15px;
+    }
+
+    .btn-cantidad-mas,
+    .btn-cantidad-menos {
+        width: 38px;
+        height: 38px;
+        font-size: 18px;
+    }
+
+    .cantidad-display {
+        font-size: 16px;
+    }
+
+    .btn-remove-combo {
+        padding: 11px 14px;
+        font-size: 13px;
+    }
+
+    .btn-add-combo {
+        padding: 12px 18px;
+        font-size: 15px;
+        margin-bottom: 6px;
+    }
+
+    .btn-add-combo-hint {
+        font-size: 11px;
+        margin-bottom: 15px;
+    }
+
+    .btn-submit {
+        padding: 13px;
+        font-size: 15px;
+    }
+
+    .venta-summary {
+        padding: 15px;
+    }
+
+    .venta-summary h3 {
+        font-size: 15px;
+        margin-bottom: 12px;
+    }
+
+    .resumen-detalles {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .resumen-item {
+        padding: 10px 12px;
+        margin-bottom: 8px;
+    }
+
+    .resumen-item-label {
+        font-size: 13px;
+    }
+
+    .resumen-item-value {
+        font-size: 12px;
+        gap: 6px;
+    }
+
+    .resumen-combo {
+        font-size: 12px;
+        padding: 3px 6px;
+    }
+
+    .resumen-vacio {
+        padding: 15px;
+        font-size: 13px;
+    }
+
+    .total-venta {
+        padding: 12px;
+        font-size: 15px;
+    }
+
+    .total-venta span {
+        font-size: 18px;
+    }
+
+    .resumen-item {
+        padding: 7px 10px;
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    body {
+        padding: 10px;
+    }
+
+    .container {
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
+
+    .header {
+        margin-bottom: 15px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid #667eea;
+    }
+
+    .header h1 {
+        font-size: 22px;
+        margin-bottom: 3px;
+    }
+
+    .header .subtitle {
+        font-size: 12px;
+    }
+
+    .form {
+        gap: 15px;
+    }
+
+    .form-section {
+        padding: 12px;
+        border-radius: 6px;
+    }
+
+    .form-section legend {
+        font-size: 14px;
+        padding: 0 8px;
+        margin-left: -8px;
+    }
+
+    .form-group {
+        gap: 6px;
+        margin-bottom: 12px;
+    }
+
+    label {
+        font-size: 13px;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    select {
+        padding: 12px;
+        font-size: 16px;
+        border-radius: 5px;
+    }
+
+    .resumen-detalles {
+        grid-template-columns: 1fr;
+        gap: 6px;
+    }
+
+    .resumen-item {
+        padding: 8px 10px;
+        font-size: 12px;
+        margin-bottom: 6px;
+    }
+
+    .resumen-item-label {
+        font-size: 12px;
+    }
+
+    .resumen-item-value {
+        font-size: 11px;
+        gap: 4px;
+    }
+
+    .resumen-combo {
+        font-size: 11px;
+        padding: 2px 5px;
+    }
+
+    .resumen-vacio {
+        padding: 12px;
+        font-size: 12px;
+    }
+
+    .combo-item {
+        padding: 10px;
+        gap: 10px;
+        grid-template-columns: 1fr;
+    }
+
+    .combo-item > div:last-child {
+        grid-column: 1;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+
+    .venta-summary {
+        padding: 12px;
+        margin-top: 15px;
+    }
+
+    .venta-summary h3 {
+        font-size: 14px;
+        margin-bottom: 10px;
+        padding-bottom: 8px;
+    }
+
+    .total-venta {
+        padding: 11px;
+        font-size: 13px;
+        border-radius: 6px;
+    }
+
+    .total-venta span {
+        font-size: 16px;
+    }
+
+    .delivery-selector {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .delivery-label {
+        padding: 12px;
+        gap: 6px;
+        border-radius: 6px;
+    }
+
+    .delivery-icon {
+        font-size: 24px;
+    }
+
+    .delivery-text {
+        font-size: 12px;
+    }
+
+    .combo-item {
+        padding: 9px;
+        gap: 7px;
+        border-radius: 6px;
+    }
+
+    .combo-item > div {
+        gap: 5px;
+    }
+
+    .combo-item-label {
+        font-size: 11px;
+    }
+
+    .combo-item select,
+    .combo-item input {
+        padding: 10px;
+        font-size: 15px;
+        border-radius: 5px;
+    }
+
+    .cantidad-controls {
+        gap: 6px;
+        padding: 6px;
+    }
+
+    .btn-cantidad-mas,
+    .btn-cantidad-menos {
+        width: 36px;
+        height: 36px;
+        font-size: 16px;
+        border-radius: 50%;
+    }
+
+    .cantidad-display {
+        font-size: 15px;
+        min-width: 35px;
+    }
+
+    .combo-item-price {
+        font-size: 14px;
+        padding: 8px;
+    }
+
+    .btn-remove-combo {
+        padding: 10px 12px;
+        font-size: 12px;
+        margin-top: 4px;
+        border-radius: 5px;
+    }
+
+    .btn-add-combo {
+        padding: 11px 16px;
+        font-size: 14px;
+        margin-bottom: 6px;
+        border-radius: 6px;
+    }
+
+    .btn-add-combo-hint {
+        font-size: 10px;
+        margin-bottom: 15px;
+    }
+
+    .btn-submit {
+        padding: 12px;
+        font-size: 14px;
+        border-radius: 6px;
+        margin-top: 8px;
+    }
+
+    .cliente-item {
+        padding: 11px 12px;
+        font-size: 13px;
+    }
+
+    .clientes-dropdown-header {
+        padding: 10px 12px;
+        font-size: 12px;
+    }
+
+    .clientes-dropdown {
+        border-radius: 0 0 5px 5px;
+        max-height: 250px;
+    }
+
+    .mensaje {
+        padding: 12px;
+        font-size: 13px;
+        border-radius: 6px;
+        margin-top: 15px;
+    }
+
+    .loader {
+        width: 14px;
+        height: 14px;
+        border: 2px solid #f3f3f3;
+        border-top: 2px solid #667eea;
+        margin-left: 6px;
+    }
+
+    .vendedor-container {
+        gap: 8px;
+    }
+
+    .vendedor-container select {
+        width: 100%;
+    }
+
+    .cliente-input-container {
+        width: 100%;
+    }
+
+    .cliente-input-container input {
+        width: 100%;
+    }
+}
+
