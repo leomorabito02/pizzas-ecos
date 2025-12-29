@@ -2,16 +2,29 @@
 let datosNegocio = {}; // Se llena al cargar la página
 let combosEnVenta = []; // Array de combos agregados a la venta
 
-// URL del backend API - detectar automáticamente
-// Si está en localhost, usar localhost:8080
-// Si está en otra IP, usar esa IP:8080
+// URL del backend API - configurable según el ambiente
+// En desarrollo: http://localhost:8080
+// En producción: usar variable de entorno o detectar automáticamente
 const getAPIBase = () => {
+    // Si existe variable de entorno REACT_APP_API_URL, usarla (para Vercel/Netlify)
+    if (typeof window !== 'undefined' && window.ENV?.API_URL) {
+        return window.ENV.API_URL;
+    }
+    
+    // Si está en localhost, usar localhost:8080
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        return 'http://localhost:8080/api';
+    }
+    
+    // Si está en producción, usar la misma IP/dominio que el frontend
+    const protocol = window.location.protocol; // http: o https:
     const host = window.location.hostname;
     const port = 8080;
-    return `http://${host}:${port}/api`;
+    return `${protocol}//${host}:${port}/api`;
 };
 
 const API_BASE = getAPIBase();
+console.log('API Base URL:', API_BASE);
 
 async function init() {
     try {

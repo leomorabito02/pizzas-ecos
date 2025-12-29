@@ -3,12 +3,25 @@ let datosVentas = {};
 let ventaEnEdicion = null;
 
 function getAPIBase() {
+    // Si existe variable de entorno, usarla (para Vercel/Netlify)
+    if (typeof window !== 'undefined' && window.ENV?.API_URL) {
+        return window.ENV.API_URL;
+    }
+    
+    // Si está en localhost, usar localhost:8080
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        return 'http://localhost:8080/api';
+    }
+    
+    // Si está en producción, usar la misma IP/dominio que el frontend
+    const protocol = window.location.protocol; // http: o https:
     const host = window.location.hostname;
     const port = 8080;
-    return `http://${host}:${port}/api`;
+    return `${protocol}//${host}:${port}/api`;
 }
 
 const API_BASE = getAPIBase();
+console.log('API Base URL:', API_BASE);
 
 // Función para parsear números en formato argentino ($1.000,50 -> 1000.50)
 function parseArgentinoFloat(value) {

@@ -1,4 +1,4 @@
-# Pizzas ECOS - Sistema de Ventas
+# 🍕 Pizzas ECOS - Sistema de Ventas
 
 Sistema de registro de ventas con integración a Google Sheets.
 
@@ -6,110 +6,220 @@ Sistema de registro de ventas con integración a Google Sheets.
 
 ```
 pizzas-ecos/
-├── backend/
-│   ├── main.go           # Servidor Go (API + servidor estático)
-│   ├── go.mod            # Dependencias Go
-│   └── go.sum
-├── frontend/
-│   ├── index.html        # Página principal
-│   ├── form.js           # Lógica del formulario
-│   └── styles.css        # Estilos CSS
-├── venta-pizzas-ecos.json # Credenciales de Google (no commitear)
-├── .env                  # Variables de entorno (no commitear)
+├── backend/              # API en Go
+│   ├── main.go
+│   ├── go.mod
+│   └── .env             # credsJSON, SpreadsheetID (no commitear)
+│
+├── frontend/            # Aplicación web
+│   ├── index.html       # Formulario de ventas
+│   ├── estadisticas.html # Dashboard de estadísticas
+│   ├── form.js
+│   ├── estadisticas.js
+│   ├── styles.css
+│   ├── config.js        # Configuración de API
+│   └── .env.example
+│
+├── DEPLOYMENT.md        # Guía completa de despliegue
 └── README.md
 ```
 
 ## Requisitos
 
-- **Go 1.25+** (para el backend)
+- **Go 1.16+** (para el backend)
 - **Google Sheets API** habilitada
 - **Credentials JSON** de Google Cloud
+- **Navegador moderno** para el frontend
 
-## Instalación
+## Instalación Local
 
 ### 1. Backend
 
 ```bash
 cd backend
-go mod tidy
-```
 
-### 2. Variables de Entorno
+# Crear archivo .env con credenciales
+# credsJSON=tu-archivo.json
+# SpreadsheetID=tu-sheet-id
 
-Crea un archivo `.env` en la raíz con:
-
-```
-GOOGLE_CREDENTIALS_JSON=<contenido del JSON de credenciales>
-PORT=8080
-```
-
-O usa el archivo `venta-pizzas-ecos.json` en la raíz.
-
-## Ejecución
-
-### Desarrollo Local - Terminal 1 (Backend)
-
-```bash
-cd backend
+# Ejecutar
 go run main.go
 ```
 
-El servidor backend estará disponible en `http://localhost:8080/api`
+Backend estará en: `http://localhost:8080/api`
 
-### Desarrollo Local - Terminal 2 (Frontend)
-
-```bash
-cd frontend
-python server.py
-```
-
-El frontend estará disponible en `http://localhost:5000`
-
-**Abre tu navegador en `http://localhost:5000`**
-
-### Estructura de Rutas Backend
-
-- `POST /api/submit` - Guarda una venta en Google Sheets
-- `GET /api/data` - Obtiene vendedores y clientes históricos
-
-### Estructura de Rutas Frontend
-
-- `/` - Página principal (index.html)
-- `/styles.css` - Estilos
-- `/form.js` - Lógica JavaScript
-
-## Configuración de Google Sheets
-
-El sistema lee:
-- **Vendedores**: Hoja `datos`, columna C, a partir de C9 (hasta celda vacía)
-- **Clientes**: Extraídos del historial de ventas
-- **Guardar ventas**: Hoja `Ventas`
-
-## Desarrollo Frontend
-
-El frontend está completamente separado del backend:
+### 2. Frontend
 
 ```bash
 cd frontend
-python server.py
+
+# Con Python 3
+python -m http.server 5000
+
+# O con Node.js
+npx http-server -p 5000
 ```
 
-Luego abre `http://localhost:5000` en tu navegador.
+Frontend estará en: `http://localhost:5000`
 
-**Nota**: Asegúrate que el backend está corriendo en otra terminal, porque el frontend comunica con `http://localhost:8080/api`
+## Características
 
-## Despliegue en Render
+✅ **Formulario de Ventas**
+- Seleccionar vendedor y cliente
+- Agregar múltiples combos (Muzza y Jamón)
+- Seleccionar cantidad
+- Método de pago
+- Tipo de entrega
 
-1. Crea un repositorio en GitHub
-2. Conecta en Render
-3. Configura variables de entorno:
-   - `GOOGLE_CREDENTIALS_JSON` (contenido del JSON)
-   - `PORT` (por defecto 8080)
-4. Build command: `cd backend && go mod tidy`
-5. Start command: `cd backend && go run main.go`
+✅ **Dashboard de Estadísticas**
+- Resumen de ventas
+- Detalle por vendedor
+- Lista completa de transacciones
+- Editar venta (estado, pago, combos)
 
-## Notas
+✅ **Integración Google Sheets**
+- Sincronización en tiempo real
+- Fórmulas automáticas de cálculo
+- Historial completo
 
-- Los credenciales de Google no deben ser commiteados (incluidos en `.gitignore`)
-- El frontend está completamente separado del backend
-- Se pueden servir desde orígenes diferentes (CORS habilitado si es necesario)
+## Arquitectura
+
+```
+Frontend (localhost:5000) ←--API HTTP-→ Backend (localhost:8080) ←→ Google Sheets
+```
+
+**CORS habilitado**: El backend permite peticiones desde cualquier origen
+
+## Endpoints API
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| GET | `/api/data` | Vendedores, clientes, precios |
+| POST | `/api/submit` | Guardar nueva venta |
+| GET | `/api/estadisticas` | Todas las ventas (detalle) |
+| GET | `/api/estadisticas-sheet` | Resumen y vendedores |
+| POST | `/api/actualizar-venta` | Actualizar venta existente |
+
+## Despliegue en Producción
+
+**Ver [DEPLOYMENT.md](./DEPLOYMENT.md)** para instrucciones completas.
+
+**Tu plan: Render (Backend) + Netlify (Frontend)**
+
+### Quick Start Deploy:
+
+#### Backend en Render
+```
+1. Ir a https://render.com
+2. New Web Service
+3. Conectar GitHub repo
+4. Build: cd backend && go build -o pizzas-ecos
+5. Start: ./pizzas-ecos
+6. Agregar Secret File: venta-pizzas-ecos.json
+7. Deploy!
+```
+
+#### Frontend en Netlify
+```
+1. Ir a https://netlify.com
+2. New site from Git
+3. Seleccionar repo pizzas-ecos
+4. Publish dir: frontend
+5. Environment: REACT_APP_API_URL=https://tu-backend.onrender.com/api
+6. Deploy!
+```
+
+**Ver [DEPLOY_CHECKLIST.md](./DEPLOY_CHECKLIST.md)** para checklist paso a paso
+
+## Variables de Entorno
+
+### Backend (.env)
+```
+credsJSON=venta-pizzas-ecos.json
+SpreadsheetID=1E8bLD1DKp3ZrsmLb05O7cAJ-Qn929yBSTrZ18BSeVk0
+PORT=8080
+```
+
+### Frontend (.env.local) - Opcional
+```
+REACT_APP_API_URL=http://localhost:8080/api
+```
+
+Si no está definida, usa automáticamente:
+- `http://localhost:8080/api` en desarrollo local
+- `http://{mismo-dominio}:8080/api` en producción
+
+## Estructura de Google Sheets
+
+### Sheet "Ventas"
+Columnas B-P: ID, Vendedor, Cliente, Muzzas (C1-C3), Jamones (C1-C3), Pago, Estado, Tipo Entrega, Total
+
+### Sheet "estadisticas"
+- **C5-C6**: Totales (Muzzas, Jamones)
+- **G5-G9**: Dinero (Pendiente, Efectivo, Transferencia, Total, Total+SinCobrar)
+- **B24-I**: Vendedores (Nombre, Cantidad, Muzzas, Jamones, Sin Pagar, Pagado, Total)
+
+## Troubleshooting
+
+### Backend error: `Can't find credentials`
+```bash
+# Verificar archivo .env existe en backend/
+cat backend/.env
+
+# Verificar archivo de credenciales existe
+ls venta-pizzas-ecos.json
+```
+
+### Frontend no se conecta al backend
+1. Verificar backend está corriendo: `http://localhost:8080/api/data`
+2. Ver console del navegador (F12) para ver URL que intenta
+3. Revisar que CORS esté habilitado en backend ✓
+
+### Google Sheets error
+1. Verificar SpreadsheetID en `.env`
+2. Verificar permisos del servicio account
+3. Verificar sheets "Ventas" y "estadisticas" existen
+
+## Stack Tecnológico
+
+- **Backend**: Go, Google Sheets API v4
+- **Frontend**: HTML5, CSS3, JavaScript Vanilla
+- **Database**: Google Sheets
+- **Deployment**: Vercel, Docker, Render
+
+## Desarrollo
+
+```bash
+# Terminal 1: Backend
+cd backend && go run main.go
+
+# Terminal 2: Frontend
+cd frontend && python -m http.server 5000
+
+# Abrir navegador
+http://localhost:5000
+```
+
+## Notas Importantes
+
+⚠️ **No commitear**:
+- `.env` (contiene credenciales)
+- `venta-pizzas-ecos.json` (credenciales de Google)
+
+✅ **Incluidos en .gitignore**
+
+## Roadmap
+
+- [ ] Autenticación de usuarios
+- [ ] Múltiples espacios de trabajo
+- [ ] Reportes PDF
+- [ ] Integración de pagos
+- [ ] App móvil
+
+## Licencia
+
+Privado - Pizzas ECOS
+
+## Contacto
+
+Leonardo Morabito - [GitHub](https://github.com/leomorabito02)
