@@ -9,14 +9,14 @@ function getAPIBase() {
         return 'http://localhost:8080/api';
     }
     
-    // 2. En producción, debe estar en variable de entorno
-    const apiUrl = window.REACT_APP_API_URL || window.env?.REACT_APP_API_URL;
+    // 2. En Netlify, lee de window.__ENV que se inyecta automáticamente
+    const apiUrl = window.__ENV?.REACT_APP_API_URL || window.REACT_APP_API_URL;
     if (apiUrl) {
-        console.log('✅ API URL from environment:', apiUrl);
+        console.log('✅ API URL from Netlify:', apiUrl);
         return apiUrl;
     }
     
-    console.error('❌ REACT_APP_API_URL no está configurada. Configúrala en Netlify.');
+    console.error('❌ REACT_APP_API_URL no está configurada en Netlify');
     return null;
 }
 

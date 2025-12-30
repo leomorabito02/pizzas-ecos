@@ -3,21 +3,9 @@
 [build]
   command = "echo 'Frontend listo para deploy'"
   publish = "frontend"
-  
-[build.environment]
-  # URL del backend en Render
-  REACT_APP_API_URL = "https://tu-backend.onrender.com/api"
 
 # Reescribir todas las rutas a index.html (SPA)
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
-
-# Headers para CORS desde backend
-[[headers]]
-  for = "/api/*"
-  [headers.values]
-    Access-Control-Allow-Origin = "*"
-    Access-Control-Allow-Methods = "GET, POST, OPTIONS, PUT, DELETE"
-    Access-Control-Allow-Headers = "Content-Type, Authorization"
