@@ -379,11 +379,11 @@ func handleSubmit(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleEstadisticas retorna todas las ventas
+// handleEstadisticas retorna todas las ventas (incluyendo canceladas)
 func handleEstadisticas(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	ventas, err := getAllVentas()
+	ventas, err := getAllVentas(true) // true = incluir canceladas
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -412,7 +412,7 @@ func handleEstadisticasSheet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ventas, err := getAllVentas()
+	ventas, err := getAllVentas(false) // false = sin canceladas (solo para gráficos)
 	if err != nil {
 		log.Printf("Error en getAllVentas: %v", err)
 		http.Error(w, fmt.Sprintf("Error obteniendo ventas: %v", err), http.StatusInternalServerError)
@@ -648,14 +648,19 @@ func insertDetalle(ventaID int, item ProductoItem) error {
 	return err
 }
 
-func getAllVentas() ([]VentaStats, error) {
+func getAllVentas(includeCanceladas bool) ([]VentaStats, error) {
+	whereClause := ""
+	if !includeCanceladas {
+		whereClause = "WHERE v.estado != 'cancelada'"
+	}
+
 	query := `
 		SELECT v.id, ve.nombre, COALESCE(c.nombre, 'Sin cliente'), 
 		       v.total, v.payment_method, v.estado, v.tipo_entrega, v.created_at
 		FROM ventas v
 		JOIN vendedores ve ON v.vendedor_id = ve.id
 		LEFT JOIN clientes c ON v.cliente_id = c.id
-		WHERE v.estado != 'cancelada'
+		` + whereClause + `
 		ORDER BY v.created_at DESC
 	`
 

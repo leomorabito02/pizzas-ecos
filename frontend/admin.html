@@ -407,13 +407,14 @@
             `;
 
             sales.forEach(venta => {
+                const rowClass = venta.estado === 'cancelada' ? 'class="cancelada"' : '';
                 html += `
-                    <tr>
+                    <tr ${rowClass}>
                         <td data-label="ID">#${venta.id}</td>
                         <td data-label="Vendedor">${venta.vendedor}</td>
                         <td data-label="Cliente">${venta.cliente}</td>
                         <td data-label="Total">$${venta.total.toFixed(2)}</td>
-                        <td data-label="Estado">${venta.estado}</td>
+                        <td data-label="Estado"><strong>${venta.estado}</strong></td>
                         <td data-label="Fecha">${new Date(venta.created_at).toLocaleDateString()}</td>
                     </tr>
                 `;
