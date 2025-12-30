@@ -555,12 +555,12 @@ func getClientesPorVendedor() (map[string][]string, error) {
 
 	// Get clientes grouped by vendedor from actual sales
 	query := `
-		SELECT DISTINCT ve.nombre, CONCAT(c.nombre, ' ', COALESCE(c.apellido, ''))
+		SELECT ve.nombre, c.nombre, c.apellido
 		FROM ventas v
 		JOIN vendedores ve ON v.vendedor_id = ve.id
 		LEFT JOIN clientes c ON v.cliente_id = c.id
 		WHERE c.id IS NOT NULL
-		ORDER BY ve.nombre, c.nombre
+		ORDER BY ve.nombre, c.nombre, c.apellido
 	`
 
 	rows, err := db.Query(query)
@@ -571,20 +571,27 @@ func getClientesPorVendedor() (map[string][]string, error) {
 
 	for rows.Next() {
 		var vendedorNombre, clienteNombre string
-		if err := rows.Scan(&vendedorNombre, &clienteNombre); err != nil {
+		var clienteApellido sql.NullString
+		if err := rows.Scan(&vendedorNombre, &clienteNombre, &clienteApellido); err != nil {
 			return nil, err
 		}
-		clienteNombre = strings.TrimSpace(clienteNombre)
+		// Construir nombre completo del cliente
+		fullName := clienteNombre
+		if clienteApellido.Valid && clienteApellido.String != "" {
+			fullName = clienteNombre + " " + clienteApellido.String
+		}
+		fullName = strings.TrimSpace(fullName)
+		
 		// Avoid duplicates
 		encontrado := false
 		for _, c := range result[vendedorNombre] {
-			if c == clienteNombre {
+			if c == fullName {
 				encontrado = true
 				break
 			}
 		}
 		if !encontrado {
-			result[vendedorNombre] = append(result[vendedorNombre], clienteNombre)
+			result[vendedorNombre] = append(result[vendedorNombre], fullName)
 		}
 	}
 
