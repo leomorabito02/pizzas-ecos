@@ -2,6 +2,8 @@
 venta-pizzas-ecos.json
 .env
 .env.local
+ca.pem
+backend/ca.pem
 
 # Binarios Go
 *.exe
@@ -9,6 +11,19 @@ venta-pizzas-ecos.json
 *.so
 *.dylib
 backend/pizzas-ecos
+
+# Archivos de backup y testing
+*.bak
+*.sql
+*.py
+*.log
+test_*.ps1
+check_*.py
+run_*.bat
+run_*.go
+create_*.go
+fix_*.go
+debug.log
 
 # Directorio de módulos Go
 
@@ -22,6 +37,13 @@ backend/pizzas-ecos
 # Node (si lo usas)
 node_modules/
 package-lock.json
+
+# Documentos temporales
+CAMBIOS_*.md
+RESUMEN_*.md
+STATUS.md
+DEPLOYMENT_*.md
+RENDER_*.md
 
 # Otros
 .DS_Store
