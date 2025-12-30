@@ -781,7 +781,7 @@ func getVendedoresConStats() ([]map[string]interface{}, error) {
 				COALESCE(SUM(v.total), 0) as total
 			FROM ventas v
 			JOIN vendedores ve ON v.vendedor_id = ve.id
-			WHERE ve.nombre = ?
+			WHERE ve.nombre = ? AND v.estado != 'cancelada'
 		`
 
 		var cantidad int
@@ -799,7 +799,7 @@ func getVendedoresConStats() ([]map[string]interface{}, error) {
 			FROM detalle_ventas dv
 			JOIN ventas v ON dv.venta_id = v.id
 			JOIN vendedores ve ON v.vendedor_id = ve.id
-			WHERE ve.nombre = ?
+			WHERE ve.nombre = ? AND v.estado != 'cancelada'
 		`
 
 		var totalItems int
