@@ -738,12 +738,12 @@ func getAllVentas(includeCanceladas bool) ([]VentaStats, error) {
 func getResumen() (map[string]interface{}, error) {
 	query := `
 		SELECT 
-			COALESCE(SUM(CASE WHEN v.estado='pagada' AND v.payment_method='efectivo' THEN v.total ELSE 0 END), 0) as efectivo,
-			COALESCE(SUM(CASE WHEN v.estado='pagada' AND v.payment_method='transferencia' THEN v.total ELSE 0 END), 0) as transferencia,
+			COALESCE(SUM(CASE WHEN (v.estado='pagada' OR v.estado='entregada') AND v.payment_method='efectivo' THEN v.total ELSE 0 END), 0) as efectivo,
+			COALESCE(SUM(CASE WHEN (v.estado='pagada' OR v.estado='entregada') AND v.payment_method='transferencia' THEN v.total ELSE 0 END), 0) as transferencia,
 			COALESCE(SUM(CASE WHEN v.estado='sin pagar' THEN v.total ELSE 0 END), 0) as pendiente,
-			COALESCE(SUM(CASE WHEN v.estado='pagada' THEN v.total ELSE 0 END), 0) as total_cobrado,
+			COALESCE(SUM(CASE WHEN v.estado='pagada' OR v.estado='entregada' THEN v.total ELSE 0 END), 0) as total_cobrado,
 			COUNT(CASE WHEN v.estado='sin pagar' THEN 1 END) as ventas_sin_pagar,
-			COUNT(CASE WHEN v.estado='pagada' THEN 1 END) as ventas_pagadas,
+			COUNT(CASE WHEN v.estado='pagada' OR v.estado='entregada' THEN 1 END) as ventas_pagadas,
 			COUNT(CASE WHEN v.estado='entregada' THEN 1 END) as ventas_entregadas,
 			COUNT(*) as ventas_totales
 		FROM ventas v
@@ -802,7 +802,7 @@ func getVendedoresConStats() ([]map[string]interface{}, error) {
 			SELECT 
 				COUNT(DISTINCT v.id) as cantidad,
 				COALESCE(SUM(CASE WHEN v.estado='sin pagar' THEN v.total ELSE 0 END), 0) as deuda,
-				COALESCE(SUM(CASE WHEN v.estado!='sin pagar' THEN v.total ELSE 0 END), 0) as pagado,
+				COALESCE(SUM(CASE WHEN v.estado='pagada' OR v.estado='entregada' THEN v.total ELSE 0 END), 0) as pagado,
 				COALESCE(SUM(v.total), 0) as total
 			FROM ventas v
 			JOIN vendedores ve ON v.vendedor_id = ve.id

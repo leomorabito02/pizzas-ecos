@@ -130,9 +130,8 @@ function renderizarResumen() {
     document.getElementById('efectivoCobrado').textContent = `$${(resumen.efectivo_cobrado || 0).toFixed(2)}`;
     document.getElementById('transferenciaCobrada').textContent = `$${(resumen.transferencia_cobrada || 0).toFixed(2)}`;
     
-    // Total cobrado = efectivo + transferencia
-    const totalCobrado = (resumen.efectivo_cobrado || 0) + (resumen.transferencia_cobrada || 0);
-    document.getElementById('totalCobrado').textContent = `$${totalCobrado.toFixed(2)}`;
+    // Total cobrado (incluye pagadas + entregadas)
+    document.getElementById('totalCobrado').textContent = `$${(resumen.total_cobrado || 0).toFixed(2)}`;
 
     // Actualizar estados de ventas
     document.getElementById('ventasSinPagar').textContent = Math.round(resumen.ventas_sin_pagar || 0);
