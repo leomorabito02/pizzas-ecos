@@ -14,17 +14,16 @@ const CONFIG = {
         if (typeof window !== 'undefined') {
             // Netlify/Render inyecta como window.REACT_APP_API_URL
             if (window.REACT_APP_API_URL) {
-                const url = window.REACT_APP_API_URL.endsWith('/api') 
-                    ? window.REACT_APP_API_URL 
-                    : window.REACT_APP_API_URL + '/api';
-                console.log('✅ API URL from environment variable:', url);
+                // Remover /api si ya está presente
+                const url = window.REACT_APP_API_URL.replace(/\/api\/?$/, '');
+                console.log('✅ API Base from environment variable:', url);
                 return url;
             }
         }
         
         // 2. Si está en localhost, usar localhost:8080
         if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-            const url = 'http://localhost:8080/api';
+            const url = 'http://localhost:8080';
             console.log('ℹ️  Using localhost API:', url);
             return url;
         }
@@ -32,7 +31,7 @@ const CONFIG = {
         // 3. En producción, asumir backend en mismo dominio sin puerto
         const protocol = window.location.protocol; // http: o https:
         const host = window.location.hostname;
-        const url = `${protocol}//${host}/api`;
+        const url = `${protocol}//${host}`;
         console.log('ℹ️  Using same-server API:', url);
         return url;
     },
