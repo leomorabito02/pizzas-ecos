@@ -448,7 +448,7 @@
         const cancelDeleteProduct = document.getElementById('cancelDeleteProduct');
         const confirmDeleteProduct = document.getElementById('confirmDeleteProduct');
 
-        function closeDeleteProductModal() {
+        function closeDeleteProductModalDialog() {
             if (deleteProductModal) {
                 deleteProductModal.classList.add('hidden');
             }
@@ -456,11 +456,11 @@
         }
 
         if (closeDeleteProductModal) {
-            closeDeleteProductModal.addEventListener('click', closeDeleteProductModal);
+            closeDeleteProductModal.addEventListener('click', closeDeleteProductModalDialog);
         }
 
         if (cancelDeleteProduct) {
-            cancelDeleteProduct.addEventListener('click', closeDeleteProductModal);
+            cancelDeleteProduct.addEventListener('click', closeDeleteProductModalDialog);
         }
 
         if (confirmDeleteProduct) {
@@ -480,7 +480,7 @@
                     }
 
                     showSuccess('Producto eliminado exitosamente');
-                    closeDeleteProductModal();
+                    closeDeleteProductModalDialog();
                     await loadProductos();
 
                 } catch (error) {
@@ -493,7 +493,7 @@
         if (deleteProductModal) {
             deleteProductModal.addEventListener('click', (e) => {
                 if (e.target === deleteProductModal) {
-                    closeDeleteProductModal();
+                    closeDeleteProductModalDialog();
                 }
             });
         }
