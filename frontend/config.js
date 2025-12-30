@@ -1,39 +1,16 @@
 /**
  * Configuración global de la aplicación
- * Detecta automáticamente dónde debe conectarse el backend según el ambiente
- * 
- * En Netlify: Usar variable REACT_APP_API_URL
- * En localhost: Auto-detecta localhost:8080
- * En otro servidor: Auto-detecta mismo dominio:8080
+ * Define la URL del backend de forma centralizada
  */
 
+// URL del backend - Define aquí una sola vez
+const BACKEND_URL = 'https://pizzas-ecos.onrender.com';
+
 const CONFIG = {
-    // Detectar URL del API según el ambiente
+    // Obtener URL del API (centralizado en BACKEND_URL)
     getAPIUrl: function() {
-        // 1. Si hay variable de entorno (Netlify, Vercel, Render, etc)
-        if (typeof window !== 'undefined') {
-            // Netlify/Render inyecta como window.REACT_APP_API_URL
-            if (window.REACT_APP_API_URL) {
-                // Remover /api si ya está presente
-                const url = window.REACT_APP_API_URL.replace(/\/api\/?$/, '');
-                console.log('✅ API Base from environment variable:', url);
-                return url;
-            }
-        }
-        
-        // 2. Si está en localhost, usar localhost:8080
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-            const url = 'http://localhost:8080';
-            console.log('ℹ️  Using localhost API:', url);
-            return url;
-        }
-        
-        // 3. En producción, asumir backend en mismo dominio sin puerto
-        const protocol = window.location.protocol; // http: o https:
-        const host = window.location.hostname;
-        const url = `${protocol}//${host}`;
-        console.log('ℹ️  Using same-server API:', url);
-        return url;
+        console.log('🔗 Backend URL:', BACKEND_URL);
+        return BACKEND_URL;
     },
     
     API_BASE: null // Se inicializa al cargar
