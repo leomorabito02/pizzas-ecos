@@ -581,7 +581,7 @@ func getClientesPorVendedor() (map[string][]string, error) {
 			fullName = clienteNombre + " " + clienteApellido.String
 		}
 		fullName = strings.TrimSpace(fullName)
-		
+
 		// Avoid duplicates
 		encontrado := false
 		for _, c := range result[vendedorNombre] {
