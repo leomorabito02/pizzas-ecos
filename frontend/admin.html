@@ -1331,7 +1331,7 @@
         async function loadDashboard() {
             try {
                 showLoadingSpinner(true);
-                const response = await fetch(`${API_BASE}/api/estadisticas`, {
+                const response = await fetch(`${API_BASE}/estadisticas`, {
                     headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
                 });
 
@@ -1352,7 +1352,7 @@
                 document.getElementById('totalMonto').textContent = `$${totalMonto.toFixed(2)}`;
 
                 // Load additional data
-                const dataResponse = await fetch(`${API_BASE}/api/data`);
+                const dataResponse = await fetch(`${API_BASE}/data`);
                 const dataInfo = await dataResponse.json();
                 document.getElementById('totalClientes').textContent = Object.keys(dataInfo.clientesPorVendedor || {}).length;
                 document.getElementById('totalVendedores').textContent = dataInfo.vendedores?.length || 0;
@@ -1427,7 +1427,7 @@
                 }
 
                 try {
-                    const response = await fetch(`${API_BASE}/api/crear-producto`, {
+                    const response = await fetch(`${API_BASE}/crear-producto`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -1458,7 +1458,7 @@
         async function loadProductos() {
             try {
                 showLoadingSpinner(true);
-                const response = await fetch(`${API_BASE}/api/productos`);
+                const response = await fetch(`${API_BASE}/productos`);
                 if (!response.ok) throw new Error('Error loading productos');
 
                 const productos = await response.json();
@@ -1542,7 +1542,7 @@
                 }
 
                 try {
-                    const response = await fetch(`${API_BASE}/api/actualizar-producto?id=${productoId}`, {
+                    const response = await fetch(`${API_BASE}/actualizar-producto?id=${productoId}`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ 
@@ -1576,7 +1576,7 @@
             }
 
             try {
-                const response = await fetch(`${API_BASE}/api/eliminar-producto?id=${productoId}`, {
+                const response = await fetch(`${API_BASE}/eliminar-producto?id=${productoId}`, {
                     method: 'DELETE'
                 });
 
@@ -1612,7 +1612,7 @@
                 }
 
                 try {
-                    const response = await fetch(`${API_BASE}/api/crear-vendedor`, {
+                    const response = await fetch(`${API_BASE}/crear-vendedor`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ nombre: nombre })
@@ -1638,7 +1638,7 @@
         async function loadVendedores() {
             try {
                 showLoadingSpinner(true);
-                const response = await fetch(`${API_BASE}/api/data`);
+                const response = await fetch(`${API_BASE}/data`);
                 if (!response.ok) throw new Error('Error loading data');
 
                 const data = await response.json();
@@ -1716,7 +1716,7 @@
                 }
 
                 try {
-                    const response = await fetch(`${API_BASE}/api/actualizar-vendedor?id=${vendedorId}`, {
+                    const response = await fetch(`${API_BASE}/actualizar-vendedor?id=${vendedorId}`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ nombre: nombre })
@@ -1745,7 +1745,7 @@
             }
 
             try {
-                const response = await fetch(`${API_BASE}/api/eliminar-vendedor?id=${vendedorId}`, {
+                const response = await fetch(`${API_BASE}/eliminar-vendedor?id=${vendedorId}`, {
                     method: 'DELETE'
                 });
 

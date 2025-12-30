@@ -655,6 +655,7 @@ func getAllVentas() ([]VentaStats, error) {
 		FROM ventas v
 		JOIN vendedores ve ON v.vendedor_id = ve.id
 		LEFT JOIN clientes c ON v.cliente_id = c.id
+		WHERE v.estado != 'cancelada'
 		ORDER BY v.created_at DESC
 	`
 
@@ -721,6 +722,7 @@ func getResumen() (map[string]interface{}, error) {
 			COUNT(CASE WHEN v.estado='entregada' THEN 1 END) as ventas_entregadas,
 			COUNT(*) as ventas_totales
 		FROM ventas v
+		WHERE v.estado != 'cancelada'
 	`
 
 	var efectivo, transferencia, pendiente, total float64
@@ -740,6 +742,7 @@ func getResumen() (map[string]interface{}, error) {
 			COALESCE(SUM(CASE WHEN v.tipo_entrega='retiro' THEN dv.cantidad ELSE 0 END), 0) as total_retiro
 		FROM detalle_ventas dv
 		JOIN ventas v ON dv.venta_id = v.id
+		WHERE v.estado != 'cancelada'
 	`
 
 	var totalItems, delivery, retiro int
