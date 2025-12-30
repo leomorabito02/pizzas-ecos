@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	//"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -11,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	//"golang.org/x/oauth2/google"
+	"github.com/joho/godotenv"
 	"google.golang.org/api/option"
 	"google.golang.org/api/sheets/v4"
 )
@@ -24,6 +23,9 @@ const SpreadsheetID = "1E8bLD1DKp3ZrsmLb05O7cAJ-Qn929yBSTrZ18BSeVk0" // ID extra
 var srvSheets *sheets.Service
 
 func main() {
+	// Cargar variables de entorno desde .env
+	godotenv.Load()
+
 	// 1. Autenticación con Google Sheets
 	// Lee el archivo credentials.json en local o usa variable de entorno en producción
 	var credsData []byte
@@ -31,10 +33,9 @@ func main() {
 
 	// En Render/producción usa variable de entorno
 	credsJSON := os.Getenv("GOOGLE_CREDENTIALS_JSON")
-	
+
 	credsData = []byte(credsJSON)
 	log.Println("✓ Credentials desde variable de entorno GOOGLE_CREDENTIALS_JSON")
-	
 
 	ctx := context.Background()
 	srvSheets, err = sheets.NewService(ctx, option.WithCredentialsJSON(credsData))
