@@ -72,10 +72,6 @@
                         <div class="stat-label">Monto Total</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-value" id="totalClientes">-</div>
-                        <div class="stat-label">Total de Clientes</div>
-                    </div>
-                    <div class="stat-card">
                         <div class="stat-value" id="totalVendedores">-</div>
                         <div class="stat-label">Total de Vendedores</div>
                     </div>
@@ -215,6 +211,40 @@
                 <div class="modal-actions">
                     <button id="cancelLogout" class="btn-cancel">Cancelar</button>
                     <button id="confirmLogout" class="btn-logout-confirm">Cerrar Sesión</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Eliminar Producto -->
+        <div id="deleteProductModal" class="modal hidden">
+            <div class="modal-content delete-modal-content">
+                <div class="modal-header">
+                    <h2>Eliminar Producto</h2>
+                    <button class="modal-close" id="closeDeleteProductModal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p>¿Está seguro que desea eliminar este producto?</p>
+                </div>
+                <div class="modal-actions">
+                    <button id="cancelDeleteProduct" class="btn-cancel">Cancelar</button>
+                    <button id="confirmDeleteProduct" class="btn-delete-confirm">Eliminar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Eliminar Vendedor -->
+        <div id="deleteVendedorModal" class="modal hidden">
+            <div class="modal-content delete-modal-content">
+                <div class="modal-header">
+                    <h2>Eliminar Vendedor</h2>
+                    <button class="modal-close" id="closeDeleteVendedorModal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p>¿Está seguro que desea eliminar este vendedor? Los datos relacionados se mantendrán.</p>
+                </div>
+                <div class="modal-actions">
+                    <button id="cancelDeleteVendedor" class="btn-cancel">Cancelar</button>
+                    <button id="confirmDeleteVendedor" class="btn-delete-confirm">Eliminar</button>
                 </div>
             </div>
         </div>
@@ -412,6 +442,116 @@
             logoutBtn.addEventListener('click', logout);
         }
 
+        // Delete Product Modal Handlers
+        const deleteProductModal = document.getElementById('deleteProductModal');
+        const closeDeleteProductModal = document.getElementById('closeDeleteProductModal');
+        const cancelDeleteProduct = document.getElementById('cancelDeleteProduct');
+        const confirmDeleteProduct = document.getElementById('confirmDeleteProduct');
+
+        function closeDeleteProductModal() {
+            if (deleteProductModal) {
+                deleteProductModal.classList.add('hidden');
+            }
+            productIdToDelete = null;
+        }
+
+        if (closeDeleteProductModal) {
+            closeDeleteProductModal.addEventListener('click', closeDeleteProductModal);
+        }
+
+        if (cancelDeleteProduct) {
+            cancelDeleteProduct.addEventListener('click', closeDeleteProductModal);
+        }
+
+        if (confirmDeleteProduct) {
+            confirmDeleteProduct.addEventListener('click', async () => {
+                if (!productIdToDelete) return;
+                
+                try {
+                    const response = await fetch(`${API_BASE}/eliminar-producto?id=${productIdToDelete}`, {
+                        method: 'DELETE'
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        showError(data.message || 'Error eliminando producto');
+                        return;
+                    }
+
+                    showSuccess('Producto eliminado exitosamente');
+                    closeDeleteProductModal();
+                    await loadProductos();
+
+                } catch (error) {
+                    console.error('Error:', error);
+                    showError('Error eliminando producto');
+                }
+            });
+        }
+
+        if (deleteProductModal) {
+            deleteProductModal.addEventListener('click', (e) => {
+                if (e.target === deleteProductModal) {
+                    closeDeleteProductModal();
+                }
+            });
+        }
+
+        // Delete Vendedor Modal Handlers
+        const deleteVendedorModal = document.getElementById('deleteVendedorModal');
+        const closeDeleteVendedorModal = document.getElementById('closeDeleteVendedorModal');
+        const cancelDeleteVendedor = document.getElementById('cancelDeleteVendedor');
+        const confirmDeleteVendedor = document.getElementById('confirmDeleteVendedor');
+
+        function closeDeleteVendedorModal() {
+            if (deleteVendedorModal) {
+                deleteVendedorModal.classList.add('hidden');
+            }
+            vendedorIdToDelete = null;
+        }
+
+        if (closeDeleteVendedorModal) {
+            closeDeleteVendedorModal.addEventListener('click', closeDeleteVendedorModal);
+        }
+
+        if (cancelDeleteVendedor) {
+            cancelDeleteVendedor.addEventListener('click', closeDeleteVendedorModal);
+        }
+
+        if (confirmDeleteVendedor) {
+            confirmDeleteVendedor.addEventListener('click', async () => {
+                if (!vendedorIdToDelete) return;
+                
+                try {
+                    const response = await fetch(`${API_BASE}/eliminar-vendedor?id=${vendedorIdToDelete}`, {
+                        method: 'DELETE'
+                    });
+
+                    if (!response.ok) {
+                        showError('Error eliminando vendedor');
+                        return;
+                    }
+
+                    showSuccess('Vendedor eliminado exitosamente');
+                    closeDeleteVendedorModal();
+                    await loadVendedores();
+
+                } catch (error) {
+                    console.error('Error:', error);
+                    showError('Error eliminando vendedor');
+                }
+            });
+        }
+
+        if (deleteVendedorModal) {
+            deleteVendedorModal.addEventListener('click', (e) => {
+                if (e.target === deleteVendedorModal) {
+                    closeDeleteVendedorModal();
+                }
+            });
+        }
+
         // Load dashboard data
         async function loadDashboard() {
             try {
@@ -434,7 +574,6 @@
                 // Load additional data
                 const dataResponse = await fetch(`${API_BASE}/data`);
                 const dataInfo = await dataResponse.json();
-                document.getElementById('totalClientes').textContent = Object.keys(dataInfo.clientesPorVendedor || {}).length;
                 document.getElementById('totalVendedores').textContent = dataInfo.vendedores?.length || 0;
 
                 // Cargar ventas recientes (con todas para mostrar en tabla)
@@ -659,29 +798,13 @@
             });
         }
 
+        let productIdToDelete = null;
+
         async function eliminarProducto(productoId) {
-            if (!confirm('¿Está seguro que desea eliminar este producto?')) {
-                return;
-            }
-
-            try {
-                const response = await fetch(`${API_BASE}/eliminar-producto?id=${productoId}`, {
-                    method: 'DELETE'
-                });
-
-                const data = await response.json();
-
-                if (!response.ok) {
-                    showError(data.message || 'Error eliminando producto');
-                    return;
-                }
-
-                showSuccess('Producto eliminado exitosamente');
-                await loadProductos();
-
-            } catch (error) {
-                console.error('Error:', error);
-                showError('Error eliminando producto');
+            productIdToDelete = productoId;
+            const modal = document.getElementById('deleteProductModal');
+            if (modal) {
+                modal.classList.remove('hidden');
             }
         }
 
@@ -828,27 +951,13 @@
             });
         }
 
+        let vendedorIdToDelete = null;
+
         async function eliminarVendedor(vendedorId) {
-            if (!confirm('¿Está seguro que desea eliminar este vendedor? Los datos relacionados se mantendrán.')) {
-                return;
-            }
-
-            try {
-                const response = await fetch(`${API_BASE}/eliminar-vendedor?id=${vendedorId}`, {
-                    method: 'DELETE'
-                });
-
-                if (!response.ok) {
-                    showError('Error eliminando vendedor');
-                    return;
-                }
-
-                showSuccess('Vendedor eliminado exitosamente');
-                await loadVendedores();
-
-            } catch (error) {
-                console.error('Error:', error);
-                showError('Error eliminando vendedor');
+            vendedorIdToDelete = vendedorId;
+            const modal = document.getElementById('deleteVendedorModal');
+            if (modal) {
+                modal.classList.remove('hidden');
             }
         }
 
