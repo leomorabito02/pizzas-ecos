@@ -4,21 +4,27 @@ let ventaEnEdicion = null;
 let productosCache = []; // Cache de productos para generar contadores
 
 function getAPIBase() {
-    // 1. Si está en localhost, usar localhost:8080
+    // 1. Si hay variable de entorno (Netlify, Render, etc)
+    const envUrl = window.__ENV?.REACT_APP_API_URL || window.REACT_APP_API_URL;
+    if (envUrl) {
+        const url = envUrl.endsWith('/api') ? envUrl : envUrl + '/api';
+        console.log('✅ API URL from environment:', url);
+        return url;
+    }
+    
+    // 2. Si está en localhost, usar localhost:8080
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        console.log('ℹ️  Using localhost API: http://localhost:8080/api');
-        return 'http://localhost:8080/api';
+        const url = 'http://localhost:8080/api';
+        console.log('ℹ️  Using localhost API:', url);
+        return url;
     }
     
-    // 2. En Netlify, lee de window.__ENV que se inyecta automáticamente
-    const apiUrl = window.__ENV?.REACT_APP_API_URL || window.REACT_APP_API_URL;
-    if (apiUrl) {
-        console.log('✅ API URL from Netlify:', apiUrl);
-        return apiUrl;
-    }
-    
-    console.error('❌ REACT_APP_API_URL no está configurada en Netlify');
-    return null;
+    // 3. En producción, asumir backend en mismo dominio
+    const protocol = window.location.protocol;
+    const host = window.location.hostname;
+    const url = `${protocol}//${host}/api`;
+    console.log('ℹ️  Using same-server API:', url);
+    return url;
 }
 
 const API_BASE = getAPIBase();

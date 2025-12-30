@@ -10,14 +10,16 @@
 const CONFIG = {
     // Detectar URL del API según el ambiente
     getAPIUrl: function() {
-        // 1. Si hay variable de entorno (Netlify, Vercel, etc)
+        // 1. Si hay variable de entorno (Netlify, Vercel, Render, etc)
         if (typeof window !== 'undefined') {
-            // Netlify inyecta como window.REACT_APP_API_URL
+            // Netlify/Render inyecta como window.REACT_APP_API_URL
             if (window.REACT_APP_API_URL) {
-                console.log('✅ API URL from environment variable:', window.REACT_APP_API_URL);
-                return window.REACT_APP_API_URL;
+                const url = window.REACT_APP_API_URL.endsWith('/api') 
+                    ? window.REACT_APP_API_URL 
+                    : window.REACT_APP_API_URL + '/api';
+                console.log('✅ API URL from environment variable:', url);
+                return url;
             }
-
         }
         
         // 2. Si está en localhost, usar localhost:8080
@@ -27,11 +29,10 @@ const CONFIG = {
             return url;
         }
         
-        // 3. En producción, asumir backend en puerto 8080 del mismo dominio
+        // 3. En producción, asumir backend en mismo dominio sin puerto
         const protocol = window.location.protocol; // http: o https:
         const host = window.location.hostname;
-        const port = 8080;
-        const url = `${protocol}//${host}:${port}/api`;
+        const url = `${protocol}//${host}/api`;
         console.log('ℹ️  Using same-server API:', url);
         return url;
     },

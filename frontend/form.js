@@ -20,12 +20,25 @@ function hideLoadingSpinner() {
 }
 
 const getAPIBase = () => {
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        return 'http://localhost:8080';
+    // 1. Si hay variable de entorno (Netlify, Render, etc)
+    const envUrl = window.__ENV?.REACT_APP_API_URL || window.REACT_APP_API_URL;
+    if (envUrl) {
+        const url = envUrl.endsWith('/api') ? envUrl : envUrl + '/api';
+        console.log('✅ API Base from env:', url);
+        return url;
     }
-    const apiUrl = window.__ENV?.REACT_APP_API_URL || window.REACT_APP_API_URL;
-    if (apiUrl) return apiUrl;
-    return null;
+    
+    // 2. Si está en localhost, usar localhost:8080
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        return 'http://localhost:8080/api';
+    }
+    
+    // 3. En producción, asumir backend en mismo dominio
+    const protocol = window.location.protocol;
+    const host = window.location.hostname;
+    const url = `${protocol}//${host}/api`;
+    console.log('ℹ️  Using same-server API:', url);
+    return url;
 };
 
 const API_BASE = getAPIBase();
