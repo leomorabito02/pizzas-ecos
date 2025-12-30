@@ -504,7 +504,7 @@
         const cancelDeleteVendedor = document.getElementById('cancelDeleteVendedor');
         const confirmDeleteVendedor = document.getElementById('confirmDeleteVendedor');
 
-        function closeDeleteVendedorModal() {
+        function closeDeleteVendedorModalDialog() {
             if (deleteVendedorModal) {
                 deleteVendedorModal.classList.add('hidden');
             }
@@ -512,11 +512,11 @@
         }
 
         if (closeDeleteVendedorModal) {
-            closeDeleteVendedorModal.addEventListener('click', closeDeleteVendedorModal);
+            closeDeleteVendedorModal.addEventListener('click', closeDeleteVendedorModalDialog);
         }
 
         if (cancelDeleteVendedor) {
-            cancelDeleteVendedor.addEventListener('click', closeDeleteVendedorModal);
+            cancelDeleteVendedor.addEventListener('click', closeDeleteVendedorModalDialog);
         }
 
         if (confirmDeleteVendedor) {
@@ -534,7 +534,7 @@
                     }
 
                     showSuccess('Vendedor eliminado exitosamente');
-                    closeDeleteVendedorModal();
+                    closeDeleteVendedorModalDialog();
                     await loadVendedores();
 
                 } catch (error) {
@@ -547,7 +547,7 @@
         if (deleteVendedorModal) {
             deleteVendedorModal.addEventListener('click', (e) => {
                 if (e.target === deleteVendedorModal) {
-                    closeDeleteVendedorModal();
+                    closeDeleteVendedorModalDialog();
                 }
             });
         }
