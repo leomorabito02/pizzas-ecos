@@ -553,26 +553,39 @@ func getVendedorID(nombre string) (int, error) {
 func getClientesPorVendedor() (map[string][]string, error) {
 	result := make(map[string][]string)
 
-	// Get all clients once
-	rows, err := db.Query("SELECT CONCAT(nombre, ' ', COALESCE(apellido, '')) FROM clientes ORDER BY nombre")
+	// Get clientes grouped by vendedor from actual sales
+	query := `
+		SELECT DISTINCT ve.nombre, CONCAT(c.nombre, ' ', COALESCE(c.apellido, ''))
+		FROM ventas v
+		JOIN vendedores ve ON v.vendedor_id = ve.id
+		LEFT JOIN clientes c ON v.cliente_id = c.id
+		WHERE c.id IS NOT NULL
+		ORDER BY ve.nombre, c.nombre
+	`
+
+	rows, err := db.Query(query)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var clientes []string
 	for rows.Next() {
-		var nombre string
-		if err := rows.Scan(&nombre); err != nil {
+		var vendedorNombre, clienteNombre string
+		if err := rows.Scan(&vendedorNombre, &clienteNombre); err != nil {
 			return nil, err
 		}
-		clientes = append(clientes, strings.TrimSpace(nombre))
-	}
-
-	// Assign same clients to each vendor
-	vendedores, _ := getVendedores()
-	for _, v := range vendedores {
-		result[v.Nombre] = clientes
+		clienteNombre = strings.TrimSpace(clienteNombre)
+		// Avoid duplicates
+		encontrado := false
+		for _, c := range result[vendedorNombre] {
+			if c == clienteNombre {
+				encontrado = true
+				break
+			}
+		}
+		if !encontrado {
+			result[vendedorNombre] = append(result[vendedorNombre], clienteNombre)
+		}
 	}
 
 	return result, nil
