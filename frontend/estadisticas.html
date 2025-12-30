@@ -26,63 +26,73 @@
 
         <!-- TAB 1: RESUMEN GENERAL -->
         <div id="tab-resumen" class="tab-content active">
-            <!-- Estadísticas Generales -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-label">🧀 Total Muzzas</div>
-                    <div class="stat-value" id="totalMuzzas">0</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">🍖 Total Jamones</div>
-                    <div class="stat-value" id="totalJamones">0</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">🚚 Para Delivery</div>
-                    <div class="stat-value" id="totalDelivery">0</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">🏪 Para Retiro</div>
-                    <div class="stat-value" id="totalRetiro">0</div>
+            
+            <!-- Sección: Ventas por Producto (Dinámico) -->
+            <div class="resumen-section">
+                <h2 style="margin-bottom: 15px; color: #333;">📦 Ventas por Producto</h2>
+                <div class="stats-grid" id="productosCounters">
+                    <!-- Los contadores de productos se generarán dinámicamente aquí -->
                 </div>
             </div>
 
-            <!-- Dinero y Pagos -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-label">⏳ Pendiente de Cobro</div>
-                    <div class="stat-value" id="pendienteCobro">$0.00</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">💵 Efectivo Cobrado</div>
-                    <div class="stat-value" id="efectivoCobrado">$0.00</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">🏦 Transferencia Cobrada</div>
-                    <div class="stat-value" id="transferenciaCobrada">$0.00</div>
-                </div>
-                <div class="stat-card highlight">
-                    <div class="stat-label">💰 Total Cobrado</div>
-                    <div class="stat-value" id="totalCobrado">$0.00</div>
+            <!-- Sección: Entregas -->
+            <div class="resumen-section" style="margin-top: 30px;">
+                <h2 style="margin-bottom: 15px; color: #333;">🚚 Entregas</h2>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">🚚 Para Delivery</div>
+                        <div class="stat-value" id="totalDelivery">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">🏪 Para Retiro</div>
+                        <div class="stat-value" id="totalRetiro">0</div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Estados de Ventas -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-label">⏳ Ventas Sin Pagar</div>
-                    <div class="stat-value" id="ventasSinPagar">0</div>
+            <!-- Sección: Dinero y Pagos -->
+            <div class="resumen-section" style="margin-top: 30px;">
+                <h2 style="margin-bottom: 15px; color: #333;">💰 Dinero y Pagos</h2>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">⏳ Monto Pendiente de Cobro</div>
+                        <div class="stat-value" id="pendienteCobro">$0.00</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">💵 Monto Cobrado en Efectivo</div>
+                        <div class="stat-value" id="efectivoCobrado">$0.00</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">🏦 Monto Cobrado por Transferencia</div>
+                        <div class="stat-value" id="transferenciaCobrada">$0.00</div>
+                    </div>
+                    <div class="stat-card highlight">
+                        <div class="stat-label">💰 Monto Total Cobrado</div>
+                        <div class="stat-value" id="totalCobrado">$0.00</div>
+                    </div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-label">✓ Ventas Pagadas</div>
-                    <div class="stat-value" id="ventasPagadas">0</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">🚚 Ventas Entregadas</div>
-                    <div class="stat-value" id="ventasEntregadas">0</div>
-                </div>
-                <div class="stat-card highlight">
-                    <div class="stat-label">📊 Total Ventas</div>
-                    <div class="stat-value" id="totalVentas">0</div>
+            </div>
+
+            <!-- Sección: Estados de Ventas -->
+            <div class="resumen-section" style="margin-top: 30px;">
+                <h2 style="margin-bottom: 15px; color: #333;">📊 Estados de Ventas</h2>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">⏳ Ventas Sin Pagar</div>
+                        <div class="stat-value" id="ventasSinPagar">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">✓ Ventas Pagadas</div>
+                        <div class="stat-value" id="ventasPagadas">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">🚚 Ventas Entregadas</div>
+                        <div class="stat-value" id="ventasEntregadas">0</div>
+                    </div>
+                    <div class="stat-card highlight">
+                        <div class="stat-label">📊 Total de Ventas</div>
+                        <div class="stat-value" id="totalVentas">0</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -102,7 +112,7 @@
                             <th>ID</th>
                             <th>Vendedor</th>
                             <th>Cliente</th>
-                            <th>Combos</th>
+                            <th>Productos</th>
                             <th>Total $</th>
                             <th>Estado</th>
                             <th>Pago</th>
@@ -124,6 +134,7 @@
                     <button class="btn-close-modal">&times;</button>
                 </div>
                 <div class="modal-body">
+                    <!-- Estado y Pago -->
                     <div class="form-group">
                         <label>Estado:</label>
                         <select id="editarEstado">
@@ -140,39 +151,30 @@
                             <option value="transferencia">🏦 Transferencia</option>
                         </select>
                     </div>
-                    
-                    <hr style="margin: 15px 0; border: none; border-top: 1px solid #ddd;">
-                    
-                    <h3 style="margin: 10px 0; font-size: 16px;">🧀 Combos Muzza</h3>
-                    <div class="combos-container">
-                        <div class="form-group">
-                            <label>Combo 1:</label>
-                            <input type="number" id="editMuzzaC1" min="0" value="0">
-                        </div>
-                        <div class="form-group">
-                            <label>Combo 2:</label>
-                            <input type="number" id="editMuzzaC2" min="0" value="0">
-                        </div>
-                        <div class="form-group">
-                            <label>Combo 3:</label>
-                            <input type="number" id="editMuzzaC3" min="0" value="0">
-                        </div>
+                    <div class="form-group">
+                        <label>Tipo de Entrega:</label>
+                        <select id="editarEntrega">
+                            <option value="delivery">🚗 Delivery</option>
+                            <option value="retiro">🏪 Retiro</option>
+                        </select>
                     </div>
+
+                    <!-- Productos -->
+                    <hr style="margin: 15px 0;">
+                    <h3 style="color: #333; margin-bottom: 10px;">Productos</h3>
                     
-                    <h3 style="margin: 15px 0 10px 0; font-size: 16px;">🍖 Combos Jamón</h3>
-                    <div class="combos-container">
-                        <div class="form-group">
-                            <label>Combo 1:</label>
-                            <input type="number" id="editJamonC1" min="0" value="0">
-                        </div>
-                        <div class="form-group">
-                            <label>Combo 2:</label>
-                            <input type="number" id="editJamonC2" min="0" value="0">
-                        </div>
-                        <div class="form-group">
-                            <label>Combo 3:</label>
-                            <input type="number" id="editJamonC3" min="0" value="0">
-                        </div>
+                    <!-- Lista de productos existentes -->
+                    <div id="productosEditables" style="margin-bottom: 15px;">
+                        <!-- Se llena dinámicamente -->
+                    </div>
+
+                    <!-- Agregar nuevo producto -->
+                    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                        <select id="nuevoProductoSelect" style="flex: 1;">
+                            <option value="">Selecciona producto para agregar...</option>
+                        </select>
+                        <input type="number" id="nuevoProductoCantidad" min="1" value="1" style="width: 80px;" placeholder="Cant">
+                        <button id="btnAgregarProducto" style="padding: 8px 15px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">+ Agregar</button>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -185,7 +187,14 @@
         <div id="mensaje" class="mensaje hidden"></div>
     </div>
 
-    <script src="env-inject.js"></script>
+    <script>
+        // Only load env-inject.js on Netlify production, not on localhost
+        if (!window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1')) {
+            const script = document.createElement('script');
+            script.src = 'env-inject.js';
+            document.head.appendChild(script);
+        }
+    </script>
     <script src="estadisticas.js"></script>
 </body>
 </html>

@@ -17,12 +17,7 @@ const CONFIG = {
                 console.log('✅ API URL from environment variable:', window.REACT_APP_API_URL);
                 return window.REACT_APP_API_URL;
             }
-            
-            // Vercel/otros pueden usar window.ENV
-            if (window.ENV?.API_URL) {
-                console.log('✅ API URL from window.ENV:', window.ENV.API_URL);
-                return window.ENV.API_URL;
-            }
+
         }
         
         // 2. Si está en localhost, usar localhost:8080

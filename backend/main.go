@@ -1,59 +1,230 @@
 package main
 
 import (
-	"context"
+	"crypto/sha256"
+	"crypto/tls"
+	"crypto/x509"
+	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
+	"time"
 
+	"github.com/go-sql-driver/mysql"
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/joho/godotenv"
-	"google.golang.org/api/option"
-	"google.golang.org/api/sheets/v4"
 )
 
-// Configuración global
-// Extrae el ID de la URL del Google Sheets
-const SheetURL = "https://docs.google.com/spreadsheets/d/1E8bLD1DKp3ZrsmLb05O7cAJ-Qn929yBSTrZ18BSeVk0/edit?gid=865373207"
-const SpreadsheetID = "1E8bLD1DKp3ZrsmLb05O7cAJ-Qn929yBSTrZ18BSeVk0" // ID extraído de la URL
+// Base de datos global
+var db *sql.DB
 
-var srvSheets *sheets.Service
+// JWT Secret key para firmar tokens
+var jwtSecret = []byte("ecos-auth-secret-key-change-in-production")
 
-func main() {
-	// Cargar variables de entorno desde .env
+// Estructuras de datos (idénticas al original para compatibilidad)
+type ProductoItem struct {
+	DetalleID int     `json:"detalle_id"` // id de la fila en detalle_ventas (para edición)
+	Tipo      string  `json:"tipo"`       // "producto"
+	ProductID int     `json:"product_id"` // producto_id
+	Cantidad  int     `json:"cantidad"`   // cantidad
+	Precio    float64 `json:"precio"`     // precio unitario
+	Total     float64 `json:"total"`      // total (precio * cantidad)
+}
+
+type VentaRequest struct {
+	Vendedor      string         `json:"vendedor"`
+	Cliente       string         `json:"cliente"`
+	Items         []ProductoItem `json:"items"` // array de items con producto_id
+	PaymentMethod string         `json:"payment_method"`
+	Estado        string         `json:"estado"`
+	TipoEntrega   string         `json:"tipo_entrega"` // retiro o envio
+}
+
+type DataResponse struct {
+	ClientesPorVendedor map[string][]string `json:"clientesPorVendedor"`
+	Vendedores          []Vendedor          `json:"vendedores"`
+	Productos           []Producto          `json:"productos"`
+}
+
+type Pizza struct {
+	Nombre      string    `json:"nombre"`
+	Descripcion string    `json:"descripcion"`
+	Precios     []float64 `json:"precios"`
+}
+
+type VentaStats struct {
+	ID            int            `json:"id"`
+	Vendedor      string         `json:"vendedor"`
+	Cliente       string         `json:"cliente"`
+	Total         float64        `json:"total"`
+	PaymentMethod string         `json:"payment_method"`
+	Estado        string         `json:"estado"`
+	TipoEntrega   string         `json:"tipo_entrega"`
+	CreatedAt     time.Time      `json:"created_at"`
+	Items         []ProductoItem `json:"items"`
+}
+
+// Auth structs
+type LoginRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+type LoginResponse struct {
+	Token string `json:"token"`
+	User  User   `json:"user"`
+}
+
+type User struct {
+	ID       int    `json:"id"`
+	Username string `json:"username"`
+	Rol      string `json:"rol"`
+}
+
+type TokenClaims struct {
+	Username string `json:"username"`
+	Rol      string `json:"rol"`
+	jwt.RegisteredClaims
+}
+
+// Producto structs
+type Producto struct {
+	ID          int       `json:"id"`
+	TipoPizza   string    `json:"tipo_pizza"`
+	Descripcion string    `json:"descripcion"`
+	Precio      float64   `json:"precio"`
+	Activo      bool      `json:"activo"`
+	CreatedAt   time.Time `json:"created_at"`
+}
+
+type Vendedor struct {
+	ID     int    `json:"id"`
+	Nombre string `json:"nombre"`
+}
+
+type CrearProductoRequest struct {
+	TipoPizza   string  `json:"tipo_pizza"`
+	Descripcion string  `json:"descripcion"`
+	Precio      float64 `json:"precio"`
+}
+
+type ActualizarProductoRequest struct {
+	TipoPizza   string  `json:"tipo_pizza"`
+	Precio      float64 `json:"precio"`
+	Descripcion string  `json:"descripcion"`
+	Activo      bool    `json:"activo"`
+}
+
+// inicDB inicializa la conexión a MySQL
+func inicDB() error {
 	godotenv.Load()
 
-	// 1. Autenticación con Google Sheets
-	// Lee el archivo credentials.json en local o usa variable de entorno en producción
-	var credsData []byte
-	var err error
+	dbURL := os.Getenv("DATABASE_URL")
+	caCertPath := os.Getenv("DATABASE_CA_CERT")
 
-	// En Render/producción usa variable de entorno
-	credsJSON := os.Getenv("GOOGLE_CREDENTIALS_JSON")
-
-	credsData = []byte(credsJSON)
-	log.Println("✓ Credentials desde variable de entorno GOOGLE_CREDENTIALS_JSON")
-
-	ctx := context.Background()
-	srvSheets, err = sheets.NewService(ctx, option.WithCredentialsJSON(credsData))
-	if err != nil {
-		log.Fatalf("No se pudo iniciar el cliente de Sheets: %v", err)
+	if dbURL == "" {
+		return fmt.Errorf("DATABASE_URL no configurada")
 	}
 
-	// 2. Middleware CORS
+	// Registrar TLS config si hay certificado
+	if caCertPath != "" {
+		caCert, err := ioutil.ReadFile(caCertPath)
+		if err != nil {
+			return fmt.Errorf("error leyendo certificado: %w", err)
+		}
+
+		caCertPool := x509.NewCertPool()
+		if !caCertPool.AppendCertsFromPEM(caCert) {
+			return fmt.Errorf("error parseando certificado")
+		}
+
+		tlsConfig := &tls.Config{
+			RootCAs: caCertPool,
+		}
+		mysql.RegisterTLSConfig("custom", tlsConfig)
+	}
+
+	// Convertir URL a DSN
+	dsn := convertDSN(dbURL, caCertPath != "")
+	log.Printf("Conectando a MySQL: %s", strings.Split(dsn, "@")[0]+"@...")
+
+	var err error
+	db, err = sql.Open("mysql", dsn)
+	if err != nil {
+		return fmt.Errorf("error abriendo conexión: %w", err)
+	}
+
+	// Probar conexión
+	if err := db.Ping(); err != nil {
+		return fmt.Errorf("error conectando a BD: %w", err)
+	}
+
+	log.Println("✅ Conectado a MySQL exitosamente")
+	return nil
+}
+
+// convertDSN convierte URL MySQL a DSN
+func convertDSN(url string, hasCert bool) string {
+	url = strings.TrimPrefix(url, "mysql://")
+
+	var credentials, rest string
+	if idx := strings.IndexByte(url, '@'); idx != -1 {
+		credentials = url[:idx]
+		rest = url[idx+1:]
+	}
+
+	var host, dbPath string
+	if idx := strings.IndexByte(rest, '/'); idx != -1 {
+		host = rest[:idx]
+		dbPath = rest[idx:]
+	} else {
+		host = rest
+		dbPath = "/"
+	}
+
+	// Remover parámetros de la URL original
+	if idx := strings.IndexByte(dbPath, '?'); idx != -1 {
+		dbPath = dbPath[:idx]
+	}
+
+	suffix := "?parseTime=true"
+	if hasCert {
+		suffix = "?tls=custom&parseTime=true"
+	}
+
+	return fmt.Sprintf("%s@tcp(%s)%s%s", credentials, host, dbPath, suffix)
+}
+
+func main() {
+	// Inicializar BD
+	if err := inicDB(); err != nil {
+		log.Fatalf("❌ Error inicializando BD: %v", err)
+	}
+	defer db.Close()
+
+	// Middleware CORS con recover
 	mux := http.NewServeMux()
 
-	// Envolver todas las rutas con CORS
 	corsHandler := func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			defer func() {
+				if err := recover(); err != nil {
+					log.Printf("❌ PANIC en %s %s: %v", r.Method, r.URL.Path, err)
+					w.Header().Set("Content-Type", "application/json")
+					http.Error(w, fmt.Sprintf("Internal server error: %v", err), http.StatusInternalServerError)
+				}
+			}()
+
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 
-			// Responder a preflight requests
 			if r.Method == http.MethodOptions {
 				w.WriteHeader(http.StatusOK)
 				return
@@ -64,917 +235,974 @@ func main() {
 	}
 
 	// Rutas API
-	mux.HandleFunc("/api/submit", handleSubmit)                        // Recibe el POST del form
-	mux.HandleFunc("/api/data", handleData)                            // Devuelve JSON para los selects
-	mux.HandleFunc("/api/estadisticas", handleEstadisticas)            // Estadísticas generales (desde Ventas)
-	mux.HandleFunc("/api/estadisticas-sheet", handleEstadisticasSheet) // Estadísticas desde sheet "estadisticas"
-	mux.HandleFunc("/api/actualizar-venta", handleActualizarVenta)     // Actualizar estado de venta
+	mux.HandleFunc("/api/login", handleLogin)                            // Login
+	mux.HandleFunc("/api/verify-token", handleVerifyToken)               // Verificar token
+	mux.HandleFunc("/api/submit", handleSubmit)                          // Guardar venta
+	mux.HandleFunc("/api/data", handleData)                              // Obtener vendedores, clientes, pizzas
+	mux.HandleFunc("/api/estadisticas", handleEstadisticas)              // Todas las ventas
+	mux.HandleFunc("/api/estadisticas-sheet", handleEstadisticasSheet)   // Resumen
+	mux.HandleFunc("/api/actualizar-venta", handleActualizarVenta)       // Actualizar venta
+	mux.HandleFunc("/api/productos", handleProductos)                    // Listar productos
+	mux.HandleFunc("/api/crear-producto", handleCrearProducto)           // Crear producto
+	mux.HandleFunc("/api/actualizar-producto", handleActualizarProducto) // Actualizar producto
+	mux.HandleFunc("/api/eliminar-producto", handleEliminarProducto)     // Eliminar producto
+	mux.HandleFunc("/api/crear-vendedor", handleCrearVendedor)           // Crear vendedor
+	mux.HandleFunc("/api/actualizar-vendedor", handleActualizarVendedor) // Actualizar vendedor
+	mux.HandleFunc("/api/eliminar-vendedor", handleEliminarVendedor)     // Eliminar vendedor
 
-	// 3. Servidor
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
-	log.Printf("Backend escuchando en puerto %s", port)
-	log.Fatal(http.ListenAndServe(":"+port, corsHandler(mux)))
+
+	log.Printf("🚀 Backend en puerto %s", port)
+	log.Printf("Iniciando servidor HTTP...")
+	err := http.ListenAndServe(":"+port, corsHandler(mux))
+	if err != nil {
+		log.Fatalf("❌ Error iniciando servidor: %v", err)
+	}
 }
 
-// Estructura para recibir datos del frontend
-type ComboItem struct {
-	Tipo     string  `json:"tipo"`     // muzza o jamon
-	Combo    int     `json:"combo"`    // 0, 1 o 2 (índices)
-	Cantidad int     `json:"cantidad"` // cantidad de combos
-	Precio   float64 `json:"precio"`   // precio unitario
-	Total    float64 `json:"total"`    // total (precio * cantidad)
-}
-
-type VentaRequest struct {
-	Vendedor      string      `json:"vendedor"`
-	Cliente       string      `json:"cliente"`
-	Combos        []ComboItem `json:"combos"` // array de combos
-	PaymentMethod string      `json:"payment_method"`
-	Estado        string      `json:"estado"`
-	TipoEntrega   string      `json:"tipo_entrega"` // retiro o envio
-}
-
-// Estructura para responder con datos procesados
-type DataResponse struct {
-	ClientesPorVendedor map[string][]string `json:"clientesPorVendedor"`
-	Vendedores          []string            `json:"vendedores"`
-	Pizzas              map[string]Pizza    `json:"pizzas"`
-}
-
-type Pizza struct {
-	Nombre  string    `json:"nombre"`
-	Combos  []string  `json:"combos"`
-	Precios []float64 `json:"precios"`
-}
-
-func handleSubmit(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Método no permitido", http.StatusMethodNotAllowed)
-		return
-	}
-
-	// Parsear JSON del body
-	var venta VentaRequest
-	decoder := json.NewDecoder(r.Body)
-	defer r.Body.Close()
-
-	if err := decoder.Decode(&venta); err != nil {
-		http.Error(w, "Error al parsear JSON", http.StatusBadRequest)
-		log.Printf("Error decodificando JSON: %v", err)
-		return
-	}
-
-	// Validar datos
-	if venta.Vendedor == "" || venta.Cliente == "" || len(venta.Combos) == 0 {
-		http.Error(w, "Faltan datos requeridos", http.StatusBadRequest)
-		return
-	}
-
-	ctx := context.Background()
-
-	// Leer desde B4 hacia abajo para encontrar la primera fila libre
-	respLastRow, err := srvSheets.Spreadsheets.Values.Get(SpreadsheetID, "Ventas!B4:B").
-		Context(ctx).
-		Do()
-	if err != nil {
-		log.Printf("Error leyendo última fila: %v", err)
-		http.Error(w, "Error leyendo datos", http.StatusInternalServerError)
-		return
-	}
-
-	// Calcular próximo ID: buscar la primera fila vacía en B4:B
-	proximoID := 1
-	filaVaciaIndex := 0 // índice relativo a B4 (0 = fila 4, 1 = fila 5, etc)
-
-	if respLastRow.Values != nil && len(respLastRow.Values) > 0 {
-		// Iterar sobre las filas para encontrar la primera vacía
-		for i, row := range respLastRow.Values {
-			if len(row) == 0 || row[0] == nil || row[0] == "" {
-				// Encontramos una fila vacía
-				proximoID = i + 1
-				filaVaciaIndex = i
-				break
-			}
-		}
-		// Si no encontramos vacía, el próximo ID es después de la última
-		if filaVaciaIndex == 0 && len(respLastRow.Values) > 0 {
-			proximoID = len(respLastRow.Values) + 1
-			filaVaciaIndex = len(respLastRow.Values)
-		}
-	}
-
-	// La fila real en Google Sheets es 4 + filaVaciaIndex
-	filaReal := 4 + filaVaciaIndex
-
-	// Preparar contadores para cada tipo de combo
-	// Columnas: B=ID, C=Vendedor, D=Cliente, E=Muzza-C1, F=Muzza-C2, G=Muzza-C3, H=(ignorar), I=Jamón-C1, J=Jamón-C2, K=Jamón-C3, L=(ignorar), M=MetodoPago, N=Estado, O=Entrega
-	contadores := map[string]int{
-		"muzza-c1": 0,
-		"muzza-c2": 0,
-		"muzza-c3": 0,
-		"jamon-c1": 0,
-		"jamon-c2": 0,
-		"jamon-c3": 0,
-	}
-
-	// Contar combos
-	for _, combo := range venta.Combos {
-		key := fmt.Sprintf("%s-c%d", combo.Tipo, combo.Combo+1)
-		contadores[key] += combo.Cantidad
-	}
-
-	// 1. Leer la fila vacía actual para copiar su formato
-	filaReal = 4 + filaVaciaIndex
-	//filaSiguiente := filaReal + 1
-	//rangoLectura := fmt.Sprintf("Ventas!A%d:O%d", filaReal, filaReal)
-
-	//respFilaVacia, err := srvSheets.Spreadsheets.Values.Get(SpreadsheetID, rangoLectura).
-	//	Context(ctx).
-	//	Do()
-	if err != nil {
-		log.Printf("Error leyendo fila vacía: %v", err)
-		// Continuamos de todas formas
-	}
-
-	// 2. Insertar una nueva fila en la posición filaReal (desplaza hacia abajo)
-	sheetID := getSheetID(ctx, "Ventas")
-	if sheetID == 0 {
-		log.Printf("Error: No se pudo obtener el ID de la hoja Ventas")
-		http.Error(w, "Error obteniendo ID de hoja", http.StatusInternalServerError)
-		return
-	}
-
-	insertRequest := &sheets.InsertDimensionRequest{
-		Range: &sheets.DimensionRange{
-			SheetId:    sheetID,
-			Dimension:  "ROWS",
-			StartIndex: int64(filaReal - 1), // startIndex es 0-basado, así que fila 4 = índice 3
-			EndIndex:   int64(filaReal),     // endIndex es exclusivo
-		},
-	}
-
-	batchUpdateRequest := &sheets.BatchUpdateSpreadsheetRequest{
-		Requests: []*sheets.Request{
-			{
-				InsertDimension: insertRequest,
-			},
-		},
-	}
-
-	_, err = srvSheets.Spreadsheets.BatchUpdate(SpreadsheetID, batchUpdateRequest).
-		Context(ctx).
-		Do()
-	if err != nil {
-		log.Printf("Error insertando fila: %v", err)
-		http.Error(w, "Error insertando fila", http.StatusInternalServerError)
-		return
-	}
-
-	// 3. La fila insertada heredará automáticamente el formato de la fila anterior
-	// No necesitamos copiar nada - Google Sheets lo hace automáticamente
-
-	// 3.5 Arrastrar fórmulas de columnas H, L, P, Q, R, S de la fila anterior a la nueva fila
-	// Estas columnas contienen funciones automatizadas que deben copiarse y actualizarse
-	filasParaCopiarFormulas := []string{"H", "L", "P", "Q", "R", "S"}
-	for _, col := range filasParaCopiarFormulas {
-		// Leer fórmula de la fila anterior (filaReal - 1)
-		rangoFuente := fmt.Sprintf("Ventas!%s%d", col, filaReal-1)
-		respFormula, err := srvSheets.Spreadsheets.Values.Get(SpreadsheetID, rangoFuente).
-			ValueRenderOption("FORMULA"). // Leer la FÓRMULA, no el valor calculado
-			Context(ctx).
-			Do()
-		if err != nil {
-			log.Printf("Error leyendo fórmula de %s%d: %v", col, filaReal-1, err)
-			continue
-		}
-
-		// Si hay contenido (fórmula), copiarla a la nueva fila
-		if respFormula.Values != nil && len(respFormula.Values) > 0 && len(respFormula.Values[0]) > 0 {
-			formulaValue := fmt.Sprintf("%v", respFormula.Values[0][0])
-
-			// Actualizar la fórmula: reemplazar números de fila SOLO en referencias relativas
-			// No tocar referencias absolutas ($E$9, $F$9, etc)
-			formulaActualizada := actualizarFormulaRelativa(formulaValue, filaReal-1, filaReal)
-
-			rangoDestino := fmt.Sprintf("Ventas!%s%d", col, filaReal)
-			rbFormula := &sheets.ValueRange{
-				Values: [][]interface{}{{formulaActualizada}},
-			}
-			_, err = srvSheets.Spreadsheets.Values.Update(SpreadsheetID, rangoDestino, rbFormula).
-				ValueInputOption("USER_ENTERED").
-				Context(ctx).
-				Do()
-			if err != nil {
-				log.Printf("Error copiando fórmula a %s%d: %v", col, filaReal, err)
-			}
-		}
-	}
-
-	// 4. Preparar datos para escribir en secciones (sin H y L)
-
-	// Escribir B:G (ID, Vendedor, Cliente, Muzza combos)
-	valuesB_G := []interface{}{
-		proximoID,              // B
-		venta.Vendedor,         // C
-		venta.Cliente,          // D
-		contadores["muzza-c1"], // E
-		contadores["muzza-c2"], // F
-		contadores["muzza-c3"], // G
-	}
-	rbB_G := &sheets.ValueRange{
-		Values: [][]interface{}{valuesB_G},
-	}
-	_, err = srvSheets.Spreadsheets.Values.Update(SpreadsheetID, fmt.Sprintf("Ventas!B%d:G%d", filaReal, filaReal), rbB_G).
-		ValueInputOption("USER_ENTERED").
-		Context(ctx).
-		Do()
-	if err != nil {
-		log.Printf("Error escribiendo datos principales: %v", err)
-		http.Error(w, "Error escribiendo en Sheets", http.StatusInternalServerError)
-		return
-	}
-
-	// Escribir I:K (Jamón combos)
-	valuesI_K := []interface{}{
-		contadores["jamon-c1"], // I
-		contadores["jamon-c2"], // J
-		contadores["jamon-c3"], // K
-	}
-	rbI_K := &sheets.ValueRange{
-		Values: [][]interface{}{valuesI_K},
-	}
-	_, err = srvSheets.Spreadsheets.Values.Update(SpreadsheetID, fmt.Sprintf("Ventas!I%d:K%d", filaReal, filaReal), rbI_K).
-		ValueInputOption("USER_ENTERED").
-		Context(ctx).
-		Do()
-	if err != nil {
-		log.Printf("Error escribiendo Jamón: %v", err)
-		http.Error(w, "Error escribiendo en Sheets", http.StatusInternalServerError)
-		return
-	}
-
-	// Escribir M:O (Pago, Estado, Entrega)
-	valuesM_O := []interface{}{
-		venta.PaymentMethod, // M
-		venta.Estado,        // N
-		venta.TipoEntrega,   // O
-	}
-	rbM_O := &sheets.ValueRange{
-		Values: [][]interface{}{valuesM_O},
-	}
-	_, err = srvSheets.Spreadsheets.Values.Update(SpreadsheetID, fmt.Sprintf("Ventas!M%d:O%d", filaReal, filaReal), rbM_O).
-		ValueInputOption("USER_ENTERED").
-		Context(ctx).
-		Do()
-	if err != nil {
-		log.Printf("Error escribiendo metadata: %v", err)
-		http.Error(w, "Error escribiendo en Sheets", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, `{"success": true, "message": "Venta guardada"}`)
-}
-
+// handleData retorna vendedores, clientes y productos
 func handleData(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Método no permitido", http.StatusMethodNotAllowed)
-		return
-	}
+	w.Header().Set("Content-Type", "application/json")
 
-	ctx := context.Background()
-
-	// Leer vendedores desde la hoja "datos" columna C a partir de C9
-	respVendedores, err := srvSheets.Spreadsheets.Values.Get(SpreadsheetID, "datos!C9:C").
-		Context(ctx).
-		Do()
+	// Obtener vendedores
+	vendedores, err := getVendedores()
 	if err != nil {
-		log.Printf("Error leyendo vendedores: %v", err)
-		http.Error(w, "Error leyendo vendedores", http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// Procesar vendedores (detente en la primera celda vacía)
-	vendedores := []string{}
-	for _, row := range respVendedores.Values {
-		if len(row) == 0 || fmt.Sprintf("%v", row[0]) == "" {
-			break // Detener al encontrar una celda vacía
-		}
-		vendedor := fmt.Sprintf("%v", row[0])
-		vendedores = append(vendedores, vendedor)
-	}
-
-	// Leer precios de Muzza desde H9:J9
-	respMuzza, err := srvSheets.Spreadsheets.Values.Get(SpreadsheetID, "datos!H9:J9").
-		Context(ctx).
-		Do()
+	// Obtener clientes por vendedor
+	clientesPorVendedor, err := getClientesPorVendedor()
 	if err != nil {
-		log.Printf("Error leyendo precios Muzza: %v", err)
-		http.Error(w, "Error leyendo precios Muzza", http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// Leer precios de Jamón desde H11:J11
-	respJamon, err := srvSheets.Spreadsheets.Values.Get(SpreadsheetID, "datos!H11:J11").
-		Context(ctx).
-		Do()
+	// Obtener productos
+	productos, err := getProductos()
 	if err != nil {
-		log.Printf("Error leyendo precios Jamón: %v", err)
-		http.Error(w, "Error leyendo precios Jamón", http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// Procesar precios Muzza
-	preciosMuzza := []float64{}
-	if len(respMuzza.Values) > 0 && len(respMuzza.Values[0]) >= 3 {
-		for i := 0; i < 3; i++ {
-			precio := parseFloat(respMuzza.Values[0][i])
-			preciosMuzza = append(preciosMuzza, precio)
-		}
-	}
-
-	// Procesar precios Jamón
-	preciosJamon := []float64{}
-	if len(respJamon.Values) > 0 && len(respJamon.Values[0]) >= 3 {
-		for i := 0; i < 3; i++ {
-			precio := parseFloat(respJamon.Values[0][i])
-			preciosJamon = append(preciosJamon, precio)
-		}
-	}
-
-	// Leer datos históricos de ventas para construir clientes por vendedor
-	// Leer desde D4 en adelante (columna C=Vendedor, columna D=Cliente)
-	respVentas, err := srvSheets.Spreadsheets.Values.Get(SpreadsheetID, "Ventas!C4:D").
-		Context(ctx).
-		Do()
-	if err != nil {
-		log.Printf("Error leyendo ventas: %v", err)
-		http.Error(w, "Error leyendo datos de ventas", http.StatusInternalServerError)
-		return
-	}
-
-	clientesPorVendedor := make(map[string][]string)
-
-	// Procesar filas de ventas (comenzar desde fila 4 - sin encabezado)
-	for _, row := range respVentas.Values {
-		// Validar que la fila tenga al menos 2 columnas
-		if len(row) < 2 {
-			continue
-		}
-
-		vendedor := strings.TrimSpace(fmt.Sprintf("%v", row[0]))
-		cliente := strings.TrimSpace(fmt.Sprintf("%v", row[1]))
-
-		// Evitar vacíos y valores "nil" o "<nil>"
-		if vendedor == "" || cliente == "" || vendedor == "<nil>" || cliente == "<nil>" {
-			continue
-		}
-
-		// Evitar duplicados
-		if !contains(clientesPorVendedor[vendedor], cliente) {
-			clientesPorVendedor[vendedor] = append(clientesPorVendedor[vendedor], cliente)
-		}
-	}
-
-	// Construir mapa de pizzas
-	pizzas := make(map[string]Pizza)
-	pizzas["muzza"] = Pizza{
-		Nombre:  "Muzza",
-		Combos:  []string{"Combo 1", "Combo 2", "Combo 3"},
-		Precios: preciosMuzza,
-	}
-	pizzas["jamon"] = Pizza{
-		Nombre:  "Jamón",
-		Combos:  []string{"Combo 1", "Combo 2", "Combo 3"},
-		Precios: preciosJamon,
-	}
-
-	// Responder con JSON
 	response := DataResponse{
-		ClientesPorVendedor: clientesPorVendedor,
 		Vendedores:          vendedores,
-		Pizzas:              pizzas,
+		ClientesPorVendedor: clientesPorVendedor,
+		Productos:           productos,
 	}
 
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("Error encoding response: %v", err)
+	}
+}
+
+// handleSubmit guarda una nueva venta
+func handleSubmit(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
-}
 
-// Funciones auxiliares
-func contains(slice []string, item string) bool {
-	for _, v := range slice {
-		if v == item {
-			return true
-		}
-	}
-	return false
-}
-
-func parseFloat(val interface{}) float64 {
-	switch v := val.(type) {
-	case float64:
-		return v
-	case string:
-		// Limpiar espacios
-		s := strings.TrimSpace(v)
-
-		// Remover $ si existe
-		s = strings.ReplaceAll(s, "$", "")
-
-		// Convertir formato argentino (1.000,50) a formato Go (1000.50)
-		// Reemplazar . con vacío (son separadores de miles)
-		s = strings.ReplaceAll(s, ".", "")
-		// Reemplazar , con . (es el separador decimal)
-		s = strings.ReplaceAll(s, ",", ".")
-
-		// Usar strconv para convertir string a float64
-		result, err := strconv.ParseFloat(s, 64)
-		if err != nil {
-			log.Printf("Error parseando float: %s -> %v", v, err)
-			return 0
-		}
-		return result
-	default:
-		return 0
-	}
-}
-
-// Obtener el ID de la hoja por su nombre
-func getSheetID(ctx context.Context, sheetName string) int64 {
-	spreadsheet, err := srvSheets.Spreadsheets.Get(SpreadsheetID).
-		Context(ctx).
-		Do()
-	if err != nil {
-		log.Printf("Error obteniendo información de la hoja: %v", err)
-		return 0
-	}
-
-	for _, sheet := range spreadsheet.Sheets {
-		if sheet.Properties.Title == sheetName {
-			return sheet.Properties.SheetId
-		}
-	}
-
-	log.Printf("No se encontró la hoja: %s", sheetName)
-	return 0
-}
-
-// actualizarFormulaRelativa actualiza solo referencias relativas (sin $) en una fórmula
-// Ejemplo: =SUM(E4:G4) → =SUM(E5:G5) pero =SUM($E$9:$G$9) se mantiene igual
-func actualizarFormulaRelativa(formula string, filaAnterior, filaReal int) string {
-	filaAnteriorStr := strconv.Itoa(filaAnterior)
-	filaRealStr := strconv.Itoa(filaReal)
-
-	var resultado strings.Builder
-	i := 0
-
-	for i < len(formula) {
-		// Buscar si hay un $ antes del número
-		if i > 0 && formula[i-1] == '$' {
-			// Es una referencia absoluta, mantener igual
-			resultado.WriteByte(formula[i])
-			i++
-		} else if i < len(formula) && isDigit(formula[i]) {
-			// Encontramos un número, verificar si es el número de fila anterior
-			numStr := ""
-			j := i
-			for j < len(formula) && isDigit(formula[j]) {
-				numStr += string(formula[j])
-				j++
-			}
-
-			// Reemplazar si es el número de fila anterior
-			if numStr == filaAnteriorStr {
-				resultado.WriteString(filaRealStr)
-			} else {
-				resultado.WriteString(numStr)
-			}
-			i = j
-		} else {
-			resultado.WriteByte(formula[i])
-			i++
-		}
-	}
-
-	return resultado.String()
-}
-
-// isDigit verifica si un byte es un dígito
-func isDigit(b byte) bool {
-	return b >= '0' && b <= '9'
-}
-
-// handleEstadisticas devuelve todas las estadísticas de ventas
-func handleEstadisticas(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Método no permitido", http.StatusMethodNotAllowed)
-		return
-	}
-
-	ctx := context.Background()
-
-	// Leer precios de Muzza desde H9:J9
-	respMuzza, err := srvSheets.Spreadsheets.Values.Get(SpreadsheetID, "datos!H9:J9").
-		Context(ctx).
-		Do()
-	if err != nil {
-		log.Printf("Error leyendo precios Muzza: %v", err)
-		http.Error(w, "Error leyendo precios Muzza", http.StatusInternalServerError)
-		return
-	}
-
-	// Leer precios de Jamón desde H11:J11
-	respJamon, err := srvSheets.Spreadsheets.Values.Get(SpreadsheetID, "datos!H11:J11").
-		Context(ctx).
-		Do()
-	if err != nil {
-		log.Printf("Error leyendo precios Jamón: %v", err)
-		http.Error(w, "Error leyendo precios Jamón", http.StatusInternalServerError)
-		return
-	}
-
-	// Procesar precios Muzza
-	preciosMuzza := []float64{}
-	if len(respMuzza.Values) > 0 && len(respMuzza.Values[0]) >= 3 {
-		for i := 0; i < 3; i++ {
-			precio := parseFloat(respMuzza.Values[0][i])
-			preciosMuzza = append(preciosMuzza, precio)
-		}
-	}
-
-	// Procesar precios Jamón
-	preciosJamon := []float64{}
-	if len(respJamon.Values) > 0 && len(respJamon.Values[0]) >= 3 {
-		for i := 0; i < 3; i++ {
-			precio := parseFloat(respJamon.Values[0][i])
-			preciosJamon = append(preciosJamon, precio)
-		}
-	}
-
-	// Leer todas las ventas desde B4 hasta P (última fila)
-	respVentas, err := srvSheets.Spreadsheets.Values.Get(SpreadsheetID, "Ventas!B4:P").
-		Context(ctx).
-		Do()
-	if err != nil {
-		log.Printf("Error leyendo ventas: %v", err)
-		http.Error(w, "Error leyendo ventas", http.StatusInternalServerError)
-		return
-	}
-
-	// Procesar ventas
-	var ventas []map[string]interface{}
-
-	if respVentas.Values != nil {
-		for _, row := range respVentas.Values {
-			if len(row) < 4 {
-				continue // Saltar filas incompletas
-			}
-
-			id := fmt.Sprintf("%v", row[0])
-			if id == "" {
-				continue // Saltar si no hay ID
-			}
-
-			venta := map[string]interface{}{
-				"id":             parseFloat(row[0]),
-				"vendedor":       fmt.Sprintf("%v", row[1]),
-				"cliente":        fmt.Sprintf("%v", row[2]),
-				"combos":         []map[string]interface{}{}, // Se llenarán después
-				"total":          0.0,
-				"estado":         "",
-				"payment_method": "",
-				"tipo_entrega":   "",
-			}
-
-			// Combos Muzza (E, F, G = columnas 3, 4, 5)
-			if len(row) > 5 {
-				for i := 0; i < 3; i++ {
-					cantidad := int(parseFloat(row[3+i]))
-					if cantidad > 0 {
-						combo := map[string]interface{}{
-							"tipo":     "muzza",
-							"combo":    i,
-							"cantidad": cantidad,
-						}
-						venta["combos"] = append(venta["combos"].([]map[string]interface{}), combo)
-					}
-				}
-			}
-
-			// Total (P = columna 14)
-			if len(row) > 14 {
-				venta["total"] = parseFloat(row[14])
-			}
-
-			// Combos Jamón (I, J, K = columnas 7, 8, 9)
-			if len(row) > 9 {
-				for i := 0; i < 3; i++ {
-					cantidad := int(parseFloat(row[7+i]))
-					if cantidad > 0 {
-						combo := map[string]interface{}{
-							"tipo":     "jamon",
-							"combo":    i,
-							"cantidad": cantidad,
-						}
-						venta["combos"] = append(venta["combos"].([]map[string]interface{}), combo)
-					}
-				}
-			}
-
-			// Payment Method (M = columna 11)
-			if len(row) > 11 {
-				venta["payment_method"] = fmt.Sprintf("%v", row[11])
-			}
-
-			// Estado (N = columna 12)
-			if len(row) > 12 {
-				venta["estado"] = fmt.Sprintf("%v", row[12])
-			}
-
-			// Tipo Entrega (O = columna 13)
-			if len(row) > 13 {
-				venta["tipo_entrega"] = fmt.Sprintf("%v", row[13])
-			}
-
-			ventas = append(ventas, venta)
-		}
-	}
-
-	// Respuesta
-	response := map[string]interface{}{
-		"ventas":       ventas,
-		"preciosMuzza": preciosMuzza,
-		"preciosJamon": preciosJamon,
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
-}
-
-// handleEstadisticasSheet trae los datos directamente del sheet "estadisticas"
-func handleEstadisticasSheet(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Método no permitido", http.StatusMethodNotAllowed)
-		return
-	}
-
-	ctx := context.Background()
-
-	// Leer estadísticas generales (C5:C6, C10:C11, G5:G9, G12:G15)
-	ranges := []string{
-		"estadisticas!C5:C6",   // Total Muzzas, Total Jamones
-		"estadisticas!C10:C11", // Delivery, Retiro
-		"estadisticas!G5:G9",   // Efectivo, Transferencia, Total, Total con Sin Cobrar
-		"estadisticas!G12:G15", // Sin Pagar, Pagadas, Entregadas, Totales
-		"estadisticas!B24:I",   // Vendedores y sus datos (B24 hasta fin)
-	}
-
-	resps, err := srvSheets.Spreadsheets.Values.BatchGet(SpreadsheetID).
-		Ranges(ranges...).
-		Context(ctx).
-		Do()
-	if err != nil {
-		log.Printf("Error leyendo estadísticas: %v", err)
-		http.Error(w, "Error leyendo estadísticas", http.StatusInternalServerError)
-		return
-	}
-
-	// Parsear los valores
-	var totalMuzzas, totalJamones, totalDelivery, totalRetiro float64
-	var pendienteCobro, efectivoCobrado, transferenciaCobrada, totalCobrado, totalConSinCobrar float64
-	var ventasSinPagar, ventasPagadas, ventasEntregadas, ventasTotales float64
-
-	// C5:C6 - Total Muzzas, Total Jamones
-	if len(resps.ValueRanges) > 0 && len(resps.ValueRanges[0].Values) > 0 {
-		totalMuzzas = parseFloat(resps.ValueRanges[0].Values[0][0])
-		if len(resps.ValueRanges[0].Values) > 1 {
-			totalJamones = parseFloat(resps.ValueRanges[0].Values[1][0])
-		}
-	}
-
-	// C10:C11 - Delivery, Retiro
-	if len(resps.ValueRanges) > 1 && len(resps.ValueRanges[1].Values) > 0 {
-		totalDelivery = parseFloat(resps.ValueRanges[1].Values[0][0])
-		if len(resps.ValueRanges[1].Values) > 1 {
-			totalRetiro = parseFloat(resps.ValueRanges[1].Values[1][0])
-		}
-	}
-
-	// G5:G9 - Pendiente, Efectivo, Transferencia, Total, Total con Sin Cobrar
-	if len(resps.ValueRanges) > 2 && len(resps.ValueRanges[2].Values) > 0 {
-		pendienteCobro = parseFloat(resps.ValueRanges[2].Values[0][0])
-		if len(resps.ValueRanges[2].Values) > 1 {
-			efectivoCobrado = parseFloat(resps.ValueRanges[2].Values[1][0])
-		}
-		if len(resps.ValueRanges[2].Values) > 2 {
-			transferenciaCobrada = parseFloat(resps.ValueRanges[2].Values[2][0])
-		}
-		if len(resps.ValueRanges[2].Values) > 3 {
-			totalCobrado = parseFloat(resps.ValueRanges[2].Values[3][0])
-		}
-		if len(resps.ValueRanges[2].Values) > 4 {
-			totalConSinCobrar = parseFloat(resps.ValueRanges[2].Values[4][0])
-		}
-	}
-
-	// G12:G15 - Sin Pagar, Pagadas, Entregadas, Totales
-	if len(resps.ValueRanges) > 3 && len(resps.ValueRanges[3].Values) > 0 {
-		ventasSinPagar = parseFloat(resps.ValueRanges[3].Values[0][0])
-		if len(resps.ValueRanges[3].Values) > 1 {
-			ventasPagadas = parseFloat(resps.ValueRanges[3].Values[1][0])
-		}
-		if len(resps.ValueRanges[3].Values) > 2 {
-			ventasEntregadas = parseFloat(resps.ValueRanges[3].Values[2][0])
-		}
-		if len(resps.ValueRanges[3].Values) > 3 {
-			ventasTotales = parseFloat(resps.ValueRanges[3].Values[3][0])
-		}
-	}
-
-	// B24:I - Vendedores y sus datos
-	var vendedores []map[string]interface{}
-	if len(resps.ValueRanges) > 4 && resps.ValueRanges[4].Values != nil {
-		for _, row := range resps.ValueRanges[4].Values {
-			if len(row) < 2 {
-				continue // Saltar filas incompletas
-			}
-
-			nombre := fmt.Sprintf("%v", row[0])
-			if nombre == "" || nombre == "<nil>" {
-				break // Detener al encontrar primera fila vacía
-			}
-
-			vendedor := map[string]interface{}{
-				"nombre":          nombre,
-				"cantidad_ventas": 0.0,
-				"muzzas":          0.0,
-				"jamones":         0.0,
-				"sin_pagar":       0.0,
-				"pagado":          0.0,
-				"total":           0.0,
-			}
-
-			// B24 - Nombre (ya está)
-			// C24 - Cantidad de ventas
-			if len(row) > 1 {
-				vendedor["cantidad_ventas"] = parseFloat(row[1])
-			}
-			// D24 - Muzzas
-			if len(row) > 2 {
-				vendedor["muzzas"] = parseFloat(row[2])
-			}
-			// E24 - Jamones
-			if len(row) > 3 {
-				vendedor["jamones"] = parseFloat(row[3])
-			}
-			// G24 - Sin Pagar
-			if len(row) > 5 {
-				vendedor["sin_pagar"] = parseFloat(row[5])
-			}
-			// H24 - Pagado
-			if len(row) > 6 {
-				vendedor["pagado"] = parseFloat(row[6])
-			}
-			// I24 - Total
-			if len(row) > 7 {
-				vendedor["total"] = parseFloat(row[7])
-			}
-
-			vendedores = append(vendedores, vendedor)
-		}
-	}
-
-	// Armar respuesta
-	response := map[string]interface{}{
-		"resumen": map[string]interface{}{
-			"total_muzzas":          totalMuzzas,
-			"total_jamones":         totalJamones,
-			"total_delivery":        totalDelivery,
-			"total_retiro":          totalRetiro,
-			"pendiente_cobro":       pendienteCobro,
-			"efectivo_cobrado":      efectivoCobrado,
-			"transferencia_cobrada": transferenciaCobrada,
-			"total_cobrado":         totalCobrado,
-			"total_con_sin_cobrar":  totalConSinCobrar,
-			"ventas_sin_pagar":      ventasSinPagar,
-			"ventas_pagadas":        ventasPagadas,
-			"ventas_entregadas":     ventasEntregadas,
-			"ventas_totales":        ventasTotales,
-		},
-		"vendedores": vendedores,
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
-}
-
-// handleActualizarVenta actualiza el estado, pago y combos de una venta
-func handleActualizarVenta(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Método no permitido", http.StatusMethodNotAllowed)
 		return
 	}
 
-	type Combo struct {
-		Tipo     string  `json:"tipo"`
-		Combo    int     `json:"combo"`
-		Cantidad float64 `json:"cantidad"`
-	}
-
-	var req struct {
-		ID            float64 `json:"id"`
-		Estado        string  `json:"estado"`
-		PaymentMethod string  `json:"payment_method"`
-		Combos        []Combo `json:"combos"`
-	}
-
+	var req VentaRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Error decodificando JSON", http.StatusBadRequest)
 		return
 	}
 
-	ctx := context.Background()
+	// Validar
+	if req.Vendedor == "" || len(req.Items) == 0 {
+		http.Error(w, "Vendedor e items requeridos", http.StatusBadRequest)
+		return
+	}
 
-	// Encontrar la fila de la venta por ID
-	respVentas, err := srvSheets.Spreadsheets.Values.Get(SpreadsheetID, "Ventas!B4:B").
-		Context(ctx).
-		Do()
+	// Obtener ID del vendedor
+	vendedorID, err := getVendedorID(req.Vendedor)
 	if err != nil {
-		log.Printf("Error buscando venta: %v", err)
-		http.Error(w, "Error buscando venta", http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("Vendedor no encontrado: %v", err), http.StatusBadRequest)
 		return
 	}
 
-	var filaVenta int
-	if respVentas.Values != nil {
-		for i, row := range respVentas.Values {
-			if len(row) > 0 && int(parseFloat(row[0])) == int(req.ID) {
-				filaVenta = 4 + i // Fila real (4 + índice)
-				break
+	// Obtener o crear cliente
+	var clienteID *int
+	if req.Cliente != "" {
+		id, err := getOrCreateCliente(req.Cliente)
+		if err == nil {
+			clienteID = &id
+		}
+	}
+
+	// Calcular total
+	total := 0.0
+	for _, item := range req.Items {
+		total += item.Total
+	}
+
+	// Insertar venta
+	ventaID, err := insertVenta(clienteID, vendedorID, total, req.PaymentMethod, req.Estado, req.TipoEntrega)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error guardando venta: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Insertar detalles de venta
+	for _, item := range req.Items {
+		if err := insertDetalle(ventaID, item); err != nil {
+			log.Printf("Error insertando detalle: %v", err)
+		}
+	}
+
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "id": ventaID}); err != nil {
+		log.Printf("Error encoding response: %v", err)
+	}
+}
+
+// handleEstadisticas retorna todas las ventas
+func handleEstadisticas(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	ventas, err := getAllVentas()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err := json.NewEncoder(w).Encode(ventas); err != nil {
+		log.Printf("Error encoding ventas: %v", err)
+	}
+}
+
+// handleEstadisticasSheet retorna resumen y vendedores
+func handleEstadisticasSheet(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	resumen, err := getResumen()
+	if err != nil {
+		log.Printf("Error en getResumen: %v", err)
+		http.Error(w, fmt.Sprintf("Error obteniendo resumen: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	vendedores, err := getVendedoresConStats()
+	if err != nil {
+		log.Printf("Error en getVendedoresConStats: %v", err)
+		http.Error(w, fmt.Sprintf("Error obteniendo vendedores: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	ventas, err := getAllVentas()
+	if err != nil {
+		log.Printf("Error en getAllVentas: %v", err)
+		http.Error(w, fmt.Sprintf("Error obteniendo ventas: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	response := map[string]interface{}{
+		"resumen":    resumen,
+		"vendedores": vendedores,
+		"ventas":     ventas,
+	}
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("Error encoding sheet response: %v", err)
+	}
+}
+
+// handleActualizarVenta actualiza una venta (estado, pago, y productos)
+func handleActualizarVenta(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if r.Method != http.MethodPost {
+		http.Error(w, "Método no permitido", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req map[string]interface{}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Error decodificando JSON", http.StatusBadRequest)
+		return
+	}
+
+	ventaID := int(req["id"].(float64))
+	estado := req["estado"].(string)
+	paymentMethod := req["payment_method"].(string)
+	tipoEntrega := req["tipo_entrega"].(string)
+
+	// 1. Actualizar estado, payment_method y tipo_entrega de la venta
+	query := `UPDATE ventas SET estado = ?, payment_method = ?, tipo_entrega = ? WHERE id = ?`
+	_, err := db.Exec(query, estado, paymentMethod, tipoEntrega, ventaID)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error actualizando venta: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// 2. Eliminar productos si se proporcionan
+	if eliminar, ok := req["productos_eliminar"].([]interface{}); ok && len(eliminar) > 0 {
+		for _, id := range eliminar {
+			detalleID := int(id.(float64))
+			deleteQuery := `DELETE FROM detalle_ventas WHERE id = ?`
+			_, err := db.Exec(deleteQuery, detalleID)
+			if err != nil {
+				log.Printf("Error eliminando producto: %v", err)
+				http.Error(w, fmt.Sprintf("Error eliminando producto: %v", err), http.StatusInternalServerError)
+				return
 			}
 		}
 	}
 
-	if filaVenta == 0 {
-		http.Error(w, "Venta no encontrada", http.StatusNotFound)
-		return
-	}
+	// 3. Actualizar/insertar productos si se proporcionan
+	if productos, ok := req["productos"].([]interface{}); ok {
+		for _, p := range productos {
+			item := p.(map[string]interface{})
 
-	// Preparar batch update para combos (E:K) y estado/pago (M:N)
-	data := []*sheets.ValueRange{}
+			detalleID := item["detalle_id"]
+			productoID := int(item["producto_id"].(float64))
+			cantidad := int(item["cantidad"].(float64))
 
-	// Actualizar combos si existen
-	if len(req.Combos) > 0 {
-		// Inicializar array con valores vacíos para E:K (7 columnas)
-		comboValues := []interface{}{0, 0, 0, 0, 0, 0, 0}
-
-		// Mapear combos al array: E=0, F=1, G=2, H(skip), I=4, J=5, K=6
-		for _, combo := range req.Combos {
-			if combo.Tipo == "muzza" {
-				// Muzzas: E(0), F(1), G(2)
-				if combo.Combo >= 0 && combo.Combo < 3 {
-					comboValues[combo.Combo] = int(combo.Cantidad)
+			if detalleID == nil {
+				// Nuevo producto - insertar en detalle_ventas
+				insertQuery := `INSERT INTO detalle_ventas (venta_id, producto_id, cantidad) VALUES (?, ?, ?)`
+				_, err := db.Exec(insertQuery, ventaID, productoID, cantidad)
+				if err != nil {
+					log.Printf("Error insertando producto: %v", err)
+					http.Error(w, fmt.Sprintf("Error insertando producto: %v", err), http.StatusInternalServerError)
+					return
 				}
-			} else if combo.Tipo == "jamon" {
-				// Jamones: I(4), J(5), K(6)
-				if combo.Combo >= 0 && combo.Combo < 3 {
-					comboValues[combo.Combo+4] = int(combo.Cantidad)
+			} else {
+				// Actualizar cantidad existente
+				detalleIDInt := int(detalleID.(float64))
+				updateQuery := `UPDATE detalle_ventas SET cantidad = ? WHERE id = ?`
+				_, err := db.Exec(updateQuery, cantidad, detalleIDInt)
+				if err != nil {
+					log.Printf("Error actualizando producto: %v", err)
+					http.Error(w, fmt.Sprintf("Error actualizando producto: %v", err), http.StatusInternalServerError)
+					return
 				}
 			}
 		}
+	}
 
-		data = append(data, &sheets.ValueRange{
-			Range:  fmt.Sprintf("Ventas!E%d:K%d", filaVenta, filaVenta),
-			Values: [][]interface{}{comboValues},
+	// 4. Recalcular total de la venta
+	var nuevoTotal float64
+	totalQuery := `SELECT COALESCE(SUM(dv.cantidad * p.precio), 0) FROM detalle_ventas dv JOIN productos p ON dv.producto_id = p.id WHERE dv.venta_id = ?`
+	err = db.QueryRow(totalQuery, ventaID).Scan(&nuevoTotal)
+	if err != nil {
+		log.Printf("Error calculando nuevo total: %v", err)
+	} else {
+		_, err := db.Exec(`UPDATE ventas SET total = ? WHERE id = ?`, nuevoTotal, ventaID)
+		if err != nil {
+			log.Printf("Error actualizando total: %v", err)
+		}
+	}
+
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{"success": true}); err != nil {
+		log.Printf("Error encoding response: %v", err)
+	}
+}
+
+// Funciones auxiliares de BD
+
+func getVendedores() ([]Vendedor, error) {
+	rows, err := db.Query("SELECT id, nombre FROM vendedores ORDER BY nombre")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var vendedores []Vendedor
+	for rows.Next() {
+		var vendedor Vendedor
+		if err := rows.Scan(&vendedor.ID, &vendedor.Nombre); err != nil {
+			return nil, err
+		}
+		vendedores = append(vendedores, vendedor)
+	}
+
+	return vendedores, nil
+}
+
+func getVendedorID(nombre string) (int, error) {
+	var id int
+	err := db.QueryRow("SELECT id FROM vendedores WHERE nombre = ?", nombre).Scan(&id)
+	return id, err
+}
+
+func getClientesPorVendedor() (map[string][]string, error) {
+	result := make(map[string][]string)
+
+	// Get all clients once
+	rows, err := db.Query("SELECT CONCAT(nombre, ' ', COALESCE(apellido, '')) FROM clientes ORDER BY nombre")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var clientes []string
+	for rows.Next() {
+		var nombre string
+		if err := rows.Scan(&nombre); err != nil {
+			return nil, err
+		}
+		clientes = append(clientes, strings.TrimSpace(nombre))
+	}
+
+	// Assign same clients to each vendor
+	vendedores, _ := getVendedores()
+	for _, v := range vendedores {
+		result[v.Nombre] = clientes
+	}
+
+	return result, nil
+}
+
+func getOrCreateCliente(nombre string) (int, error) {
+	// Buscar si existe
+	var id int
+	err := db.QueryRow("SELECT id FROM clientes WHERE nombre = ?", nombre).Scan(&id)
+	if err == nil {
+		return id, nil
+	}
+
+	// Crear si no existe
+	res, err := db.Exec("INSERT INTO clientes (nombre) VALUES (?)", nombre)
+	if err != nil {
+		return 0, err
+	}
+
+	idInt, _ := res.LastInsertId()
+	return int(idInt), nil
+}
+
+// getProductos retorna lista de productos activos
+func getProductos() ([]Producto, error) {
+	var productos []Producto
+
+	rows, err := db.Query(`
+		SELECT id, tipo_pizza, descripcion, precio, activo, created_at
+		FROM productos
+		WHERE activo = TRUE
+		ORDER BY tipo_pizza
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var p Producto
+		if err := rows.Scan(&p.ID, &p.TipoPizza, &p.Descripcion, &p.Precio, &p.Activo, &p.CreatedAt); err != nil {
+			return nil, err
+		}
+		productos = append(productos, p)
+	}
+
+	return productos, nil
+}
+
+func insertVenta(clienteID *int, vendedorID int, total float64, payment, estado, tipoEntrega string) (int, error) {
+	query := `
+		INSERT INTO ventas (cliente_id, vendedor_id, total, payment_method, estado, tipo_entrega)
+		VALUES (?, ?, ?, ?, ?, ?)
+	`
+	res, err := db.Exec(query, clienteID, vendedorID, total, payment, estado, tipoEntrega)
+	if err != nil {
+		return 0, err
+	}
+
+	id, _ := res.LastInsertId()
+	return int(id), nil
+}
+
+func insertDetalle(ventaID int, item ProductoItem) error {
+	// item.ProductID es el producto_id
+	productoID := item.ProductID
+
+	query := `
+		INSERT INTO detalle_ventas (venta_id, producto_id, cantidad, precio_unitario, subtotal)
+		VALUES (?, ?, ?, ?, ?)
+	`
+	_, err := db.Exec(query, ventaID, productoID, item.Cantidad, item.Precio, item.Total)
+	return err
+}
+
+func getAllVentas() ([]VentaStats, error) {
+	query := `
+		SELECT v.id, ve.nombre, COALESCE(c.nombre, 'Sin cliente'), 
+		       v.total, v.payment_method, v.estado, v.tipo_entrega, v.created_at
+		FROM ventas v
+		JOIN vendedores ve ON v.vendedor_id = ve.id
+		LEFT JOIN clientes c ON v.cliente_id = c.id
+		ORDER BY v.created_at DESC
+	`
+
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var ventas []VentaStats
+	for rows.Next() {
+		var v VentaStats
+
+		if err := rows.Scan(&v.ID, &v.Vendedor, &v.Cliente, &v.Total, &v.PaymentMethod, &v.Estado, &v.TipoEntrega, &v.CreatedAt); err != nil {
+			return nil, err
+		}
+
+		// Cargar items (detalles) para esta venta
+		itemsQuery := `
+			SELECT dv.id, dv.producto_id, dv.cantidad, p.tipo_pizza, p.precio
+			FROM detalle_ventas dv
+			JOIN productos p ON dv.producto_id = p.id
+			WHERE dv.venta_id = ?
+		`
+		itemRows, err := db.Query(itemsQuery, v.ID)
+		if err == nil {
+			for itemRows.Next() {
+				var item ProductoItem
+				var productoID int
+				var tipo_pizza string
+				var precio float64
+				var cantidad int
+				if err := itemRows.Scan(&item.DetalleID, &productoID, &cantidad, &tipo_pizza, &precio); err == nil {
+					item.ProductID = productoID
+					item.Cantidad = cantidad
+					item.Tipo = tipo_pizza
+					item.Precio = precio
+					item.Total = float64(cantidad) * precio
+					v.Items = append(v.Items, item)
+				}
+			}
+			itemRows.Close()
+		}
+
+		if v.Items == nil {
+			v.Items = []ProductoItem{} // Array vacío en lugar de null
+		}
+
+		ventas = append(ventas, v)
+	}
+
+	return ventas, nil
+}
+
+func getResumen() (map[string]interface{}, error) {
+	query := `
+		SELECT 
+			COALESCE(SUM(CASE WHEN v.estado='pagada' AND v.payment_method='efectivo' THEN v.total ELSE 0 END), 0) as efectivo,
+			COALESCE(SUM(CASE WHEN v.estado='pagada' AND v.payment_method='transferencia' THEN v.total ELSE 0 END), 0) as transferencia,
+			COALESCE(SUM(CASE WHEN v.estado='sin pagar' THEN v.total ELSE 0 END), 0) as pendiente,
+			COALESCE(SUM(CASE WHEN v.estado='pagada' THEN v.total ELSE 0 END), 0) as total_cobrado,
+			COUNT(CASE WHEN v.estado='sin pagar' THEN 1 END) as ventas_sin_pagar,
+			COUNT(CASE WHEN v.estado='pagada' THEN 1 END) as ventas_pagadas,
+			COUNT(CASE WHEN v.estado='entregada' THEN 1 END) as ventas_entregadas,
+			COUNT(*) as ventas_totales
+		FROM ventas v
+	`
+
+	var efectivo, transferencia, pendiente, total float64
+	var sinPagar, pagadas, entregadas, totalVentas int
+
+	err := db.QueryRow(query).Scan(&efectivo, &transferencia, &pendiente, &total, &sinPagar, &pagadas, &entregadas, &totalVentas)
+	if err != nil {
+		log.Printf("Error en getResumen: %v", err)
+		return nil, err
+	}
+
+	// Ahora calcular items por separado
+	itemsQuery := `
+		SELECT 
+			COALESCE(SUM(dv.cantidad), 0) as total_items,
+			COALESCE(SUM(CASE WHEN v.tipo_entrega IN ('delivery', 'envio') THEN dv.cantidad ELSE 0 END), 0) as total_delivery,
+			COALESCE(SUM(CASE WHEN v.tipo_entrega='retiro' THEN dv.cantidad ELSE 0 END), 0) as total_retiro
+		FROM detalle_ventas dv
+		JOIN ventas v ON dv.venta_id = v.id
+	`
+
+	var totalItems, delivery, retiro int
+	err = db.QueryRow(itemsQuery).Scan(&totalItems, &delivery, &retiro)
+	if err != nil {
+		log.Printf("Error en getResumen items: %v", err)
+		totalItems, delivery, retiro = 0, 0, 0
+	}
+
+	return map[string]interface{}{
+		"total_items":           totalItems,
+		"total_delivery":        delivery,
+		"total_retiro":          retiro,
+		"efectivo_cobrado":      efectivo,
+		"transferencia_cobrada": transferencia,
+		"pendiente_cobro":       pendiente,
+		"total_cobrado":         total,
+		"ventas_sin_pagar":      sinPagar,
+		"ventas_pagadas":        pagadas,
+		"ventas_entregadas":     entregadas,
+		"ventas_totales":        totalVentas,
+	}, nil
+}
+
+func getVendedoresConStats() ([]map[string]interface{}, error) {
+	vendedores, _ := getVendedores()
+	var result []map[string]interface{}
+
+	for _, vendedor := range vendedores {
+		// Query 1: Dinero sin JOIN (para evitar multiplicación)
+		query := `
+			SELECT 
+				COUNT(DISTINCT v.id) as cantidad,
+				COALESCE(SUM(CASE WHEN v.estado='sin pagar' THEN v.total ELSE 0 END), 0) as deuda,
+				COALESCE(SUM(CASE WHEN v.estado!='sin pagar' THEN v.total ELSE 0 END), 0) as pagado,
+				COALESCE(SUM(v.total), 0) as total
+			FROM ventas v
+			JOIN vendedores ve ON v.vendedor_id = ve.id
+			WHERE ve.nombre = ?
+		`
+
+		var cantidad int
+		var deuda, pagado, total float64
+
+		err := db.QueryRow(query, vendedor.Nombre).Scan(&cantidad, &deuda, &pagado, &total)
+		if err != nil {
+			log.Printf("Error consultando vendor %s: %v", vendedor.Nombre, err)
+			continue
+		}
+
+		// Query 2: Items por separado
+		itemsQuery := `
+			SELECT COALESCE(SUM(dv.cantidad), 0) as total_items
+			FROM detalle_ventas dv
+			JOIN ventas v ON dv.venta_id = v.id
+			JOIN vendedores ve ON v.vendedor_id = ve.id
+			WHERE ve.nombre = ?
+		`
+
+		var totalItems int
+		err = db.QueryRow(itemsQuery, vendedor.Nombre).Scan(&totalItems)
+		if err != nil {
+			log.Printf("Error consultando items vendor %s: %v", vendedor.Nombre, err)
+			totalItems = 0
+		}
+
+		result = append(result, map[string]interface{}{
+			"nombre":      vendedor.Nombre,
+			"cantidad":    cantidad,
+			"total_items": totalItems,
+			"deuda":       deuda,
+			"pagado":      pagado,
+			"total":       total,
 		})
 	}
 
-	// Actualizar M (Payment Method) y N (Estado)
-	data = append(data, &sheets.ValueRange{
-		Range:  fmt.Sprintf("Ventas!M%d:N%d", filaVenta, filaVenta),
-		Values: [][]interface{}{{req.PaymentMethod, req.Estado}},
+	return result, nil
+}
+
+// handleLogin autentica usuario y devuelve JWT token
+func handleLogin(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if r.Method != http.MethodPost {
+		http.Error(w, "Método no permitido", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var loginReq LoginRequest
+	if err := json.NewDecoder(r.Body).Decode(&loginReq); err != nil {
+		http.Error(w, "JSON inválido", http.StatusBadRequest)
+		return
+	}
+
+	if loginReq.Username == "" || loginReq.Password == "" {
+		http.Error(w, "Usuario y contraseña requeridos", http.StatusBadRequest)
+		return
+	}
+
+	// Hashear la contraseña ingresada
+	hash := sha256.Sum256([]byte(loginReq.Password))
+	passwordHash := hex.EncodeToString(hash[:])
+
+	// Verificar credenciales en base de datos
+	var user User
+	err := db.QueryRow(
+		"SELECT id, username, rol FROM usuarios WHERE username = ? AND password_hash = ?",
+		loginReq.Username, passwordHash).Scan(&user.ID, &user.Username, &user.Rol)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "Usuario o contraseña incorrectos", http.StatusUnauthorized)
+		} else {
+			http.Error(w, fmt.Sprintf("Error en base de datos: %v", err), http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// Generar JWT token
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, TokenClaims{
+		Username: user.Username,
+		Rol:      user.Rol,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
 	})
 
-	// BatchUpdate
-	batchReq := &sheets.BatchUpdateValuesRequest{
-		Data:             data,
-		ValueInputOption: "USER_ENTERED",
-	}
-	_, err = srvSheets.Spreadsheets.Values.BatchUpdate(SpreadsheetID, batchReq).
-		Context(ctx).
-		Do()
+	tokenString, err := token.SignedString(jwtSecret)
 	if err != nil {
-		log.Printf("Error actualizando venta: %v", err)
-		http.Error(w, "Error actualizando venta", http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("Error generando token: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	response := LoginResponse{
+		Token: tokenString,
+		User:  user,
+	}
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("Error encoding login response: %v", err)
+	}
+}
+
+// handleVerifyToken verifica y decodifica un JWT token
+func handleVerifyToken(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if r.Method != http.MethodPost {
+		http.Error(w, "Método no permitido", http.StatusMethodNotAllowed)
+		return
+	}
+
+	type TokenRequest struct {
+		Token string `json:"token"`
+	}
+
+	var tokenReq TokenRequest
+	if err := json.NewDecoder(r.Body).Decode(&tokenReq); err != nil {
+		http.Error(w, "JSON inválido", http.StatusBadRequest)
+		return
+	}
+
+	if tokenReq.Token == "" {
+		http.Error(w, "Token requerido", http.StatusBadRequest)
+		return
+	}
+
+	// Parsear y validar token
+	token, err := jwt.ParseWithClaims(tokenReq.Token, &TokenClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return jwtSecret, nil
+	})
+
+	if err != nil || !token.Valid {
+		http.Error(w, "Token inválido o expirado", http.StatusUnauthorized)
+		return
+	}
+
+	claims := token.Claims.(*TokenClaims)
+
+	response := map[string]interface{}{
+		"valid":    true,
+		"username": claims.Username,
+		"rol":      claims.Rol,
+	}
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("Error encoding verify response: %v", err)
+	}
+}
+
+// handleProductos obtiene la lista de productos
+func handleProductos(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if r.Method != http.MethodGet {
+		http.Error(w, "Método no permitido", http.StatusMethodNotAllowed)
+		return
+	}
+
+	rows, err := db.Query(`
+		SELECT id, tipo_pizza, descripcion, precio, activo, created_at
+		FROM productos
+		WHERE activo = TRUE
+		ORDER BY tipo_pizza
+	`)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error consultando productos: %v", err), http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var productos []Producto
+
+	for rows.Next() {
+		var p Producto
+		if err := rows.Scan(&p.ID, &p.TipoPizza, &p.Descripcion, &p.Precio, &p.Activo, &p.CreatedAt); err != nil {
+			continue
+		}
+		productos = append(productos, p)
+	}
+
+	if len(productos) == 0 {
+		productos = []Producto{}
+	}
+
+	if err := json.NewEncoder(w).Encode(productos); err != nil {
+		log.Printf("Error encoding productos: %v", err)
+	}
+}
+
+// handleCrearProducto crea un nuevo producto
+func handleCrearProducto(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if r.Method != http.MethodPost {
+		http.Error(w, "Método no permitido", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req CrearProductoRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "JSON inválido", http.StatusBadRequest)
+		return
+	}
+
+	if req.TipoPizza == "" || req.Precio <= 0 {
+		http.Error(w, "Tipo de pizza y precio son requeridos", http.StatusBadRequest)
+		return
+	}
+
+	result, err := db.Exec(
+		"INSERT INTO productos (tipo_pizza, descripcion, precio, activo) VALUES (?, ?, ?, TRUE)",
+		req.TipoPizza, req.Descripcion, req.Precio,
+	)
+	if err != nil {
+		if strings.Contains(err.Error(), "Duplicate entry") {
+			http.Error(w, "Este tipo de pizza ya existe", http.StatusConflict)
+		} else {
+			http.Error(w, fmt.Sprintf("Error creando producto: %v", err), http.StatusInternalServerError)
+		}
+		return
+	}
+
+	id, _ := result.LastInsertId()
+	response := map[string]interface{}{
+		"id":          id,
+		"tipo_pizza":  req.TipoPizza,
+		"descripcion": req.Descripcion,
+		"precio":      req.Precio,
+		"message":     "Producto creado exitosamente",
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("Error encoding crear-producto response: %v", err)
+	}
+}
+
+// handleActualizarProducto actualiza precio y descripción de un producto
+func handleActualizarProducto(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if r.Method != http.MethodPut && r.Method != http.MethodPost {
+		http.Error(w, "Método no permitido", http.StatusMethodNotAllowed)
+		return
+	}
+
+	productoID := r.URL.Query().Get("id")
+	if productoID == "" {
+		http.Error(w, "ID de producto requerido", http.StatusBadRequest)
+		return
+	}
+
+	var req ActualizarProductoRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "JSON inválido", http.StatusBadRequest)
+		return
+	}
+
+	_, err := db.Exec(
+		"UPDATE productos SET tipo_pizza = ?, precio = ?, descripcion = ?, activo = ? WHERE id = ?",
+		req.TipoPizza, req.Precio, req.Descripcion, req.Activo, productoID,
+	)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error actualizando producto: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	response := map[string]interface{}{
+		"id":      productoID,
+		"message": "Producto actualizado exitosamente",
+	}
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("Error encoding actualizar-producto response: %v", err)
+	}
+}
+
+// handleEliminarProducto elimina (desactiva) un producto
+func handleEliminarProducto(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if r.Method != http.MethodDelete && r.Method != http.MethodPost {
+		http.Error(w, "Método no permitido", http.StatusMethodNotAllowed)
+		return
+	}
+
+	productoID := r.URL.Query().Get("id")
+	if productoID == "" {
+		http.Error(w, "ID de producto requerido", http.StatusBadRequest)
+		return
+	}
+
+	result, err := db.Exec("UPDATE productos SET activo = FALSE WHERE id = ?", productoID)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error eliminando producto: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		http.Error(w, "Producto no encontrado", http.StatusNotFound)
+		return
+	}
+
+	response := map[string]interface{}{
+		"message": "Producto eliminado exitosamente",
+		"id":      productoID,
+	}
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("Error encoding eliminar-producto response: %v", err)
+	}
+}
+
+// handleCrearVendedor crea un nuevo vendedor
+func handleCrearVendedor(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Método no permitido", http.StatusMethodNotAllowed)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, `{"success": true, "message": "Venta actualizada"}`)
+
+	var req map[string]interface{}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Error decodificando request", http.StatusBadRequest)
+		return
+	}
+
+	nombre, ok := req["nombre"].(string)
+	if !ok || nombre == "" {
+		http.Error(w, "El nombre del vendedor es requerido", http.StatusBadRequest)
+		return
+	}
+
+	result, err := db.Exec(`INSERT INTO vendedores (nombre) VALUES (?)`, nombre)
+	if err != nil {
+		log.Printf("Error creando vendedor: %v", err)
+		http.Error(w, "Error creando vendedor", http.StatusInternalServerError)
+		return
+	}
+
+	vendedorID, _ := result.LastInsertId()
+
+	response := map[string]interface{}{
+		"message": "Vendedor creado exitosamente",
+		"id":      vendedorID,
+	}
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("Error encoding crear-vendedor response: %v", err)
+	}
+}
+
+// handleActualizarVendedor actualiza el nombre de un vendedor
+func handleActualizarVendedor(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPut {
+		http.Error(w, "Método no permitido", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	vendedorID := r.URL.Query().Get("id")
+	if vendedorID == "" {
+		http.Error(w, "ID de vendedor requerido", http.StatusBadRequest)
+		return
+	}
+
+	var req map[string]interface{}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Error decodificando request", http.StatusBadRequest)
+		return
+	}
+
+	nombre, ok := req["nombre"].(string)
+	if !ok || nombre == "" {
+		http.Error(w, "El nombre del vendedor es requerido", http.StatusBadRequest)
+		return
+	}
+
+	result, err := db.Exec(`UPDATE vendedores SET nombre = ? WHERE id = ?`, nombre, vendedorID)
+	if err != nil {
+		log.Printf("Error actualizando vendedor: %v", err)
+		http.Error(w, "Error actualizando vendedor", http.StatusInternalServerError)
+		return
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		http.Error(w, "Vendedor no encontrado", http.StatusNotFound)
+		return
+	}
+
+	response := map[string]interface{}{
+		"message": "Vendedor actualizado exitosamente",
+		"id":      vendedorID,
+	}
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("Error encoding actualizar-vendedor response: %v", err)
+	}
+}
+
+// handleEliminarVendedor elimina un vendedor
+func handleEliminarVendedor(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete {
+		http.Error(w, "Método no permitido", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	vendedorID := r.URL.Query().Get("id")
+	if vendedorID == "" {
+		http.Error(w, "ID de vendedor requerido", http.StatusBadRequest)
+		return
+	}
+
+	result, err := db.Exec(`DELETE FROM vendedores WHERE id = ?`, vendedorID)
+	if err != nil {
+		log.Printf("Error eliminando vendedor: %v", err)
+		http.Error(w, "Error eliminando vendedor", http.StatusInternalServerError)
+		return
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		http.Error(w, "Vendedor no encontrado", http.StatusNotFound)
+		return
+	}
+
+	response := map[string]interface{}{
+		"message": "Vendedor eliminado exitosamente",
+		"id":      vendedorID,
+	}
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("Error encoding eliminar-vendedor response: %v", err)
+	}
 }

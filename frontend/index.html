@@ -2,16 +2,28 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Sistema de Ventas - Pizzas ECOS</title>
+    <link rel="icon" type="image/jpeg" href="images/ecoslogo.jpeg">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+    <!-- Loading Spinner Overlay -->
+    <div id="loadingOverlay" class="loading-overlay hidden">
+        <div class="spinner-container">
+            <div class="spinner"></div>
+            <p>Cargando...</p>
+        </div>
+    </div>
+
     <div class="container">
         <div class="header">
-            <h1>🍕 Sistema de Ventas</h1>
-            <p class="subtitle">Pizzas ECOS</p>
-            <button id="btnVerVentas" class="btn-ver-ventas">📊 Ver Estadísticas</button>
+            <h1>Sistema de Ventas de ECOS</h1>
+            <p class="subtitle"></p>
+            <div class="header-buttons">
+                <button id="btnVerVentas" class="btn-ver-ventas">📊 Ver Estadísticas</button>
+                <button id="btnAdminPanel" class="btn-admin-panel">🔐 Panel Admin</button>
+            </div>
         </div>
 
         <form id="ventaForm" class="form">
@@ -53,26 +65,52 @@
 
             <!-- Sección 2: Selección de Pizzas -->
             <fieldset class="form-section">
-                <legend>🍕 Agregar Combos a la Venta</legend>
+                <legend>🍕 Selecciona un Producto</legend>
                 
-                <div class="combos-list" id="combosList">
-                    <!-- Se agregan dinámicamente -->
+                <div class="combo-selector">
+                    <div class="form-group">
+                        <label for="comboTipo">Producto:</label>
+                        <select id="comboTipo" name="comboTipo">
+                            <option value="">Selecciona un producto...</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="comboCantidad">Cantidad:</label>
+                        <div class="cantidad-controls-inline">
+                            <button type="button" id="btnCantidadMenos" class="btn-cantidad-mas-menos">−</button>
+                            <input type="number" id="comboCantidad" name="comboCantidad" value="1" min="1" readonly>
+                            <button type="button" id="btnCantidadMas" class="btn-cantidad-mas-menos">+</button>
+                        </div>
+                    </div>
+
+                    <div class="combo-preview">
+                        <div class="combo-price" id="comboPrice">$0.00</div>
+                        <button type="button" class="btn-add-to-pedido" id="btnAddToPedido">
+                            ✓ Agregar al Pedido
+                        </button>
+                    </div>
+                </div>
+            </fieldset>
+
+            <!-- Sección 2b: Pedido Actual -->
+            <fieldset class="form-section" id="seccionPedido">
+                <legend>📦 Tu Pedido</legend>
+                
+                <div class="pedido-items" id="pedidoItems">
+                    <div class="pedido-vacio">📋 Agrega productos a tu pedido</div>
                 </div>
 
-                <button type="button" class="btn-add-combo" id="btnAddCombo">
-                    ➕ Agregar Combo
-                </button>
-                <p class="btn-add-combo-hint">Completa el combo anterior antes de agregar uno nuevo</p>
-
-                <!-- Resumen de la venta -->
                 <div class="venta-summary">
-                    <h3>📊 Resumen de Venta</h3>
-                    <div id="resumenCombos" class="resumen-detalles"></div>
                     <div class="total-venta">
-                        <label>Total Venta:</label>
+                        <label style="color: #F2F2F2;">Total Venta:</label>
                         <span id="totalVenta">$0.00</span>
                     </div>
                 </div>
+
+                <button type="button" class="btn-add-another-combo" id="btnAddAnother">
+                    ➕ Agregar Otro Producto
+                </button>
             </fieldset>
 
             <!-- Sección 3: Método de Pago y Estado -->
@@ -130,9 +168,31 @@
 
         <!-- Mensaje de Resultado -->
         <div id="mensaje" class="mensaje hidden"></div>
+        
+        <!-- Modal de Confirmación -->
+        <div id="modalConfirmacion" class="modal hidden">
+            <div class="modal-content modal-confirmacion">
+                <div class="modal-header">
+                    <h2>✓ Venta Guardada</h2>
+                </div>
+                <div class="modal-body">
+                    <p>La venta ha sido registrada correctamente en el sistema.</p>
+                </div>
+                <div class="modal-footer">
+                    <button id="btnCerrarModal" class="btn-cerrar-modal">Continuar</button>
+                </div>
+            </div>
+        </div>
     </div>
     
-    <script src="env-inject.js"></script>
+    <script>
+        // Only load env-inject.js on Netlify production, not on localhost
+        if (!window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1')) {
+            const script = document.createElement('script');
+            script.src = 'env-inject.js';
+            document.head.appendChild(script);
+        }
+    </script>
     <script src="form.js"></script>
 </body>
 </html>

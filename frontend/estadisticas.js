@@ -1,6 +1,7 @@
 // estadisticas.js
 let datosVentas = {};
 let ventaEnEdicion = null;
+let productosCache = []; // Cache de productos para generar contadores
 
 function getAPIBase() {
     // 1. Si está en localhost, usar localhost:8080
@@ -41,21 +42,28 @@ function parseArgentinoFloat(value) {
 
 async function cargarDatos() {
     try {
-        // Obtener datos del backend desde el sheet "estadisticas"
+        // 1. Obtener productos para cache
+        const productosResponse = await fetch(`${API_BASE}/productos`);
+        if (productosResponse.ok) {
+            productosCache = await productosResponse.json();
+            console.log('Productos cargados:', productosCache);
+        }
+
+        // 2. Obtener datos de estadísticas del sheet
         const response1 = await fetch(`${API_BASE}/estadisticas-sheet`);
         if (!response1.ok) throw new Error('No se pudieron cargar las estadísticas');
         datosVentas = await response1.json();
         
-        // Obtener detalle de ventas para la tabla "Todas las Ventas"
+        // 3. Obtener detalle de ventas para la tabla
         const response2 = await fetch(`${API_BASE}/estadisticas`);
         if (response2.ok) {
             const ventasData = await response2.json();
-            datosVentas.ventas = ventasData.ventas; // Agregar las ventas al objeto
+            datosVentas.ventas = ventasData;
         }
         
         console.log('Datos de estadísticas:', datosVentas);
         
-        // Renderizar tabs
+        // 4. Renderizar tabs
         renderizarResumen();
         renderizarVendedores();
         renderizarVentas();
@@ -65,24 +73,81 @@ async function cargarDatos() {
     }
 }
 
+// Nueva función para renderizar contadores de productos dinámicamente
+function renderizarProductosCounters() {
+    if (!datosVentas.ventas || !productosCache) return;
+
+    const container = document.getElementById('productosCounters');
+    container.innerHTML = '';
+
+    // Contar ventas por producto desde detalle_ventas
+    const ventasPorProducto = {};
+    
+    productosCache.forEach(producto => {
+        ventasPorProducto[producto.id] = 0;
+    });
+
+    // Sumar cantidades de cada producto
+    datosVentas.ventas.forEach(venta => {
+        // Las ventas llegadas del backend deben tener información de productos
+        // Por ahora contamos desde el array de items si existen
+        // Si no, hacemos un conteo genérico
+    });
+
+    // Renderizar tarjetas para cada producto
+    productosCache.forEach(producto => {
+        // Calcular total vendido para este producto
+        let totalVendido = 0;
+        if (datosVentas.ventas && Array.isArray(datosVentas.ventas)) {
+            datosVentas.ventas.forEach(venta => {
+                // Si la venta tiene array de items con product_id
+                if (venta.items && Array.isArray(venta.items)) {
+                    venta.items.forEach(item => {
+                        if (item.product_id === producto.id) {
+                            totalVendido += item.cantidad || 0;
+                        }
+                    });
+                }
+            });
+        }
+
+        const card = document.createElement('div');
+        card.className = 'stat-card';
+        card.innerHTML = `
+            <div class="stat-label">${producto.tipo_pizza}</div>
+            <div class="stat-value">${totalVendido}</div>
+            <div style="font-size: 12px; color: #666; margin-top: 5px;">$${producto.precio.toFixed(2)} c/u</div>
+        `;
+        container.appendChild(card);
+    });
+}
+
 function renderizarResumen() {
     if (!datosVentas.resumen) return;
 
     const resumen = datosVentas.resumen;
 
-    // Actualizar UI con datos del sheet
-    document.getElementById('totalMuzzas').textContent = Math.round(resumen.total_muzzas);
-    document.getElementById('totalJamones').textContent = Math.round(resumen.total_jamones);
-    document.getElementById('totalDelivery').textContent = Math.round(resumen.total_delivery);
-    document.getElementById('totalRetiro').textContent = Math.round(resumen.total_retiro);
-    document.getElementById('pendienteCobro').textContent = `$${resumen.pendiente_cobro.toFixed(2)}`;
-    document.getElementById('efectivoCobrado').textContent = `$${resumen.efectivo_cobrado.toFixed(2)}`;
-    document.getElementById('transferenciaCobrada').textContent = `$${resumen.transferencia_cobrada.toFixed(2)}`;
-    document.getElementById('totalCobrado').textContent = `$${resumen.total_cobrado.toFixed(2)}`;
-    document.getElementById('ventasSinPagar').textContent = Math.round(resumen.ventas_sin_pagar);
-    document.getElementById('ventasPagadas').textContent = Math.round(resumen.ventas_pagadas);
-    document.getElementById('ventasEntregadas').textContent = Math.round(resumen.ventas_entregadas);
-    document.getElementById('totalVentas').textContent = Math.round(resumen.ventas_totales);
+    // Renderizar contadores de productos dinámicamente
+    renderizarProductosCounters();
+
+    // Actualizar entregas
+    document.getElementById('totalDelivery').textContent = Math.round(resumen.total_delivery || 0);
+    document.getElementById('totalRetiro').textContent = Math.round(resumen.total_retiro || 0);
+
+    // Actualizar dinero y pagos
+    document.getElementById('pendienteCobro').textContent = `$${(resumen.pendiente_cobro || 0).toFixed(2)}`;
+    document.getElementById('efectivoCobrado').textContent = `$${(resumen.efectivo_cobrado || 0).toFixed(2)}`;
+    document.getElementById('transferenciaCobrada').textContent = `$${(resumen.transferencia_cobrada || 0).toFixed(2)}`;
+    
+    // Total cobrado = efectivo + transferencia
+    const totalCobrado = (resumen.efectivo_cobrado || 0) + (resumen.transferencia_cobrada || 0);
+    document.getElementById('totalCobrado').textContent = `$${totalCobrado.toFixed(2)}`;
+
+    // Actualizar estados de ventas
+    document.getElementById('ventasSinPagar').textContent = Math.round(resumen.ventas_sin_pagar || 0);
+    document.getElementById('ventasPagadas').textContent = Math.round(resumen.ventas_pagadas || 0);
+    document.getElementById('ventasEntregadas').textContent = Math.round(resumen.ventas_entregadas || 0);
+    document.getElementById('totalVentas').textContent = Math.round(resumen.ventas_totales || 0);
 }
 
 function renderizarVendedores() {
@@ -101,33 +166,41 @@ function renderizarVendedores() {
             v.vendedor === vendedor.nombre && v.estado === 'sin pagar'
         );
 
+        // Calcular total de items vendidos por este vendedor
+        let totalItems = 0;
+        ventas.forEach(v => {
+            if (v.vendedor === vendedor.nombre) {
+                if (v.items && Array.isArray(v.items)) {
+                    v.items.forEach(item => {
+                        totalItems += item.cantidad || 0;
+                    });
+                }
+            }
+        });
+
         const card = document.createElement('div');
         card.className = 'vendedor-card';
         card.innerHTML = `
             <h3>👤 ${vendedor.nombre}</h3>
             <div class="vendedor-stat">
                 <span class="vendedor-stat-label">📊 Cantidad de ventas:</span>
-                <span class="vendedor-stat-value">${Math.round(vendedor.cantidad_ventas)}</span>
+                <span class="vendedor-stat-value">${Math.round(vendedor.cantidad || 0)}</span>
             </div>
             <div class="vendedor-stat">
-                <span class="vendedor-stat-label">🧀 Muzzas vendidas:</span>
-                <span class="vendedor-stat-value">${Math.round(vendedor.muzzas)}</span>
+                <span class="vendedor-stat-label">📦 Total de productos vendidos:</span>
+                <span class="vendedor-stat-value">${Math.round(totalItems)}</span>
             </div>
             <div class="vendedor-stat">
-                <span class="vendedor-stat-label">🍖 Jamones vendidos:</span>
-                <span class="vendedor-stat-value">${Math.round(vendedor.jamones)}</span>
+                <span class="vendedor-stat-label">⏳ Monto sin pagar:</span>
+                <span class="vendedor-stat-value">$${(vendedor.deuda || 0).toFixed(2)}</span>
             </div>
             <div class="vendedor-stat">
-                <span class="vendedor-stat-label">⏳ Sin pagar:</span>
-                <span class="vendedor-stat-value">$${vendedor.sin_pagar.toFixed(2)}</span>
-            </div>
-            <div class="vendedor-stat">
-                <span class="vendedor-stat-label">✓ Pagado:</span>
-                <span class="vendedor-stat-value">$${vendedor.pagado.toFixed(2)}</span>
+                <span class="vendedor-stat-label">✓ Monto pagado:</span>
+                <span class="vendedor-stat-value">$${(vendedor.pagado || 0).toFixed(2)}</span>
             </div>
             <div class="vendedor-stat" style="background: #f0f0f0; padding: 8px; border-radius: 4px; margin-top: 10px;">
                 <span class="vendedor-stat-label" style="font-weight: 600;">💰 Total vendedor:</span>
-                <span class="vendedor-stat-value" style="font-size: 24px; color: #ff6b35;">$${vendedor.total.toFixed(2)}</span>
+                <span class="vendedor-stat-value" style="font-size: 24px; color: #ff6b35;">$${(vendedor.total || 0).toFixed(2)}</span>
             </div>
             ${ventasSinPagar.length > 0 ? `
                 <div class="vendedor-deudas" style="margin-top: 15px; padding: 10px; background: #fff3cd; border-left: 4px solid #ff6b35; border-radius: 4px;">
@@ -151,11 +224,17 @@ function renderizarVentas() {
     tbody.innerHTML = '';
 
     datosVentas.ventas.forEach(venta => {
-        const combosResumen = venta.combos.map(c => 
-            `${c.cantidad}x ${c.tipo.toUpperCase()} C${c.combo + 1}`
-        ).join(', ');
+        // Crear resumen de items (productos)
+        let itemsResumen = 'Sin items';
+        if (venta.items && Array.isArray(venta.items) && venta.items.length > 0) {
+            itemsResumen = venta.items.map(item => {
+                const producto = productosCache.find(p => p.id === item.product_id);
+                const nombreProducto = producto ? producto.tipo_pizza : `Producto #${item.product_id}`;
+                return `${item.cantidad}x ${nombreProducto}`;
+            }).join(', ');
+        }
 
-        const estadoClass = venta.estado.replace(' ', '-');
+        const estadoClass = venta.estado ? venta.estado.replace(' ', '-') : 'sin-pagar';
         const totalParseado = parseArgentinoFloat(venta.total);
         
         const tr = document.createElement('tr');
@@ -163,11 +242,11 @@ function renderizarVentas() {
             <td>${venta.id}</td>
             <td>${venta.vendedor}</td>
             <td>${venta.cliente}</td>
-            <td style="font-size: 12px;">${combosResumen}</td>
+            <td style="font-size: 12px;">${itemsResumen}</td>
             <td><strong>$${totalParseado.toFixed(2)}</strong></td>
-            <td><span class="estado-badge ${estadoClass}">${venta.estado}</span></td>
+            <td><span class="estado-badge ${estadoClass}">${venta.estado || 'sin pagar'}</span></td>
             <td>${venta.payment_method === 'efectivo' ? '💵' : '🏦'}</td>
-            <td>${venta.tipo_entrega === 'envio' ? '🚚' : '🏪'}</td>
+            <td>${venta.tipo_entrega === 'envio' || venta.tipo_entrega === 'delivery' ? '🚚' : '🏪'}</td>
             <td><button class="btn-editar" data-id="${venta.id}">Editar</button></td>
         `;
         tbody.appendChild(tr);
@@ -187,27 +266,50 @@ function abrirModalEditar(id) {
     if (!venta) return;
 
     ventaEnEdicion = venta;
-    document.getElementById('editarEstado').value = venta.estado;
-    document.getElementById('editarPago').value = venta.payment_method;
+    document.getElementById('editarEstado').value = venta.estado || 'sin pagar';
+    document.getElementById('editarPago').value = venta.payment_method || 'efectivo';
+    document.getElementById('editarEntrega').value = venta.tipo_entrega || 'delivery';
     
-    // Cargar combos
-    // Inicializar todos en 0
-    document.getElementById('editMuzzaC1').value = 0;
-    document.getElementById('editMuzzaC2').value = 0;
-    document.getElementById('editMuzzaC3').value = 0;
-    document.getElementById('editJamonC1').value = 0;
-    document.getElementById('editJamonC2').value = 0;
-    document.getElementById('editJamonC3').value = 0;
+    // Llenar selector de productos nuevos
+    const selectNuevo = document.getElementById('nuevoProductoSelect');
+    selectNuevo.innerHTML = '<option value="">Selecciona producto para agregar...</option>';
+    productosCache.forEach(p => {
+        selectNuevo.innerHTML += `<option value="${p.id}">${p.tipo_pizza} - $${p.precio}</option>`;
+    });
     
-    // Cargar valores desde los combos de la venta
-    if (venta.combos) {
-        venta.combos.forEach(combo => {
-            const fieldId = `edit${combo.tipo === 'muzza' ? 'Muzza' : 'Jamon'}C${combo.combo + 1}`;
-            document.getElementById(fieldId).value = combo.cantidad;
-        });
-    }
+    // Renderizar productos existentes
+    renderizarProductosEnEdicion(venta);
     
     document.getElementById('modalEditarVenta').classList.remove('hidden');
+}
+
+function renderizarProductosEnEdicion(venta) {
+    const container = document.getElementById('productosEditables');
+    if (!venta.items || venta.items.length === 0) {
+        container.innerHTML = '<p style="color: #999;">Sin productos</p>';
+        return;
+    }
+
+    let html = '';
+    venta.items.forEach((item, index) => {
+        // No mostrar items marcados para eliminación
+        if (item._eliminar) return;
+        
+        const nombreProducto = item.tipo || item.tipo_pizza || 'Producto';
+        
+        html += `
+            <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px; padding: 10px; background: #f5f5f5; border-radius: 4px;">
+                <span style="flex: 1;">${nombreProducto}</span>
+                <input type="number" 
+                       id="cant-${index}" 
+                       min="1" 
+                       value="${item.cantidad}" 
+                       style="width: 80px; padding: 5px; border: 1px solid #ddd; border-radius: 4px;">
+                <button type="button" onclick="eliminarProductoEnEdicion(${index})" style="padding: 5px 10px; background: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer;">✕</button>
+            </div>
+        `;
+    });
+    container.innerHTML = html || '<p style="color: #999;">Sin productos</p>';
 }
 
 function cerrarModal() {
@@ -220,38 +322,50 @@ async function guardarCambios() {
 
     const estado = document.getElementById('editarEstado').value;
     const pago = document.getElementById('editarPago').value;
+    const entrega = document.getElementById('editarEntrega').value;
     
-    // Recopilar combos editados
-    const combosEditados = [];
+    // Recopilar cambios en productos
+    const productosActualizados = [];
+    const productosAEliminar = [];
     
-    // Muzzas
-    const muzzaC1 = parseInt(document.getElementById('editMuzzaC1').value) || 0;
-    const muzzaC2 = parseInt(document.getElementById('editMuzzaC2').value) || 0;
-    const muzzaC3 = parseInt(document.getElementById('editMuzzaC3').value) || 0;
-    
-    if (muzzaC1 > 0) combosEditados.push({ tipo: 'muzza', combo: 0, cantidad: muzzaC1 });
-    if (muzzaC2 > 0) combosEditados.push({ tipo: 'muzza', combo: 1, cantidad: muzzaC2 });
-    if (muzzaC3 > 0) combosEditados.push({ tipo: 'muzza', combo: 2, cantidad: muzzaC3 });
-    
-    // Jamones
-    const jamonC1 = parseInt(document.getElementById('editJamonC1').value) || 0;
-    const jamonC2 = parseInt(document.getElementById('editJamonC2').value) || 0;
-    const jamonC3 = parseInt(document.getElementById('editJamonC3').value) || 0;
-    
-    if (jamonC1 > 0) combosEditados.push({ tipo: 'jamon', combo: 0, cantidad: jamonC1 });
-    if (jamonC2 > 0) combosEditados.push({ tipo: 'jamon', combo: 1, cantidad: jamonC2 });
-    if (jamonC3 > 0) combosEditados.push({ tipo: 'jamon', combo: 2, cantidad: jamonC3 });
+    ventaEnEdicion.items.forEach((item, index) => {
+        if (item._eliminar) {
+            // Marcar para eliminación
+            if (item.detalle_id) {
+                productosAEliminar.push(item.detalle_id);
+            }
+        } else {
+            const cantInput = document.getElementById(`cant-${index}`);
+            if (cantInput) {
+                const nuevaCantidad = parseInt(cantInput.value) || 0;
+                if (nuevaCantidad > 0) {
+                    productosActualizados.push({
+                        detalle_id: item.detalle_id || null,
+                        producto_id: item.product_id || item.ProductID || item.id,
+                        cantidad: nuevaCantidad
+                    });
+                }
+            }
+        }
+    });
 
     try {
+        const payload = {
+            id: ventaEnEdicion.id,
+            estado: estado,
+            payment_method: pago,
+            tipo_entrega: entrega,
+            productos: productosActualizados
+        };
+        
+        if (productosAEliminar.length > 0) {
+            payload.productos_eliminar = productosAEliminar;
+        }
+
         const response = await fetch(`${API_BASE}/actualizar-venta`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                id: ventaEnEdicion.id,
-                estado: estado,
-                payment_method: pago,
-                combos: combosEditados
-            })
+            body: JSON.stringify(payload)
         });
 
         if (response.ok) {
@@ -259,7 +373,8 @@ async function guardarCambios() {
             cerrarModal();
             cargarDatos();
         } else {
-            showMessage('✗ Error al actualizar', 'error');
+            const err = await response.text();
+            showMessage('✗ Error al actualizar: ' + err, 'error');
         }
     } catch (error) {
         showMessage('Error: ' + error.message, 'error');
@@ -275,6 +390,49 @@ function showMessage(text, type) {
     setTimeout(() => {
         mensaje.classList.add('hidden');
     }, 5000);
+}
+
+function eliminarProductoEnEdicion(index) {
+    if (!ventaEnEdicion || !ventaEnEdicion.items) return;
+    
+    // Marcar para eliminación (enviaremos esto al backend)
+    ventaEnEdicion.items[index]._eliminar = true;
+    renderizarProductosEnEdicion(ventaEnEdicion);
+}
+
+function agregarProductoEnEdicion() {
+    if (!ventaEnEdicion) return;
+
+    const selectProducto = document.getElementById('nuevoProductoSelect');
+    const cantidadInput = document.getElementById('nuevoProductoCantidad');
+    
+    const productoId = parseInt(selectProducto.value);
+    const cantidad = parseInt(cantidadInput.value) || 1;
+    
+    if (!productoId || cantidad <= 0) {
+        showMessage('Selecciona un producto y cantidad válida', 'error');
+        return;
+    }
+    
+    const producto = productosCache.find(p => p.id === productoId);
+    if (!producto) return;
+    
+    // Agregar a items
+    if (!ventaEnEdicion.items) ventaEnEdicion.items = [];
+    
+    ventaEnEdicion.items.push({
+        id: producto.id,
+        tipo_pizza: producto.tipo_pizza,
+        cantidad: cantidad,
+        detalle_id: null // Indica que es nuevo
+    });
+    
+    // Resetear form
+    selectProducto.value = '';
+    cantidadInput.value = '1';
+    
+    // Renderizar
+    renderizarProductosEnEdicion(ventaEnEdicion);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -304,6 +462,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelector('.btn-close-modal').addEventListener('click', cerrarModal);
     document.querySelector('.btn-cancelar-modal').addEventListener('click', cerrarModal);
     document.querySelector('.btn-guardar-cambios').addEventListener('click', guardarCambios);
+
+    // Botón agregar producto
+    document.getElementById('btnAgregarProducto').addEventListener('click', agregarProductoEnEdicion);
 
     document.getElementById('modalEditarVenta').addEventListener('click', (e) => {
         if (e.target === document.getElementById('modalEditarVenta')) {
