@@ -132,12 +132,22 @@ body {
     gap: 20px;
 }
 
+.header.scrolled {
+    padding: 12px 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
 .header h2 {
     color: #333;
     font-size: 24px;
     flex: 1;
     text-align: center;
     margin: 0;
+    transition: font-size 0.3s ease;
+}
+
+.header.scrolled h2 {
+    font-size: 20px;
 }
 
 .header-left {
@@ -457,6 +467,53 @@ textarea:focus {
     justify-content: flex-end;
     gap: 10px;
     margin-top: 20px;
+    padding: 20px;
+    border-top: 1px solid #eee;
+}
+
+.logout-modal-content {
+    max-width: 400px;
+}
+
+.logout-modal-content .modal-body {
+    text-align: center;
+    font-size: 16px;
+    color: #555;
+}
+
+.logout-modal-content .modal-actions {
+    padding: 15px 20px;
+}
+
+.btn-logout-confirm {
+    background: #dc3545;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.3s;
+}
+
+.btn-logout-confirm:hover {
+    background: #c82333;
+}
+
+.modal-actions .btn-cancel {
+    background: #999;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: 600;
+    margin: 0;
+    transition: background 0.3s;
+}
+
+.modal-actions .btn-cancel:hover {
+    background: #777;
 }
 
 @media (max-width: 1024px) {
@@ -506,6 +563,8 @@ textarea:focus {
         justify-content: space-between;
         align-items: center;
         box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        width: 100%;
+        box-sizing: border-box;
     }
 
     .header h2 {
@@ -633,25 +692,66 @@ textarea:focus {
     }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 150px) {
     .sidebar {
         width: 80vw;
         left: -80vw;
     }
 
     .header {
-        flex-direction: row;
-        justify-content: space-between;
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: stretch;
+        padding: 8px;
+        gap: 6px;
+        position: sticky;
+        top: 0;
+        z-index: 999;
+        border-radius: 0;
+        margin: -10px -10px 10px -10px;
+        width: calc(100% + 20px);
     }
 
     .header h2 {
-        font-size: 16px;
+        font-size: 14px;
         flex: 1;
+        margin: 0;
+        text-align: center;
+        width: 100%;
+        padding: 4px 0;
+        order: 2;
+    }
+
+    .header-left {
+        width: 100%;
+        display: flex;
+        justify-content: flex-start;
+        align-items: center;
+        order: 1;
+    }
+
+    .header-right {
+        width: 100%;
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 8px;
+        order: 3;
+    }
+
+    .hamburger {
+        padding: 4px 8px;
+        font-size: 20px;
+    }
+
+    .header .logout-btn {
+        padding: 6px 10px;
+        font-size: 11px;
     }
 
     .main-content {
         padding: 10px;
-        margin-top: 55px;
+        margin-top: 0;
     }
 
     .card {

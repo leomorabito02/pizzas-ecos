@@ -270,8 +270,8 @@
     background: white;
     border-radius: 8px;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-    max-width: 450px;
-    width: 90%;
+    max-width: 600px;
+    width: 95%;
     max-height: 90vh;
     display: flex;
     flex-direction: column;
@@ -303,6 +303,9 @@
     padding: 20px;
     overflow-y: auto;
     flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
 }
 
 .modal-footer {
@@ -324,19 +327,185 @@
     margin-bottom: 6px;
 }
 
-.form-group select {
+.form-group select,
+.form-group input {
     width: 100%;
     padding: 10px;
     border: 2px solid #ddd;
     border-radius: 6px;
     font-size: 14px;
     font-family: inherit;
+    box-sizing: border-box;
 }
 
-.form-group select:focus {
+.form-group select:focus,
+.form-group input:focus {
     outline: none;
     border-color: #667eea;
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Sección de productos editable */
+#productosEditables {
+    border: 2px solid #f0f0f0;
+    border-radius: 6px;
+    padding: 12px;
+    max-height: 250px;
+    overflow-y: auto;
+    background: #fafafa;
+}
+
+.producto-editable {
+    display: grid;
+    grid-template-columns: 1fr 80px 70px;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 10px;
+    padding: 10px;
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+}
+
+.producto-editable .nombre {
+    font-weight: 500;
+    color: #333;
+    word-break: break-word;
+}
+
+.producto-editable .cantidad input {
+    width: 100%;
+    padding: 6px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    text-align: center;
+    box-sizing: border-box;
+}
+
+.producto-editable .btn-eliminar {
+    background: #ff6b6b;
+    color: white;
+    border: none;
+    padding: 6px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    width: 100%;
+}
+
+.producto-editable .btn-eliminar:hover {
+    background: #ff5252;
+}
+
+.agregar-producto-section {
+    border: 2px dashed #667eea;
+    border-radius: 6px;
+    padding: 12px;
+    background: #f0f4ff;
+}
+
+.agregar-producto-section h4 {
+    margin: 0 0 10px 0;
+    color: #667eea;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.agregar-producto-grid select {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 13px;
+    box-sizing: border-box;
+}
+
+#btnAgregarProducto {
+    padding: 8px 12px;
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.2s;
+    white-space: nowrap;
+}
+
+#btnAgregarProducto:hover {
+    background: #45a049;
+}
+
+.agregar-producto-grid {
+    display: grid;
+    grid-template-columns: 1fr 120px auto;
+    gap: 8px;
+    align-items: end;
+}
+
+.cantidad-controls-modal {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-cantidad-menos-modal,
+.btn-cantidad-mas-modal {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    font-size: 16px;
+    font-weight: bold;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: white;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: #333;
+}
+
+.btn-cantidad-menos-modal:hover,
+.btn-cantidad-mas-modal:hover {
+    border-color: #667eea;
+    background-color: #f0f4ff;
+    color: #667eea;
+}
+
+.cantidad-controls-modal input {
+    width: 100%;
+    text-align: center;
+    padding: 6px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+/* Previsualización de entrega */
+.entrega-preview {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+    align-items: center;
+}
+
+.entrega-preview select {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.entrega-actual {
+    padding: 8px 12px;
+    background: #f0f4ff;
+    border: 1px solid #667eea;
+    border-radius: 4px;
+    color: #667eea;
+    font-weight: 500;
+    min-width: 120px;
+    text-align: center;
 }
 
 .modal-buttons {
@@ -529,6 +698,7 @@
 
     .modal-body {
         padding: 15px;
+        gap: 12px;
     }
 
     .modal-footer {
@@ -540,6 +710,32 @@
     .modal-footer .btn-cancelar-modal {
         padding: 10px 12px;
         font-size: 13px;
+    }
+
+    /* Productos en modal mobile */
+    #productosEditables {
+        max-height: 200px;
+        padding: 8px;
+    }
+
+    .producto-editable {
+        grid-template-columns: 1fr 70px;
+        margin-bottom: 8px;
+        padding: 8px;
+        gap: 6px;
+    }
+
+    .producto-editable .btn-eliminar {
+        grid-column: 1 / -1;
+    }
+
+    .agregar-producto-grid {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .agregar-producto-grid button {
+        padding: 10px;
     }
 }
 

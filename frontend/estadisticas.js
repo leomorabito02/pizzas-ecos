@@ -6,7 +6,7 @@ let productosCache = []; // Cache de productos para generar contadores
 function getAPIBase() {
     // Si está en localhost, usar localhost:8080 para desarrollo
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        return 'http://localhost:8080';
+        return 'http://localhost:8080/api';
     }
     // En producción, usar BACKEND_URL definido en config.js
     return BACKEND_URL;
@@ -208,13 +208,30 @@ function renderizarVendedores() {
     });
 }
 
-function renderizarVentas() {
+function renderizarVentas(filtro = '') {
     if (!datosVentas.ventas) return;
 
     const tbody = document.getElementById('ventasTableBody');
     tbody.innerHTML = '';
 
-    datosVentas.ventas.forEach(venta => {
+    // Filtrar ventas según el filtro seleccionado
+    let ventasFiltradas = datosVentas.ventas;
+    
+    if (filtro === 'no-entregada') {
+        // Mostrar solo ventas no entregadas (estado != 'entregada')
+        ventasFiltradas = datosVentas.ventas.filter(v => v.estado !== 'entregada' && v.estado !== 'cancelada');
+    } else if (filtro === 'entregada') {
+        // Mostrar solo ventas entregadas
+        ventasFiltradas = datosVentas.ventas.filter(v => v.estado === 'entregada');
+    } else if (filtro === 'delivery') {
+        // Solo delivery
+        ventasFiltradas = datosVentas.ventas.filter(v => v.tipo_entrega === 'delivery' || v.tipo_entrega === 'envio');
+    } else if (filtro === 'retiro') {
+        // Solo retiro
+        ventasFiltradas = datosVentas.ventas.filter(v => v.tipo_entrega === 'retiro');
+    }
+
+    ventasFiltradas.forEach(venta => {
         // Crear resumen de items (productos)
         let itemsResumen = 'Sin items';
         if (venta.items && Array.isArray(venta.items) && venta.items.length > 0) {
@@ -261,6 +278,9 @@ function abrirModalEditar(id) {
     document.getElementById('editarPago').value = venta.payment_method || 'efectivo';
     document.getElementById('editarEntrega').value = venta.tipo_entrega || 'delivery';
     
+    // Actualizar previsualización del tipo de entrega
+    actualizarPreviaEntrega(venta.tipo_entrega || 'delivery');
+    
     // Llenar selector de productos nuevos
     const selectNuevo = document.getElementById('nuevoProductoSelect');
     selectNuevo.innerHTML = '<option value="">Selecciona producto para agregar...</option>';
@@ -277,7 +297,7 @@ function abrirModalEditar(id) {
 function renderizarProductosEnEdicion(venta) {
     const container = document.getElementById('productosEditables');
     if (!venta.items || venta.items.length === 0) {
-        container.innerHTML = '<p style="color: #999;">Sin productos</p>';
+        container.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">Sin productos</p>';
         return;
     }
 
@@ -289,18 +309,19 @@ function renderizarProductosEnEdicion(venta) {
         const nombreProducto = item.tipo || item.tipo_pizza || 'Producto';
         
         html += `
-            <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px; padding: 10px; background: #f5f5f5; border-radius: 4px;">
-                <span style="flex: 1;">${nombreProducto}</span>
-                <input type="number" 
-                       id="cant-${index}" 
-                       min="1" 
-                       value="${item.cantidad}" 
-                       style="width: 80px; padding: 5px; border: 1px solid #ddd; border-radius: 4px;">
-                <button type="button" onclick="eliminarProductoEnEdicion(${index})" style="padding: 5px 10px; background: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer;">✕</button>
+            <div class="producto-editable">
+                <div class="nombre">${nombreProducto}</div>
+                <div class="cantidad">
+                    <input type="number" 
+                           id="cant-${index}" 
+                           min="1" 
+                           value="${item.cantidad}">
+                </div>
+                <button type="button" class="btn-eliminar" onclick="eliminarProductoEnEdicion(${index})">✕ Quitar</button>
             </div>
         `;
     });
-    container.innerHTML = html || '<p style="color: #999;">Sin productos</p>';
+    container.innerHTML = html || '<p style="color: #999; text-align: center; padding: 20px;">Sin productos</p>';
 }
 
 function cerrarModal() {
@@ -426,6 +447,30 @@ function agregarProductoEnEdicion() {
     renderizarProductosEnEdicion(ventaEnEdicion);
 }
 
+function actualizarPreviaEntrega(tipo) {
+    const textos = {
+        'delivery': '🚗 Delivery',
+        'envio': '🚗 Delivery',
+        'retiro': '🏪 Retiro'
+    };
+    const span = document.getElementById('entregaActual');
+    if (span) {
+        span.textContent = textos[tipo] || '🏪 Retiro';
+    }
+}
+
+function incrementarCantidadProducto() {
+    const input = document.getElementById('nuevoProductoCantidad');
+    input.value = parseInt(input.value) + 1;
+}
+
+function decrementarCantidadProducto() {
+    const input = document.getElementById('nuevoProductoCantidad');
+    if (parseInt(input.value) > 1) {
+        input.value = parseInt(input.value) - 1;
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     cargarDatos();
 
@@ -444,6 +489,14 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // Filtro de entregas en la tabla de ventas
+    const filtroEntrega = document.getElementById('filtroEntrega');
+    if (filtroEntrega) {
+        filtroEntrega.addEventListener('change', (e) => {
+            renderizarVentas(e.target.value);
+        });
+    }
+
     // Volver al home
     document.getElementById('btnVolver').addEventListener('click', () => {
         window.location.href = 'index.html';
@@ -456,6 +509,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Botón agregar producto
     document.getElementById('btnAgregarProducto').addEventListener('click', agregarProductoEnEdicion);
+
+    // Botones de cantidad en modal
+    const btnMasProducto = document.getElementById('btnMasProducto');
+    if (btnMasProducto) {
+        btnMasProducto.addEventListener('click', (e) => {
+            e.preventDefault();
+            incrementarCantidadProducto();
+        });
+    }
+
+    const btnMenosProducto = document.getElementById('btnMenosProducto');
+    if (btnMenosProducto) {
+        btnMenosProducto.addEventListener('click', (e) => {
+            e.preventDefault();
+            decrementarCantidadProducto();
+        });
+    }
+
+    // Select de tipo de entrega
+    const selectEntrega = document.getElementById('editarEntrega');
+    if (selectEntrega) {
+        selectEntrega.addEventListener('change', (e) => {
+            actualizarPreviaEntrega(e.target.value);
+        });
+    }
 
     document.getElementById('modalEditarVenta').addEventListener('click', (e) => {
         if (e.target === document.getElementById('modalEditarVenta')) {

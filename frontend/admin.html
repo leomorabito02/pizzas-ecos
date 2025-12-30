@@ -201,6 +201,23 @@
                 </div>
             </div>
         </div>
+
+        <!-- Modal Cerrar Sesión -->
+        <div id="logoutModal" class="modal hidden">
+            <div class="modal-content logout-modal-content">
+                <div class="modal-header">
+                    <h2>Cerrar Sesión</h2>
+                    <button class="modal-close" id="closeLogoutModal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p>¿Está seguro que desea cerrar sesión?</p>
+                </div>
+                <div class="modal-actions">
+                    <button id="cancelLogout" class="btn-cancel">Cancelar</button>
+                    <button id="confirmLogout" class="btn-logout-confirm">Cerrar Sesión</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -249,6 +266,24 @@
 
             loadDashboard();
             hideLoadingSpinner();
+
+            // Header scroll animation for visual feedback
+            const header = document.querySelector('.header');
+            const mainContent = document.querySelector('.main-content');
+            
+            if (mainContent && header) {
+                let scrollTimeout;
+                mainContent.addEventListener('scroll', () => {
+                    clearTimeout(scrollTimeout);
+                    if (mainContent.scrollTop > 10) {
+                        if (!header.classList.contains('scrolled')) {
+                            header.classList.add('scrolled');
+                        }
+                    } else {
+                        header.classList.remove('scrolled');
+                    }
+                }, { passive: true });
+            }
         });
 
         // Menu navigation
@@ -328,11 +363,47 @@
 
         // Logout function
         function logout() {
-            if (confirm('¿Está seguro que desea cerrar sesión?')) {
+            const modal = document.getElementById('logoutModal');
+            if (modal) {
+                modal.classList.remove('hidden');
+            }
+        }
+
+        // Modal handlers
+        const logoutModal = document.getElementById('logoutModal');
+        const closeLogoutModal = document.getElementById('closeLogoutModal');
+        const cancelLogout = document.getElementById('cancelLogout');
+        const confirmLogout = document.getElementById('confirmLogout');
+
+        function closeModal() {
+            if (logoutModal) {
+                logoutModal.classList.add('hidden');
+            }
+        }
+
+        if (closeLogoutModal) {
+            closeLogoutModal.addEventListener('click', closeModal);
+        }
+
+        if (cancelLogout) {
+            cancelLogout.addEventListener('click', closeModal);
+        }
+
+        if (confirmLogout) {
+            confirmLogout.addEventListener('click', () => {
                 localStorage.removeItem('authToken');
                 localStorage.removeItem('user');
                 window.location.href = 'login.html';
-            }
+            });
+        }
+
+        // Close modal when clicking outside
+        if (logoutModal) {
+            logoutModal.addEventListener('click', (e) => {
+                if (e.target === logoutModal) {
+                    closeModal();
+                }
+            });
         }
 
         // Keep old logout button handler for backward compatibility
@@ -345,25 +416,20 @@
         async function loadDashboard() {
             try {
                 showLoadingSpinner(true);
-                const response = await fetch(`${API_BASE}/estadisticas`, {
+                
+                // Obtener estadísticas sin canceladas para totales correctos
+                const sheetResponse = await fetch(`${API_BASE}/estadisticas-sheet`, {
                     headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
                 });
 
-                if (!response.ok) throw new Error('Error loading statistics');
+                if (!sheetResponse.ok) throw new Error('Error loading statistics');
 
-                const data = await response.json();
-
-                // Update stats
-                document.getElementById('totalVentas').textContent = data.length || 0;
-
-                // Calculate only "pagada" (cobrado) sales for total monto
-                let totalMonto = 0;
-                data.forEach(venta => {
-                    if (venta.estado === 'pagada') {
-                        totalMonto += venta.total || 0;
-                    }
-                });
-                document.getElementById('totalMonto').textContent = `$${totalMonto.toFixed(2)}`;
+                const sheetData = await sheetResponse.json();
+                
+                // Acceder correctamente a resumen dentro de sheetData
+                const resumen = sheetData.resumen || {};
+                document.getElementById('totalVentas').textContent = resumen.ventas_totales || 0;
+                document.getElementById('totalMonto').textContent = `$${(resumen.total_cobrado || 0).toFixed(2)}`;
 
                 // Load additional data
                 const dataResponse = await fetch(`${API_BASE}/data`);
@@ -371,8 +437,16 @@
                 document.getElementById('totalClientes').textContent = Object.keys(dataInfo.clientesPorVendedor || {}).length;
                 document.getElementById('totalVendedores').textContent = dataInfo.vendedores?.length || 0;
 
-                // Display recent sales
-                displayRecentSales(data.slice(0, 10));
+                // Cargar ventas recientes (con todas para mostrar en tabla)
+                const response = await fetch(`${API_BASE}/estadisticas`, {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    displayRecentSales(data.slice(0, 10));
+                }
+                
                 hideLoadingSpinner();
 
             } catch (error) {

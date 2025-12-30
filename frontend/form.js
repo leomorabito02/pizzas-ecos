@@ -22,7 +22,7 @@ function hideLoadingSpinner() {
 const getAPIBase = () => {
     // Si está en localhost, usar localhost:8080 para desarrollo
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        return 'http://localhost:8080';
+        return 'http://localhost:8080/api';
     }
     // En producción, usar BACKEND_URL definido en config.js
     return BACKEND_URL;
