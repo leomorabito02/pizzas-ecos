@@ -1,7 +1,7 @@
 # Configuración de Netlify para Pizzas ECOS
 
 [build]
-  command = "echo 'Frontend listo para deploy'"
+  command = "bash build.sh"
   publish = "frontend"
 
 # Reescribir todas las rutas a index.html (SPA)
