@@ -132,33 +132,44 @@ func inicDB() error {
 		return fmt.Errorf("DATABASE_URL no configurada")
 	}
 
-	// Registrar TLS config si hay certificado
-	if caCertPath != "" {
+	log.Printf("📍 DATABASE_URL configurada: %s", strings.Split(dbURL, "@")[0]+"@...")
+	log.Printf("📍 DATABASE_CA_CERT: %v", caCertPath)
+
+	// Registrar TLS config si hay certificado y existe el archivo
+	hasCert := false
+	if caCertPath != "" && caCertPath != "disabled" {
 		caCert, err := ioutil.ReadFile(caCertPath)
 		if err != nil {
-			return fmt.Errorf("error leyendo certificado: %w", err)
+			log.Printf("⚠️  No se pudo leer certificado en %s: %v. Intentando sin TLS...", caCertPath, err)
+		} else {
+			caCertPool := x509.NewCertPool()
+			if !caCertPool.AppendCertsFromPEM(caCert) {
+				log.Printf("⚠️  No se pudo parsear certificado. Intentando sin TLS...")
+			} else {
+				tlsConfig := &tls.Config{
+					RootCAs: caCertPool,
+				}
+				mysql.RegisterTLSConfig("custom", tlsConfig)
+				hasCert = true
+				log.Println("✅ Certificado TLS configurado")
+			}
 		}
-
-		caCertPool := x509.NewCertPool()
-		if !caCertPool.AppendCertsFromPEM(caCert) {
-			return fmt.Errorf("error parseando certificado")
-		}
-
-		tlsConfig := &tls.Config{
-			RootCAs: caCertPool,
-		}
-		mysql.RegisterTLSConfig("custom", tlsConfig)
 	}
 
 	// Convertir URL a DSN
-	dsn := convertDSN(dbURL, caCertPath != "")
-	log.Printf("Conectando a MySQL: %s", strings.Split(dsn, "@")[0]+"@...")
+	dsn := convertDSN(dbURL, hasCert)
+	log.Printf("🔌 DSN preparado, intentando conexión...")
 
 	var err error
 	db, err = sql.Open("mysql", dsn)
 	if err != nil {
 		return fmt.Errorf("error abriendo conexión: %w", err)
 	}
+
+	// Configurar pool de conexiones
+	db.SetMaxOpenConns(25)
+	db.SetMaxIdleConns(5)
+	db.SetConnMaxLifetime(time.Minute * 5)
 
 	// Probar conexión
 	if err := db.Ping(); err != nil {
@@ -270,21 +281,27 @@ func handleData(w http.ResponseWriter, r *http.Request) {
 	// Obtener vendedores
 	vendedores, err := getVendedores()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("❌ Error en getVendedores: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": fmt.Sprintf("Error obteniendo vendedores: %v", err)})
 		return
 	}
 
 	// Obtener clientes por vendedor
 	clientesPorVendedor, err := getClientesPorVendedor()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("❌ Error en getClientesPorVendedor: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": fmt.Sprintf("Error obteniendo clientes: %v", err)})
 		return
 	}
 
 	// Obtener productos
 	productos, err := getProductos()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("❌ Error en getProductos: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": fmt.Sprintf("Error obteniendo productos: %v", err)})
 		return
 	}
 
