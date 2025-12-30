@@ -3,19 +3,19 @@ let datosVentas = {};
 let ventaEnEdicion = null;
 
 function getAPIBase() {
-    // 1. Si existe variable de entorno REACT_APP_API_URL (desde Netlify)
-    if (typeof process !== 'undefined' && process.env?.REACT_APP_API_URL) {
-        console.log('✅ API URL from process.env:', process.env.REACT_APP_API_URL);
-        return process.env.REACT_APP_API_URL;
-    }
-    
-    // 2. Si está en localhost, usar localhost:8080
+    // 1. Si está en localhost, usar localhost:8080
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
         console.log('ℹ️  Using localhost API: http://localhost:8080/api');
         return 'http://localhost:8080/api';
     }
     
-    // 3. Fallback: error - necesita variable de entorno REACT_APP_API_URL
+    // 2. En producción, debe estar en variable de entorno
+    const apiUrl = window.REACT_APP_API_URL || window.env?.REACT_APP_API_URL;
+    if (apiUrl) {
+        console.log('✅ API URL from environment:', apiUrl);
+        return apiUrl;
+    }
+    
     console.error('❌ REACT_APP_API_URL no está configurada. Configúrala en Netlify.');
     return null;
 }
