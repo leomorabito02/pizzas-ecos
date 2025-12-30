@@ -153,7 +153,7 @@ async function init() {
         console.log('Iniciando carga de datos...');
         console.log('API_BASE:', API_BASE);
         
-        const url = `${API_BASE}/api/data`;
+        const url = `${API_BASE}/data`;
         console.log('Fetching from:', url);
         
         const resp = await fetch(url);
@@ -343,7 +343,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             showLoadingSpinner(true);
             try {
-                const resp = await fetch(`${API_BASE}/api/submit`, {
+                const resp = await fetch(`${API_BASE}/submit`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)

@@ -4,7 +4,7 @@
  */
 
 // URL del backend - Define aquí una sola vez
-const BACKEND_URL = 'https://pizzas-ecos.onrender.com';
+const BACKEND_URL = 'https://pizzas-ecos.onrender.com/api';
 
 const CONFIG = {
     // Obtener URL del API (centralizado en BACKEND_URL)
