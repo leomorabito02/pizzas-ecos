@@ -31,26 +31,10 @@ func main() {
 
 	// En Render/producción usa variable de entorno
 	credsJSON := os.Getenv("GOOGLE_CREDENTIALS_JSON")
-	if credsJSON != "" {
-		credsData = []byte(credsJSON)
-	} else {
-		// En local, lee del archivo (intenta múltiples rutas)
-		credsPaths := []string{
-			"venta-pizzas-ecos.json",
-			"../venta-pizzas-ecos.json",
-		}
-
-		for _, path := range credsPaths {
-			credsData, err = os.ReadFile(path)
-			if err == nil {
-				break
-			}
-		}
-
-		if err != nil {
-			log.Fatalf("No se pudo leer credentials desde ninguna ruta: %v", err)
-		}
-	}
+	
+	credsData = []byte(credsJSON)
+	log.Println("✓ Credentials desde variable de entorno GOOGLE_CREDENTIALS_JSON")
+	
 
 	ctx := context.Background()
 	srvSheets, err = sheets.NewService(ctx, option.WithCredentialsJSON(credsData))
