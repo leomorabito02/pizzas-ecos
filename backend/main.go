@@ -763,7 +763,7 @@ func getResumen() (map[string]interface{}, error) {
 	itemsQuery := `
 		SELECT 
 			COALESCE(SUM(dv.cantidad), 0) as total_items,
-			COALESCE(SUM(CASE WHEN v.tipo_entrega IN ('delivery', 'envio') THEN dv.cantidad ELSE 0 END), 0) as total_delivery,
+			COALESCE(SUM(CASE WHEN v.tipo_entrega IN ('delivery', 'envio') OR (v.tipo_entrega IS NULL OR v.tipo_entrega = '') THEN dv.cantidad ELSE 0 END), 0) as total_delivery,
 			COALESCE(SUM(CASE WHEN v.tipo_entrega='retiro' THEN dv.cantidad ELSE 0 END), 0) as total_retiro
 		FROM detalle_ventas dv
 		JOIN ventas v ON dv.venta_id = v.id

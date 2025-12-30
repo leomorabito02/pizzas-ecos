@@ -71,15 +71,16 @@ function renderizarProductosCounters() {
     const container = document.getElementById('productosCounters');
     container.innerHTML = '';
 
-    // Contar ventas por producto desde detalle_ventas
+    // Contar ventas por producto desde detalle_ventas (sin canceladas)
     const ventasPorProducto = {};
     
     productosCache.forEach(producto => {
         ventasPorProducto[producto.id] = 0;
     });
 
-    // Sumar cantidades de cada producto
+    // Sumar cantidades de cada producto (excluyendo canceladas)
     datosVentas.ventas.forEach(venta => {
+        if (venta.estado === 'cancelada') return;
         // Las ventas llegadas del backend deben tener información de productos
         // Por ahora contamos desde el array de items si existen
         // Si no, hacemos un conteo genérico
@@ -87,10 +88,12 @@ function renderizarProductosCounters() {
 
     // Renderizar tarjetas para cada producto
     productosCache.forEach(producto => {
-        // Calcular total vendido para este producto
+        // Calcular total vendido para este producto (excluyendo canceladas)
         let totalVendido = 0;
         if (datosVentas.ventas && Array.isArray(datosVentas.ventas)) {
             datosVentas.ventas.forEach(venta => {
+                // Excluir ventas canceladas
+                if (venta.estado === 'cancelada') return;
                 // Si la venta tiene array de items con product_id
                 if (venta.items && Array.isArray(venta.items)) {
                     venta.items.forEach(item => {

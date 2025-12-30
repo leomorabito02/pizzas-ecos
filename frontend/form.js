@@ -293,14 +293,6 @@ document.addEventListener('DOMContentLoaded', () => {
         verificarBtnAgregarAlPedido();
     }
     
-    const btnAnother = document.getElementById('btnAddAnother');
-    if (btnAnother) {
-        btnAnother.addEventListener('click', (e) => {
-            e.preventDefault();
-            resetearSelectorProductos();
-        });
-    }
-    
     const form = document.getElementById('ventaForm');
     if (form) {
         form.addEventListener('submit', async (e) => {
