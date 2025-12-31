@@ -225,16 +225,7 @@ if (confirmDeleteProduct) {
         if (!productIdToDelete) return;
         
         try {
-            const response = await fetch(`${API_BASE}/eliminar-producto/${productIdToDelete}`, {
-                method: 'DELETE'
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                showError(data.message || 'Error eliminando producto');
-                return;
-            }
+            await api.eliminarProducto(productIdToDelete);
 
             showSuccess('Producto eliminado exitosamente');
             closeDeleteProductModalDialog();
@@ -281,14 +272,7 @@ if (confirmDeleteVendedor) {
         if (!vendedorIdToDelete) return;
         
         try {
-            const response = await fetch(`${API_BASE}/eliminar-vendedor/${vendedorIdToDelete}`, {
-                method: 'DELETE'
-            });
-
-            if (!response.ok) {
-                showError('Error eliminando vendedor');
-                return;
-            }
+            await api.eliminarVendedor(vendedorIdToDelete);
 
             showSuccess('Vendedor eliminado exitosamente');
             closeDeleteVendedorModalDialog();
@@ -317,15 +301,7 @@ async function loadDashboard() {
         const token = sessionStorage.getItem('authToken');
         
         // Obtener estadísticas sin canceladas para totales correctos
-        const sheetResponse = await fetch(`${API_BASE}/estadisticas-sheet`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-
-        if (!sheetResponse.ok) throw new Error('Error loading statistics');
-
-        const sheetResponseData = await sheetResponse.json();
-        // Extract data from wrapped response: {status, data: {...}, message}
-        const sheetData = sheetResponseData.data || sheetResponseData;
+        const sheetData = await api.obtenerEstadisticas();
         
         // Acceder correctamente a resumen dentro de sheetData
         const resumen = sheetData.resumen || {};
@@ -333,23 +309,13 @@ async function loadDashboard() {
         document.getElementById('totalMonto').textContent = `$${(resumen.total_cobrado || 0).toFixed(2)}`;
 
         // Load additional data
-        const dataResponse = await fetch(`${API_BASE}/data`);
-        const dataResponseData = await dataResponse.json();
-        // Extract data from wrapped response
-        const dataInfo = dataResponseData.data || dataResponseData;
+        const dataInfo = await api.getData();
         document.getElementById('totalVendedores').textContent = dataInfo.vendedores?.length || 0;
 
         // Cargar ventas recientes (con todas para mostrar en tabla)
-        const response = await fetch(`${API_BASE}/estadisticas`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-
-        if (response.ok) {
-            const responseData = await response.json();
-            // Extract data array from wrapped response
-            const salesData = Array.isArray(responseData.data) ? responseData.data : responseData;
-            displayRecentSales(salesData.slice(0, 10));
-        }
+        const response = await api.obtenerVentas();
+        const salesData = Array.isArray(response.data) ? response.data : response;
+        displayRecentSales(salesData.slice(0, 10));
         
         hideLoadingSpinner();
 
@@ -419,23 +385,12 @@ function setupProductForm() {
         }
 
         try {
-            const response = await fetch(`${API_BASE}/crear-producto`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    tipo_pizza: nombre,
-                    descripcion: descripcion,
-                    precio: precio
-                })
+            await api.crearProducto({
+                tipo_pizza: nombre,
+                descripcion: descripcion,
+                precio: precio
             });
 
-            if (!response.ok) {
-                const errorText = await response.text();
-                showError(errorText || 'Error creando producto');
-                return;
-            }
-
-            const data = await response.json();
             showSuccess('Producto creado exitosamente');
             document.getElementById('productForm').reset();
             await loadProductos();
@@ -450,12 +405,7 @@ function setupProductForm() {
 async function loadProductos() {
     try {
         showLoadingSpinner(true);
-        const response = await fetch(`${API_BASE}/productos`);
-        if (!response.ok) throw new Error('Error loading productos');
-
-        const responseData = await response.json();
-        // Extract data array from wrapped response: {status, data: [...], message}
-        const productos = Array.isArray(responseData.data) ? responseData.data : responseData;
+        const productos = await api.obtenerProductos();
         const container = document.getElementById('productosTableContainer');
 
         if (!productos || productos.length === 0) {
@@ -536,22 +486,12 @@ function setupEditProductForm() {
         }
 
         try {
-            const response = await fetch(`${API_BASE}/actualizar-producto/${productoId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    tipo_pizza: nombre,
-                    descripcion: descripcion,
-                    precio: precio, 
-                    activo: true 
-                })
+            await api.actualizarProducto(productoId, { 
+                tipo_pizza: nombre,
+                descripcion: descripcion,
+                precio: precio, 
+                activo: true 
             });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                showError(errorText || 'Error actualizando producto');
-                return;
-            }
 
             showSuccess('Producto actualizado exitosamente');
             cerrarModalProducto();
@@ -590,17 +530,7 @@ function setupVendedorForm() {
         }
 
         try {
-            const response = await fetch(`${API_BASE}/crear-vendedor`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ nombre: nombre })
-            });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                showError(errorText || 'Error creando vendedor');
-                return;
-            }
+            await api.crearVendedor({ nombre: nombre });
 
             showSuccess('Vendedor creado exitosamente');
             document.getElementById('vendedorForm').reset();
@@ -616,12 +546,7 @@ function setupVendedorForm() {
 async function loadVendedores() {
     try {
         showLoadingSpinner(true);
-        const response = await fetch(`${API_BASE}/data`);
-        if (!response.ok) throw new Error('Error loading data');
-
-        const responseData = await response.json();
-        // Extract data from wrapped response: {status, data: {...vendedores...}, message}
-        const data = responseData.data || responseData;
+        const data = await api.getData();
         const vendedores = data.vendedores || [];
         const container = document.getElementById('vendedoresTableContainer');
 
@@ -696,17 +621,7 @@ function setupEditVendedorForm() {
         }
 
         try {
-            const response = await fetch(`${API_BASE}/actualizar-vendedor/${vendedorId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ nombre: nombre })
-            });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                showError(errorText || 'Error actualizando vendedor');
-                return;
-            }
+            await api.actualizarVendedor(vendedorId, { nombre: nombre });
 
             showSuccess('Vendedor actualizado exitosamente');
             cerrarModalVendedor();
