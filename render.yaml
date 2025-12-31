@@ -1,17 +1,18 @@
 services:
   - type: web
     name: pizzas-ecos-backend
-    env: docker
-    dockerfilePath: ./backend/Dockerfile
-    region: oregon
+    env: go
+    buildCommand: "cd backend && go build -o pizzas-ecos"
+    startCommand: "backend/pizzas-ecos"
     plan: free
+    region: oregon
     
     # Variables de entorno
     envVars:
       - key: PORT
         value: "8080"
       - key: CORS_ALLOWED_ORIGINS
-        value: "http://localhost:5000,https://ecos-ventas-pizzas.netlify.app"
+        value: "*"
       - key: credsJSON
         value: venta-pizzas-ecos.json
       - key: SpreadsheetID
