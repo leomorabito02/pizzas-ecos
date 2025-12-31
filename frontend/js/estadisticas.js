@@ -62,12 +62,16 @@ async function cargarDatos() {
         // 2. Obtener datos de estadísticas
         const statsResp = await api.request('/estadisticas-sheet');
         datosVentas = (statsResp && statsResp.data) ? statsResp.data : statsResp || {};
+        Logger.log('estadisticas - statsResp:', statsResp);
+        Logger.log('estadisticas - datosVentas.resumen:', datosVentas?.resumen);
         
         // 3. Obtener detalle de ventas para la tabla
         try {
             const ventasData = await api.obtenerVentas();
+            Logger.log('estadisticas - ventasData:', ventasData);
             // El backend retorna {status, data, message}, extraer el array de data
             const ventasArray = Array.isArray(ventasData) ? ventasData : (ventasData?.data || []);
+            Logger.log('estadisticas - ventasArray:', ventasArray);
             datosVentas.ventas = Array.isArray(ventasArray) ? ventasArray : [];
         } catch (e) {
             Logger.log('No se pudieron cargar ventas');

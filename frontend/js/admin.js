@@ -298,25 +298,19 @@ async function loadDashboard() {
     try {
         showLoadingSpinner(true);
         
-        // Obtener todas las ventas para calcular estadísticas
-        const ventasResponse = await api.obtenerVentas();
-        const ventasArray = Array.isArray(ventasResponse) ? ventasResponse : (ventasResponse?.data || []);
+        // Obtener datos de estadísticas (mismo endpoint que estadísticas.js)
+        const statsResponse = await api.request('/estadisticas-sheet');
+        console.log('Dashboard - statsResponse:', statsResponse);
         
-        // Calcular totales (excluyendo canceladas)
-        let totalVentas = 0;
-        let totalMonto = 0;
+        // Extraer resumen (backend retorna {status, data: {resumen, vendedores, ventas}})
+        const datosStats = (statsResponse && statsResponse.data) ? statsResponse.data : statsResponse || {};
+        const resumen = datosStats.resumen || {};
         
-        if (Array.isArray(ventasArray)) {
-            ventasArray.forEach(venta => {
-                if (venta.estado !== 'cancelada') {
-                    totalVentas++;
-                    totalMonto += venta.total || 0;
-                }
-            });
-        }
+        console.log('Dashboard - resumen:', resumen);
         
-        document.getElementById('totalVentas').textContent = totalVentas;
-        document.getElementById('totalMonto').textContent = `$${totalMonto.toFixed(2)}`;
+        // Mostrar total de ventas (total_ventas) y monto cobrado (total_cobrado) - mismo que estadísticas
+        document.getElementById('totalVentas').textContent = resumen.ventas_totales || 0;
+        document.getElementById('totalMonto').textContent = `$${(resumen.total_cobrado || 0).toFixed(2)}`;
 
         // Load additional data
         const dataInfo = await api.getData();
@@ -327,8 +321,9 @@ async function loadDashboard() {
         console.log('Dashboard vendedores count:', vendedores.length);
         document.getElementById('totalVendedores').textContent = vendedores.length || 0;
 
-        // Mostrar ventas recientes (últimas 10)
-        displayRecentSales(Array.isArray(ventasArray) ? ventasArray.slice(0, 10) : []);
+        // Mostrar ventas recientes del resumen
+        const ventasRecientes = (datosStats.ventas || []).slice(0, 10);
+        displayRecentSales(ventasRecientes);
         
         hideLoadingSpinner();
 
@@ -364,12 +359,13 @@ function displayRecentSales(sales) {
 
     sales.forEach(venta => {
         const rowClass = venta.estado === 'cancelada' ? 'class="cancelada"' : '';
+        const totalMonto = typeof venta.total === 'string' ? parseFloat(venta.total) : venta.total;
         html += `
             <tr ${rowClass}>
                 <td data-label="ID">#${venta.id}</td>
                 <td data-label="Vendedor">${venta.vendedor}</td>
                 <td data-label="Cliente">${venta.cliente}</td>
-                <td data-label="Total">$${venta.total.toFixed(2)}</td>
+                <td data-label="Total">$${totalMonto.toFixed(2)}</td>
                 <td data-label="Estado"><strong>${venta.estado}</strong></td>
                 <td data-label="Fecha">${new Date(venta.created_at).toLocaleDateString()}</td>
             </tr>
