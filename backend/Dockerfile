@@ -23,11 +23,22 @@ WORKDIR /app
 # Instalar ca-certificates para HTTPS
 RUN apk --no-cache add ca-certificates
 
+# Crear usuario no-root para seguridad
+RUN addgroup -g 1001 -S appuser && \
+    adduser -u 1001 -S appuser -G appuser
+
 # Copiar binary desde builder
 COPY --from=builder /app/pizzas-ecos .
 
 # Copiar .env si existe (opcional - usar variables de entorno en Docker)
 COPY --from=builder /app/.env* ./
+
+# Cambiar permisos y propietario
+RUN chown -R appuser:appuser /app && \
+    chmod +x /app/pizzas-ecos
+
+# Cambiar a usuario no-root
+USER appuser
 
 # Exponer puerto
 EXPOSE 8080
