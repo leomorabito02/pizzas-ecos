@@ -56,7 +56,7 @@ jobs:
 
       - name: Store image URL
         id: image
-        run: echo "url=${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}" >> $GITHUB_OUTPUT
+        run: echo "url=${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}" >> ${{ env.GITHUB_OUTPUT }}
 
   deploy-qa:
     name: Deploy to QA
