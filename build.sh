@@ -5,7 +5,7 @@
 cat > frontend/env-inject.js << 'EOF'
 // Variables de entorno inyectadas durante el build de Netlify
 window.__ENV = {
-  REACT_APP_API_URL: "https://pizzas-ecos.onrender.com/api"
+  REACT_APP_API_URL: "https://pizzas-ecos.onrender.com/api/v1"
 };
 EOF
 
