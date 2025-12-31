@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"pizzas-ecos/config"
@@ -58,7 +59,13 @@ func main() {
 	// 4. Logging
 	// 5. Recovery
 	ddosMiddleware := security.Middleware(ddosDetector)
-	corsMiddleware := middleware.CORSMiddleware([]string{"http://localhost:5000", "https://ecos-ventas-pizzas.netlify.app"})
+
+	// Configurar orígenes CORS desde variable de entorno o usar valores por defecto
+	corsOrigins := []string{"http://localhost:5000", "https://ecos-ventas-pizzas.netlify.app"}
+	if envOrigins := os.Getenv("CORS_ALLOWED_ORIGINS"); envOrigins != "" {
+		corsOrigins = strings.Split(envOrigins, ",")
+	}
+	corsMiddleware := middleware.CORSMiddleware(corsOrigins)
 	rateLimitMiddleware := ratelimit.Middleware(limiter)
 	loggingMiddleware := middleware.LoggingMiddleware
 	recoveryMiddleware := middleware.RecoveryMiddleware
