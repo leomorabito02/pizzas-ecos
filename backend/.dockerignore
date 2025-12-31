@@ -1,0 +1,26 @@
+# Binarios compilados
+*.exe
+*.dll
+*.so
+*.dylib
+pizzas-ecos
+
+# Archivos de desarrollo
+.env
+.env.local
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Testing
+*.test
+coverage.out
+
+# Otros
+.DS_Store
+*.log
