@@ -38,7 +38,7 @@ func main() {
 	})
 
 	// 3. Configuración de Seguridad y Control de Tráfico
-	limiter := ratelimit.NewRateLimiter(50)                    // 50 req/s
+	limiter := ratelimit.NewRateLimiter(50)                       // 50 req/s
 	ddosDetector := security.NewDDoSDetector(500, 10*time.Second) // 500 req en 10s
 
 	// 4. Configuración de Orígenes CORS
@@ -51,7 +51,7 @@ func main() {
 	// 5. Cadena de Middlewares (Arquitectura de Cebolla)
 	// ORDEN CRÍTICO: CORS debe ser el primero en responder (después de Recovery)
 	// para que los requests OPTIONS (preflight) se resuelvan inmediatamente
-	
+
 	// Paso 1: Recovery (El escudo más externo)
 	handler := middleware.RecoveryMiddleware(mux)
 
