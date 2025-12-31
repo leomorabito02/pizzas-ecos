@@ -15,40 +15,46 @@ import (
 var JWTSecret = []byte(os.Getenv("JWT_SECRET"))
 
 func init() {
-	if string(JWTSecret) == "" {
-		// Opinión: En ingeniería, siempre avisar si se usa un fallback débil
+	if len(JWTSecret) == 0 {
 		JWTSecret = []byte("ecos-auth-secret-key-change-in-production")
 	}
 }
 
-// AuthMiddleware verifica que el request tenga un token JWT válido
+/* =========================
+   AUTH MIDDLEWARE
+========================= */
+
 func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		// 🔴 CLAVE: nunca bloquear preflight
+		if r.Method == http.MethodOptions {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(`{"status":401,"message":"Token requerido","code":"UNAUTHORIZED"}`))
+			unauthorized(w, "Token requerido")
 			return
 		}
 
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 || parts[0] != "Bearer" {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(`{"status":401,"message":"Formato de token inválido","code":"UNAUTHORIZED"}`))
+			unauthorized(w, "Formato de token inválido")
 			return
 		}
 
-		tokenString := parts[1]
-		token, err := jwt.ParseWithClaims(tokenString, &models.TokenClaims{}, func(token *jwt.Token) (interface{}, error) {
-			return JWTSecret, nil
-		})
+		token, err := jwt.ParseWithClaims(
+			parts[1],
+			&models.TokenClaims{},
+			func(token *jwt.Token) (interface{}, error) {
+				return JWTSecret, nil
+			},
+		)
 
 		if err != nil || !token.Valid {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(`{"status":401,"message":"Token inválido o expirado","code":"UNAUTHORIZED"}`))
+			unauthorized(w, "Token inválido o expirado")
 			return
 		}
 
@@ -56,7 +62,16 @@ func AuthMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// LoggingMiddleware registra información de requests con structured logging
+func unauthorized(w http.ResponseWriter, msg string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusUnauthorized)
+	w.Write([]byte(`{"status":401,"message":"` + msg + `","code":"UNAUTHORIZED"}`))
+}
+
+/* =========================
+   LOGGING
+========================= */
+
 func LoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
@@ -64,27 +79,36 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 
 		next.ServeHTTP(wrapped, r)
 
-		duration := time.Since(start)
-		logger.LogHTTPRequest(r.Method, r.URL.Path, r.RemoteAddr, wrapped.statusCode, duration, r.Header.Get("User-Agent"), "")
+		logger.LogHTTPRequest(
+			r.Method,
+			r.URL.Path,
+			r.RemoteAddr,
+			wrapped.statusCode,
+			time.Since(start),
+			r.Header.Get("User-Agent"),
+			"",
+		)
 	})
 }
 
-// CORSMiddleware configura CORS de manera profesional
+/* =========================
+   CORS
+========================= */
+
 func CORSMiddleware(allowedOrigins []string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			origin := r.Header.Get("Origin")
 
-			// [CRÍTICO] Siempre setear headers CORS para preflight
-			if origin != "" {
+			if origin != "" && isAllowedOrigin(origin, allowedOrigins) {
 				w.Header().Set("Access-Control-Allow-Origin", origin)
-				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE, PATCH")
+				w.Header().Set("Vary", "Origin")
+				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS")
 				w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
 				w.Header().Set("Access-Control-Allow-Credentials", "true")
 				w.Header().Set("Access-Control-Max-Age", "86400")
 			}
 
-			// Manejo de Preflight (OPTIONS)
 			if r.Method == http.MethodOptions {
 				w.WriteHeader(http.StatusNoContent)
 				return
@@ -95,20 +119,36 @@ func CORSMiddleware(allowedOrigins []string) func(http.Handler) http.Handler {
 	}
 }
 
-// RecoveryMiddleware recupera de panics
+func isAllowedOrigin(origin string, allowed []string) bool {
+	for _, o := range allowed {
+		if o == origin {
+			return true
+		}
+	}
+	return false
+}
+
+/* =========================
+   RECOVERY
+========================= */
+
 func RecoveryMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if err := recover(); err != nil {
-				logger.Error("PANIC detectado", "error", err)
+				logger.Error("PANIC", "panic", err)
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(`{"status":500,"message":"Error interno del servidor","code":"INTERNAL_SERVER_ERROR"}`))
+				w.Write([]byte(`{"status":500,"message":"Error interno","code":"INTERNAL_SERVER_ERROR"}`))
 			}
 		}()
 		next.ServeHTTP(w, r)
 	})
 }
+
+/* =========================
+   RESPONSE WRAPPER
+========================= */
 
 type responseWriter struct {
 	http.ResponseWriter

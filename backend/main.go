@@ -15,68 +15,54 @@ import (
 	"pizzas-ecos/security"
 )
 
-// inicDB inicializa la conexión a la base de datos
-// CORS middleware is properly configured
-func inicDB() error {
+func initDB() error {
 	return config.InitDB()
 }
 
 func main() {
-	// 1. Inicializar Base de Datos
-	if err := inicDB(); err != nil {
+
+	// 1. Base de datos
+	if err := initDB(); err != nil {
 		log.Fatalf("❌ Error inicializando BD: %v", err)
 	}
 
-	// 2. Configuración del Router (Mux)
+	// 2. Router
 	mux := http.NewServeMux()
 	apiRouter := routes.SetupRoutes()
 	apiRouter.Register(mux)
 
-	// Logging de rutas para auditoría técnica
 	logger.Info("Rutas registradas", map[string]interface{}{
 		"count": len(apiRouter.GetRoutes()),
 	})
 
-	// 3. Configuración de Seguridad y Control de Tráfico
-	limiter := ratelimit.NewRateLimiter(50)                       // 50 req/s
-	ddosDetector := security.NewDDoSDetector(500, 10*time.Second) // 500 req en 10s
+	// 3. Seguridad y control
+	limiter := ratelimit.NewRateLimiter(50)
+	ddosDetector := security.NewDDoSDetector(500, 10*time.Second)
 
-	// 4. Configuración de Orígenes CORS
-	// Priorizamos variable de entorno para flexibilidad en el deploy
-	corsOrigins := []string{"http://localhost:5000", "https://ecos-ventas-pizzas.netlify.app"}
-	if envOrigins := os.Getenv("CORS_ALLOWED_ORIGINS"); envOrigins != "" {
-		corsOrigins = strings.Split(envOrigins, ",")
+	// 4. CORS origins
+	corsOrigins := []string{
+		"http://localhost:5000",
+		"https://ecos-ventas-pizzas.netlify.app",
 	}
 
-	// 5. Cadena de Middlewares (Arquitectura de Cebolla)
-	// ORDEN CRÍTICO: CORS debe ser el primero en responder (después de Recovery)
-	// para que los requests OPTIONS (preflight) se resuelvan inmediatamente
+	if env := os.Getenv("CORS_ALLOWED_ORIGINS"); env != "" {
+		corsOrigins = strings.Split(env, ",")
+	}
 
-	// Paso 1: Recovery (El escudo más externo)
-	handler := middleware.RecoveryMiddleware(mux)
+	// 5. Middleware chain (orden correcto)
+	handler := http.Handler(mux)
 
-	// Paso 2: CORS (Debe ser casi el primero para responder preflight)
+	handler = middleware.RecoveryMiddleware(handler)
 	handler = middleware.CORSMiddleware(corsOrigins)(handler)
-
-	// Paso 3: Protección DDoS
 	handler = security.Middleware(ddosDetector)(handler)
-
-	// Paso 4: Rate Limit
 	handler = ratelimit.Middleware(limiter)(handler)
-
-	// Paso 5: Logging (lo más interno antes del router)
 	handler = middleware.LoggingMiddleware(handler)
 
-	// 6. Lanzamiento del Servidor
+	// 6. Server
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
-
-	logger.Info("Servidor iniciado exitosamente", map[string]interface{}{
-		"port": port,
-		"env":  os.Getenv("GO_ENV"),
-	})
 
 	server := &http.Server{
 		Addr:         ":" + port,
@@ -86,8 +72,13 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 
+	logger.Info("Servidor iniciado", map[string]interface{}{
+		"port": port,
+		"env":  os.Getenv("GO_ENV"),
+	})
+
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		logger.Error("Error crítico en el servidor", "SERVER_ERROR", map[string]interface{}{
+		logger.Error("Error crítico del servidor", "SERVER_ERROR", map[string]interface{}{
 			"error": err.Error(),
 		})
 	}
