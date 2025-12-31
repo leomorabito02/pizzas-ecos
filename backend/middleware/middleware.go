@@ -16,7 +16,7 @@ var JWTSecret = []byte(os.Getenv("JWT_SECRET"))
 
 func init() {
 	if len(JWTSecret) == 0 {
-		JWTSecret = []byte("ecos-auth-secret-key-change-in-production")
+		JWTSecret = []byte("uytrewghbvcxbvnbvnz")
 	}
 }
 

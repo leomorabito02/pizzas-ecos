@@ -38,13 +38,13 @@ jobs:
       - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
-          username: ${{ env.DOCKERHUB_USERNAME }}
-          password: ${{ env.DOCKERHUB_TOKEN }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Build and push to Docker Hub
         uses: docker/build-push-action@v4
         with:
           context: ./backend
-          dockerfile: ./backend/Dockerfile
+          file: ./backend/Dockerfile
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.DOCKER_PATH }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
@@ -71,8 +71,8 @@ jobs:
       - name: Authenticate to Google Cloud (QA)
         uses: google-github-actions/auth@v1
         with:
-          workload_identity_provider: ${{ env.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ env.GCP_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v1
       - name: Deploy Backend to Cloud Run (QA)
@@ -111,8 +111,8 @@ jobs:
           github-deployment-status: success
           netlify-config-path: './netlify.toml'
         env:
-          NETLIFY_AUTH_TOKEN: ${{ env.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ env.NETLIFY_SITE_ID_QA }}
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID_QA }}
 
   approve-production:
     name: Approve Production Deployment
@@ -141,8 +141,8 @@ jobs:
       - name: Authenticate to Google Cloud (Production)
         uses: google-github-actions/auth@v1
         with:
-          workload_identity_provider: ${{ env.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ env.GCP_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v1
       - name: Deploy Backend to Cloud Run (Production)
@@ -181,6 +181,6 @@ jobs:
           github-deployment-status: success
           netlify-config-path: './netlify.toml'
         env:
-          NETLIFY_AUTH_TOKEN: ${{ env.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ env.NETLIFY_SITE_ID_PROD }}
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID_PROD }}
 
