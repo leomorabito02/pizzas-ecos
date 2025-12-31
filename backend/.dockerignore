@@ -4,23 +4,71 @@
 *.so
 *.dylib
 pizzas-ecos
+*.o
+*.a
 
 # Archivos de desarrollo
 .env
 .env.local
+.env.*.local
 .vscode/
 .idea/
+.DS_Store
 *.swp
 *.swo
+*.vim
+*~
+.gitkeep
 
 # Git
 .git/
 .gitignore
+.gitattributes
+.github/
 
 # Testing
 *.test
 coverage.out
+coverage.html
+.cover
+
+# Documentación
+*.md
+docs/
+DOCKER.md
+QUICK_START.md
+
+# Archivos de configuración
+.editorconfig
+.prettierrc
+.eslintrc
+
+# Node/npm (si hay)
+node_modules/
+npm-debug.log
+yarn-error.log
 
 # Otros
-.DS_Store
 *.log
+*.swp
+tmp/
+temp/
+cache/
+.cache/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# IDE
+.vscode
+.idea
+*.iml
+*.iws
+*.ipr
+
+# Sistema operativo
+Thumbs.db
+.DS_Store
+ehthumbs.db

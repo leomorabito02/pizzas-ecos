@@ -1,0 +1,30 @@
+{
+  "testEnvironment": "node",
+  "collectCoverageFrom": [
+    "js/**/*.js",
+    "!js/**/*.test.js",
+    "!node_modules/**"
+  ],
+  "coverageThreshold": {
+    "global": {
+      "branches": 70,
+      "functions": 70,
+      "lines": 70,
+      "statements": 70
+    }
+  },
+  "moduleFileExtensions": [
+    "js",
+    "json"
+  ],
+  "testMatch": [
+    "**/__tests__/**/*.js",
+    "**/?(*.)+(spec|test).js"
+  ],
+  "setupFilesAfterEnv": [
+    "<rootDir>/frontend/jest.setup.js"
+  ],
+  "globals": {
+    "testTimeout": 10000
+  }
+}
