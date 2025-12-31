@@ -53,6 +53,7 @@ func main() {
 
 	handler = middleware.RecoveryMiddleware(handler)
 	handler = middleware.CORSMiddleware(corsOrigins)(handler)
+	handler = middleware.AuthMiddleware(handler)
 	handler = middleware.LoggingMiddleware(handler)
 	handler = ratelimit.Middleware(limiter)(handler)
 	handler = security.Middleware(ddosDetector)(handler)

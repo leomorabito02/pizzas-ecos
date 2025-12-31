@@ -8,7 +8,6 @@ import (
 
 	"pizzas-ecos/controllers"
 	"pizzas-ecos/httputil"
-	"pizzas-ecos/middleware"
 )
 
 // RouteGroup agrupa rutas con un prefijo y middleware común
@@ -232,26 +231,26 @@ func SetupRoutes() *Router {
 	ventaGroup.GET("/todas", ventaCtrl.ObtenerTodasVentas, "Obtener todas las ventas")
 
 	// ============================================
-	// GRUPO: Productos (PROTEGIDO)
+	// GRUPO: Productos (SIN MIDDLEWARE - Auth aplicado globalmente)
 	// ============================================
-	productoGroup := router.Group("/api/v1/productos", middleware.AuthMiddleware)
+	productoGroup := router.Group("/api/v1/productos")
 	productoGroup.GET("", productoCtrl.Listar, "Listar productos")
 	productoGroup.POST("", productoCtrl.Crear, "Crear producto")
 	productoGroup.PUT("/:id", productoCtrl.Actualizar, "Actualizar producto")
 	productoGroup.DELETE("/:id", productoCtrl.Eliminar, "Eliminar producto")
 
 	// ============================================
-	// GRUPO: Vendedores (PROTEGIDO)
+	// GRUPO: Vendedores (SIN MIDDLEWARE - Auth aplicado globalmente)
 	// ============================================
-	vendedorGroup := router.Group("/api/v1/vendedores", middleware.AuthMiddleware)
+	vendedorGroup := router.Group("/api/v1/vendedores")
 	vendedorGroup.POST("", vendedorCtrl.Crear, "Crear vendedor")
 	vendedorGroup.PUT("/:id", vendedorCtrl.Actualizar, "Actualizar vendedor")
 	vendedorGroup.DELETE("/:id", vendedorCtrl.Eliminar, "Eliminar vendedor")
 
 	// ============================================
-	// GRUPO: Usuarios (PROTEGIDO)
+	// GRUPO: Usuarios (SIN MIDDLEWARE - Auth aplicado globalmente)
 	// ============================================
-	usuarioGroup := router.Group("/api/v1/usuarios", middleware.AuthMiddleware)
+	usuarioGroup := router.Group("/api/v1/usuarios")
 	usuarioGroup.GET("", usuarioCtrl.Listar, "Listar usuarios")
 	usuarioGroup.POST("", usuarioCtrl.Crear, "Crear usuario")
 	usuarioGroup.PUT("/:id", usuarioCtrl.Actualizar, "Actualizar usuario")

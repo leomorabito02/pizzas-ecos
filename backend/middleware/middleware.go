@@ -27,8 +27,21 @@ func init() {
 func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-		// 🔴 CLAVE: nunca bloquear preflight
+		// 🔴 CLAVE: ignorar preflight OPTIONS
 		if r.Method == http.MethodOptions {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// Permitir rutas públicas sin autenticación
+		publicPaths := map[string]bool{
+			"/api/v1/auth/login": true,
+			"/api/v1/login":      true,
+			"/api/v1/data":       true,
+			"/api/v1/health":     true,
+		}
+
+		if publicPaths[r.URL.Path] {
 			next.ServeHTTP(w, r)
 			return
 		}
