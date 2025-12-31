@@ -15,73 +15,79 @@ import (
 	"pizzas-ecos/security"
 )
 
-// inicDB inicializa la conexión a MySQL
+// inicDB inicializa la conexión a la base de datos
 func inicDB() error {
 	return config.InitDB()
 }
 
 func main() {
-	// Inicializar BD
+	// 1. Inicializar Base de Datos
 	if err := inicDB(); err != nil {
 		log.Fatalf("❌ Error inicializando BD: %v", err)
 	}
 
-	// Crear mux
+	// 2. Configuración del Router (Mux)
 	mux := http.NewServeMux()
-
-	// Registrar rutas API v1 + legacy (todo en un solo router)
 	apiRouter := routes.SetupRoutes()
-	// Las rutas legacy se agregan al mismo router, no crear dos routers
 	apiRouter.Register(mux)
 
-	// Imprimir rutas (útil para debugging)
+	// Logging de rutas para auditoría técnica
 	logger.Info("Rutas registradas", map[string]interface{}{
 		"count": len(apiRouter.GetRoutes()),
 	})
-	for _, route := range apiRouter.GetRoutes() {
-		logger.Debug("Route", map[string]interface{}{
-			"method": route.Method,
-			"path":   route.Path,
-			"name":   route.Name,
-		})
-	}
 
-	// Crear rate limiter (50 requests por segundo por IP)
-	limiter := ratelimit.NewRateLimiter(50)
+	// 3. Configuración de Seguridad y Control de Tráfico
+	limiter := ratelimit.NewRateLimiter(50)                    // 50 req/s
+	ddosDetector := security.NewDDoSDetector(500, 10*time.Second) // 500 req en 10s
 
-	// Crear DDoS detector (más de 500 requests en 10 segundos por IP)
-	ddosDetector := security.NewDDoSDetector(500, 10*time.Second)
-
-	// Aplicar middlewares globales en orden
-	// 1. DDoS Protection
-	// 2. CORS
-	// 3. Rate Limiting
-	// 4. Logging
-	// 5. Recovery
-	ddosMiddleware := security.Middleware(ddosDetector)
-
-	// Configurar orígenes CORS desde variable de entorno o usar valores por defecto
+	// 4. Configuración de Orígenes CORS
+	// Priorizamos variable de entorno para flexibilidad en el deploy
 	corsOrigins := []string{"http://localhost:5000", "https://ecos-ventas-pizzas.netlify.app"}
 	if envOrigins := os.Getenv("CORS_ALLOWED_ORIGINS"); envOrigins != "" {
 		corsOrigins = strings.Split(envOrigins, ",")
 	}
-	corsMiddleware := middleware.CORSMiddleware(corsOrigins)
-	rateLimitMiddleware := ratelimit.Middleware(limiter)
-	loggingMiddleware := middleware.LoggingMiddleware
-	recoveryMiddleware := middleware.RecoveryMiddleware
 
-	handler := ddosMiddleware(corsMiddleware(rateLimitMiddleware(loggingMiddleware(recoveryMiddleware(mux)))))
+	// 5. Cadena de Middlewares (Arquitectura de Cebolla)
+	// Mi opinión: El orden aquí es vital para que el CORS no sea bloqueado por seguridad previa.
+	// La ejecución es de AFUERA hacia ADENTRO.
+	
+	// Paso 1: Mux básico con Logging (lo más interno)
+	handler := middleware.LoggingMiddleware(mux)
 
+	// Paso 2: Aplicar Rate Limit
+	handler = ratelimit.Middleware(limiter)(handler)
+
+	// Paso 3: Aplicar Protección DDoS
+	handler = security.Middleware(ddosDetector)(handler)
+
+	// Paso 4: Aplicar CORS (Debe estar afuera para responder OPTIONS rápidamente)
+	handler = middleware.CORSMiddleware(corsOrigins)(handler)
+
+	// Paso 5: Aplicar Recovery (El escudo más externo que atrapa errores de todos los anteriores)
+	handler = middleware.RecoveryMiddleware(handler)
+
+	// 6. Lanzamiento del Servidor
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 
-	logger.Info("Servidor iniciado", map[string]interface{}{
+	logger.Info("Servidor iniciado exitosamente", map[string]interface{}{
 		"port": port,
+		"env":  os.Getenv("GO_ENV"),
 	})
-	err := http.ListenAndServe(":"+port, handler)
-	if err != nil {
-		logger.Error("Error iniciando servidor", "SERVER_ERROR", map[string]interface{}{"error": err.Error()})
+
+	server := &http.Server{
+		Addr:         ":" + port,
+		Handler:      handler,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		logger.Error("Error crítico en el servidor", "SERVER_ERROR", map[string]interface{}{
+			"error": err.Error(),
+		})
 	}
 }
