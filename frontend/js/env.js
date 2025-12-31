@@ -3,17 +3,20 @@
 
 const IsDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
-// Determinar URL del backend
+// Determinar URL del backend según el hostname
 let BACKEND_URL;
-if (window.__BACKEND_URL) {
-    // URL inyectada por el workflow en env-backend.js
-    BACKEND_URL = window.__BACKEND_URL;
-} else if (IsDev) {
+if (IsDev) {
     // Desarrollo local
     BACKEND_URL = 'http://localhost:8080/api/v1';
+} else if (window.location.hostname.includes('qa-ecos')) {
+    // QA (detecta por el hostname de Netlify QA)
+    BACKEND_URL = 'https://pizzas-ecos-backend-qa-872448320700.us-central1.run.app/api/v1';
+} else if (window.location.hostname.includes('ecos-ventas-pizzas')) {
+    // Production (detecta por el hostname de Netlify Production)
+    BACKEND_URL = 'https://pizzas-ecos-backend-prod-872448320700.us-central1.run.app/api/v1';
 } else {
-    // Fallback a QA (por si no está inyectado)
-    BACKEND_URL = 'https://pizzas-ecos-backend-qa.run.app/api/v1';
+    // Fallback a QA si no reconoce el hostname
+    BACKEND_URL = 'https://pizzas-ecos-backend-qa-872448320700.us-central1.run.app/api/v1';
 }
 
 window.BACKEND_URL = BACKEND_URL;
