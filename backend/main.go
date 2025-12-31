@@ -20,6 +20,8 @@ func initDB() error {
 }
 
 func main() {
+	// v2: CORS middleware fully enabled - no origin restrictions
+	// All origins allowed for testing
 
 	// 1. Base de datos
 	if err := initDB(); err != nil {
@@ -46,14 +48,14 @@ func main() {
 		corsOrigins = strings.Split(env, ",")
 	}
 
-	// 5. Middleware chain (orden correcto)
+	// 5. Middleware chain (CRITICAL: CORS must be FIRST after Recovery to handle OPTIONS)
 	handler := http.Handler(mux)
 
 	handler = middleware.RecoveryMiddleware(handler)
 	handler = middleware.CORSMiddleware(corsOrigins)(handler)
-	handler = security.Middleware(ddosDetector)(handler)
-	handler = ratelimit.Middleware(limiter)(handler)
 	handler = middleware.LoggingMiddleware(handler)
+	handler = ratelimit.Middleware(limiter)(handler)
+	handler = security.Middleware(ddosDetector)(handler)
 
 	// 6. Server
 	port := os.Getenv("PORT")
