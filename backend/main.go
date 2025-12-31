@@ -39,11 +39,8 @@ func main() {
 	limiter := ratelimit.NewRateLimiter(50)
 	ddosDetector := security.NewDDoSDetector(500, 10*time.Second)
 
-	// 4. CORS origins
-	corsOrigins := []string{
-		"http://localhost:5000",
-		"https://ecos-ventas-pizzas.netlify.app",
-	}
+	// 4. CORS origins - TEMPORARILY ALLOWING ALL FOR DEBUGGING
+	corsOrigins := []string{"*"}
 
 	if env := os.Getenv("CORS_ALLOWED_ORIGINS"); env != "" {
 		corsOrigins = strings.Split(env, ",")

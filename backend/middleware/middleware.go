@@ -100,7 +100,8 @@ func CORSMiddleware(allowedOrigins []string) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			origin := r.Header.Get("Origin")
 
-			if origin != "" && isAllowedOrigin(origin, allowedOrigins) {
+			// Permitir cualquier origen
+			if origin != "" {
 				w.Header().Set("Access-Control-Allow-Origin", origin)
 				w.Header().Set("Vary", "Origin")
 				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS")
@@ -109,6 +110,7 @@ func CORSMiddleware(allowedOrigins []string) func(http.Handler) http.Handler {
 				w.Header().Set("Access-Control-Max-Age", "86400")
 			}
 
+			// Responder a preflight requests
 			if r.Method == http.MethodOptions {
 				w.WriteHeader(http.StatusNoContent)
 				return
@@ -117,16 +119,6 @@ func CORSMiddleware(allowedOrigins []string) func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 		})
 	}
-}
-
-func isAllowedOrigin(origin string, allowed []string) bool {
-	for _, o := range allowed {
-		if o == origin {
-			return true
-		}
-	}
-	return false
-}
 
 /* =========================
    RECOVERY
