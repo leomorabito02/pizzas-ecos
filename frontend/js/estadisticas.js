@@ -541,6 +541,14 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.href = 'index.html';
     });
 
+    // Panel Admin
+    const btnAdminPanel = document.getElementById('btnAdminPanel');
+    if (btnAdminPanel) {
+        btnAdminPanel.addEventListener('click', () => {
+            window.location.href = 'login.html';
+        });
+    }
+
     // Modal
     document.querySelector('.btn-close-modal').addEventListener('click', cerrarModal);
     document.querySelector('.btn-cancelar-modal').addEventListener('click', cerrarModal);

@@ -180,6 +180,49 @@
             </div>
         </div>
     </div>
+
+    <!-- Footer -->
+    <footer class="footer-main">
+        <div class="footer-content">
+            <!-- Usuario Section -->
+            <div class="footer-section">
+                <div class="footer-section-title">👤 Usuario</div>
+                <div class="footer-section-item">
+                    <span id="userStatusFooter" class="user-badge">sin registrar</span>
+                </div>
+            </div>
+
+            <!-- Acerca de Section -->
+            <div class="footer-section">
+                <div class="footer-section-title">ℹ️ Acerca de</div>
+                <div class="footer-section-item">Sistema de gestión de ventas de <strong>ECOS de Esperanza ❤️</strong></div>
+            </div>
+
+            <!-- Contacto Section -->
+            <div class="footer-section">
+                <div class="footer-section-title">📱 Contacto</div>
+                <div class="footer-section-item">
+                    <a href="https://www.instagram.com/ecos.jovenesfybp/" target="_blank" rel="noopener noreferrer">
+                        📸 ECOS
+                    </a>
+                </div>
+                <div class="footer-section-item">
+                    <a href="https://www.instagram.com/leomorabito2002/" target="_blank" rel="noopener noreferrer">
+                        📸 Leo Morabito
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer-divider"></div>
+
+        <div class="footer-bottom">
+            <div class="footer-credit">
+                Hecho con <strong>❤️</strong> por <strong>Leo Morabito</strong> | 
+                <a href="https://github.com/leomorabito02" target="_blank" rel="noopener noreferrer" style="color: inherit;">GitHub</a>
+            </div>
+        </div>
+    </footer>
     
     <script>
         // Only load env-inject.js on Netlify production, not on localhost
@@ -188,6 +231,22 @@
             script.src = 'env-inject.js';
             document.head.appendChild(script);
         }
+
+        // Update footer with user status
+        document.addEventListener('DOMContentLoaded', () => {
+            const token = sessionStorage.getItem('authToken');
+            const userStatusFooter = document.getElementById('userStatusFooter');
+            
+            if (token && userStatusFooter) {
+                try {
+                    const payload = JSON.parse(atob(token.split('.')[1]));
+                    userStatusFooter.textContent = payload.username;
+                    userStatusFooter.classList.add('registered');
+                } catch (e) {
+                    userStatusFooter.textContent = 'sin registrar';
+                }
+            }
+        });
     </script>
     <!-- Scripts en orden de dependencias -->
     <!-- 1. Capa de datos y modelos -->

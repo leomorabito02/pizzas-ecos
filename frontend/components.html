@@ -1,0 +1,52 @@
+<!-- Header y Footer compartidos -->
+
+<!-- HEADER -->
+<header id="appHeader" class="app-header">
+    <div class="header-container">
+        <div class="header-left">
+            <img src="images/ecoslogo.jpeg" alt="ECOS Logo" class="logo">
+            <h1>Sistema ECOS</h1>
+        </div>
+        <div class="header-right">
+            <a href="index.html" class="header-link">📝 Ventas</a>
+            <a href="estadisticas.html" class="header-link">📊 Estadísticas</a>
+            <a href="admin.html" class="header-link admin-btn">⚙️ Panel Admin</a>
+            <button id="logoutBtn" class="header-link logout">🚪 Salir</button>
+        </div>
+    </div>
+</header>
+
+<!-- Script para manejar logout -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // Mostrar usuario actual
+    const token = sessionStorage.getItem('authToken');
+    const userInfo = document.getElementById('userInfo');
+    if (token) {
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            userInfo.textContent = `Usuario: ${payload.username}`;
+        } catch (e) {
+            userInfo.textContent = 'Usuario logueado';
+        }
+    }
+    
+    // Logout
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            sessionStorage.removeItem('authToken');
+            window.location.href = 'login.html';
+        });
+    }
+    
+    // Marcar link activo
+    const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+    document.querySelectorAll('.header-link').forEach(link => {
+        const href = link.getAttribute('href');
+        if (href === currentPage || (currentPage === '' && href === 'index.html')) {
+            link.style.borderBottom = '2px solid white';
+        }
+    });
+});
+</script>

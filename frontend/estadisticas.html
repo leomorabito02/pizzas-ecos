@@ -13,11 +13,15 @@
         <div class="header">
             <h1>📊 Estadísticas de Ventas</h1>
             <p class="subtitle">Análisis y resumen de operaciones</p>
+            <div class="header-buttons">
+                <button id="btnVolver" class="btn-volver">← Volver</button>
+                <button id="btnAdminPanel" class="btn-admin-panel">🔐 Panel Admin</button>
+            </div>
         </div>
 
         <!-- Botones de navegación -->
         <div class="nav-buttons">
-            <button id="btnVolver" class="btn-volver">← Volver</button>
+            
             <div class="tab-buttons">
                 <button class="tab-btn active" data-tab="resumen">📈 Resumen</button>
                 <button class="tab-btn" data-tab="vendedores">👥 Vendedores</button>
@@ -209,6 +213,49 @@
         <div id="mensaje" class="mensaje hidden"></div>
     </div>
 
+    <!-- Footer -->
+    <footer class="footer-main">
+        <div class="footer-content">
+            <!-- Usuario Section -->
+            <div class="footer-section">
+                <div class="footer-section-title">👤 Usuario</div>
+                <div class="footer-section-item">
+                    <span id="userStatusFooter" class="user-badge">sin registrar</span>
+                </div>
+            </div>
+
+            <!-- Acerca de Section -->
+            <div class="footer-section">
+                <div class="footer-section-title">ℹ️ Acerca de</div>
+                <div class="footer-section-item">Sistema de gestión de ventas de <strong>ECOS de Esperanza ❤️</strong></div>
+            </div>
+
+            <!-- Contacto Section -->
+            <div class="footer-section">
+                <div class="footer-section-title">📱 Contacto</div>
+                <div class="footer-section-item">
+                    <a href="https://www.instagram.com/ecos.jovenesfybp/" target="_blank" rel="noopener noreferrer">
+                        📸 ECOS
+                    </a>
+                </div>
+                <div class="footer-section-item">
+                    <a href="https://www.instagram.com/leomorabito2002/" target="_blank" rel="noopener noreferrer">
+                        📸 Leo Morabito
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer-divider"></div>
+
+        <div class="footer-bottom">
+            <div class="footer-credit">
+                Hecho con <strong>❤️</strong> por <strong>Leo Morabito</strong> | 
+                <a href="https://github.com/leomorabito02" target="_blank" rel="noopener noreferrer" style="color: inherit;">GitHub</a>
+            </div>
+        </div>
+    </footer>
+
     <script>
         // Only load env-inject.js on Netlify production, not on localhost
         if (!window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1')) {
@@ -216,6 +263,22 @@
             script.src = 'env-inject.js';
             document.head.appendChild(script);
         }
+
+        // Update footer with user status
+        document.addEventListener('DOMContentLoaded', () => {
+            const token = sessionStorage.getItem('authToken');
+            const userStatusFooter = document.getElementById('userStatusFooter');
+            
+            if (token && userStatusFooter) {
+                try {
+                    const payload = JSON.parse(atob(token.split('.')[1]));
+                    userStatusFooter.textContent = payload.username;
+                    userStatusFooter.classList.add('registered');
+                } catch (e) {
+                    userStatusFooter.textContent = 'sin registrar';
+                }
+            }
+        });
     </script>
     <script src="js/env.js"></script>
     <script src="js/api-service.js"></script>
