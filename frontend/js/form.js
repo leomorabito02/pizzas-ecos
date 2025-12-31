@@ -62,15 +62,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     }, 10000);
     
     try {
-        // Inicializar API_BASE desde APIService
-        const api = new APIService();
+        // Esperar a que env.js haya establecido window.BACKEND_URL
+        let retries = 0;
+        while (!window.BACKEND_URL && retries < 50) {
+            await new Promise(resolve => setTimeout(resolve, 10));
+            retries++;
+        }
+        
+        if (!window.BACKEND_URL) {
+            throw new Error('BACKEND_URL no fue establecida por env.js');
+        }
+        
+        // Usar la instancia global 'api' que ya existe
         API_BASE = api.baseURL;
-        Logger.log('API_BASE:', API_BASE);
+        Logger.log('✅ API_BASE:', API_BASE);
         
         // Cargar datos iniciales
         UIUtils.showSpinner(true);
         const url = `${API_BASE}/data`;
-        Logger.log('Fetching from:', url);
+        Logger.log('📡 Fetching from:', url);
         const resp = await fetch(url);
         
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
