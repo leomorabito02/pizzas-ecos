@@ -119,6 +119,20 @@ func CORSMiddleware(allowedOrigins []string) func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+func isAllowedOrigin(origin string, allowed []string) bool {
+	// Si el wildcard "*" está en la lista, permitir cualquier origen
+	for _, o := range allowed {
+		if o == "*" {
+			return true
+		}
+		if o == origin {
+			return true
+		}
+	}
+	return false
+}
 
 /* =========================
    RECOVERY
