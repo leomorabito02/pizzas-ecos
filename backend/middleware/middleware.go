@@ -61,7 +61,7 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		wrapped := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
-		
+
 		next.ServeHTTP(wrapped, r)
 
 		duration := time.Since(start)
@@ -75,31 +75,18 @@ func CORSMiddleware(allowedOrigins []string) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			origin := r.Header.Get("Origin")
 
-			// Validación de origen
-			isAllowed := false
-			if len(allowedOrigins) > 0 && allowedOrigins[0] == "*" {
-				isAllowed = true
-			} else {
-				for _, allowed := range allowedOrigins {
-					if allowed == origin {
-						isAllowed = true
-						break
-					}
-				}
-			}
-
-			// Inyectar cabeceras si el origen es permitido
-			if isAllowed && origin != "" {
+			// [CRÍTICO] Siempre setear headers CORS para preflight
+			if origin != "" {
 				w.Header().Set("Access-Control-Allow-Origin", origin)
-				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE")
-				w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE, PATCH")
+				w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
 				w.Header().Set("Access-Control-Allow-Credentials", "true")
-				w.Header().Set("Access-Control-Max-Age", "3600")
+				w.Header().Set("Access-Control-Max-Age", "86400")
 			}
 
-			// [CRÍTICO] Manejo de Preflight
+			// Manejo de Preflight (OPTIONS)
 			if r.Method == http.MethodOptions {
-				w.WriteHeader(http.StatusOK)
+				w.WriteHeader(http.StatusNoContent)
 				return
 			}
 
