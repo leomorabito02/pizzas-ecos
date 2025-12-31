@@ -298,15 +298,25 @@ async function loadDashboard() {
     try {
         showLoadingSpinner(true);
         
-        const token = sessionStorage.getItem('authToken');
+        // Obtener todas las ventas para calcular estadísticas
+        const ventasResponse = await api.obtenerVentas();
+        const ventasArray = Array.isArray(ventasResponse) ? ventasResponse : (ventasResponse?.data || []);
         
-        // Obtener estadísticas sin canceladas para totales correctos
-        const sheetData = await api.obtenerEstadisticas();
+        // Calcular totales (excluyendo canceladas)
+        let totalVentas = 0;
+        let totalMonto = 0;
         
-        // Acceder correctamente a resumen dentro de sheetData
-        const resumen = sheetData.resumen || {};
-        document.getElementById('totalVentas').textContent = resumen.ventas_totales || 0;
-        document.getElementById('totalMonto').textContent = `$${(resumen.total_cobrado || 0).toFixed(2)}`;
+        if (Array.isArray(ventasArray)) {
+            ventasArray.forEach(venta => {
+                if (venta.estado !== 'cancelada') {
+                    totalVentas++;
+                    totalMonto += venta.total || 0;
+                }
+            });
+        }
+        
+        document.getElementById('totalVentas').textContent = totalVentas;
+        document.getElementById('totalMonto').textContent = `$${totalMonto.toFixed(2)}`;
 
         // Load additional data
         const dataInfo = await api.getData();
@@ -317,11 +327,8 @@ async function loadDashboard() {
         console.log('Dashboard vendedores count:', vendedores.length);
         document.getElementById('totalVendedores').textContent = vendedores.length || 0;
 
-        // Cargar ventas recientes (con todas para mostrar en tabla)
-        const response = await api.obtenerVentas();
-        // Handle both response formats: {status, data, message} or direct array
-        const salesData = Array.isArray(response) ? response : (response?.data || []);
-        displayRecentSales(Array.isArray(salesData) ? salesData.slice(0, 10) : []);
+        // Mostrar ventas recientes (últimas 10)
+        displayRecentSales(Array.isArray(ventasArray) ? ventasArray.slice(0, 10) : []);
         
         hideLoadingSpinner();
 
@@ -847,18 +854,16 @@ async function loadUsuarios() {
                 <thead>
                     <tr>
                         <th>Usuario</th>
-                        <th>Rol</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
                     ${usuarios.map(u => `
                         <tr>
-                            <td>${u.username}</td>
-                            <td><span class="rol-badge ${u.rol.toLowerCase()}">${u.rol}</span></td>
-                            <td>
-                                <button class="action-btn edit-btn" data-action="edit" data-id="${u.id}">Editar</button>
-                                <button class="action-btn delete-btn" data-action="delete" data-id="${u.id}">Eliminar</button>
+                            <td data-label="Usuario"><strong>${u.username}</strong></td>
+                            <td data-label="Acciones">
+                                <button class="btn-small btn-edit" data-action="edit" data-id="${u.id}" data-username="${u.username.replace(/"/g, '&quot;')}">Editar</button>
+                                <button class="btn-small btn-delete" data-action="delete" data-id="${u.id}">Eliminar</button>
                             </td>
                         </tr>
                     `).join('')}
@@ -880,7 +885,6 @@ function abrirModalUsuario(id) {
 
     document.getElementById('editUsuarioId').value = usuarioAEditar.id;
     document.getElementById('editUsuarioUsername').value = usuarioAEditar.username;
-    document.getElementById('editUsuarioRol').value = usuarioAEditar.rol;
     document.getElementById('editUsuarioPassword').value = '';
 
     document.getElementById('editUsuarioModal').classList.remove('hidden');
@@ -901,7 +905,6 @@ function setupEditUsuarioForm() {
         const id = document.getElementById('editUsuarioId').value;
         const username = document.getElementById('editUsuarioUsername').value.trim();
         const password = document.getElementById('editUsuarioPassword').value.trim();
-        const rol = document.getElementById('editUsuarioRol').value;
         const errorDiv = document.getElementById('editUsuarioError');
 
         // Limpiar errores previos
@@ -921,19 +924,13 @@ function setupEditUsuarioForm() {
             return;
         }
 
-        if (!rol) {
-            errorDiv.textContent = 'El rol es requerido';
-            errorDiv.classList.add('show');
-            return;
-        }
-
         if (password && password.length < 4) {
             errorDiv.textContent = 'Si cambias la contraseña, debe tener al menos 4 caracteres';
             errorDiv.classList.add('show');
             return;
         }
 
-        const body = { username, rol };
+        const body = { username };
         if (password) {
             body.password = password;
         }
@@ -954,15 +951,15 @@ function setupEditUsuarioForm() {
             if (response.ok) {
                 cerrarModalUsuario();
                 await loadUsuarios();
-                showSuccess('Usuario actualizado exitosamente');
+                showSuccess('Admin actualizado exitosamente');
             } else {
-                errorDiv.textContent = responseData.message || 'Error al actualizar usuario';
+                errorDiv.textContent = responseData.message || 'Error al actualizar admin';
                 errorDiv.classList.add('show');
-                showError(responseData.message || 'Error al actualizar usuario');
+                showError(responseData.message || 'Error al actualizar admin');
             }
         } catch (error) {
             console.error('Error:', error);
-            showError('Error de conexión al actualizar usuario');
+            showError('Error de conexión al actualizar admin');
         } finally {
             hideLoadingSpinner();
         }
