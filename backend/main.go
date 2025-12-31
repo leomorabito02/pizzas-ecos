@@ -49,23 +49,23 @@ func main() {
 	}
 
 	// 5. Cadena de Middlewares (Arquitectura de Cebolla)
-	// Mi opinión: El orden aquí es vital para que el CORS no sea bloqueado por seguridad previa.
-	// La ejecución es de AFUERA hacia ADENTRO.
+	// ORDEN CRÍTICO: CORS debe ser el primero en responder (después de Recovery)
+	// para que los requests OPTIONS (preflight) se resuelvan inmediatamente
 	
-	// Paso 1: Mux básico con Logging (lo más interno)
-	handler := middleware.LoggingMiddleware(mux)
+	// Paso 1: Recovery (El escudo más externo)
+	handler := middleware.RecoveryMiddleware(mux)
 
-	// Paso 2: Aplicar Rate Limit
-	handler = ratelimit.Middleware(limiter)(handler)
-
-	// Paso 3: Aplicar Protección DDoS
-	handler = security.Middleware(ddosDetector)(handler)
-
-	// Paso 4: Aplicar CORS (Debe estar afuera para responder OPTIONS rápidamente)
+	// Paso 2: CORS (Debe ser casi el primero para responder preflight)
 	handler = middleware.CORSMiddleware(corsOrigins)(handler)
 
-	// Paso 5: Aplicar Recovery (El escudo más externo que atrapa errores de todos los anteriores)
-	handler = middleware.RecoveryMiddleware(handler)
+	// Paso 3: Protección DDoS
+	handler = security.Middleware(ddosDetector)(handler)
+
+	// Paso 4: Rate Limit
+	handler = ratelimit.Middleware(limiter)(handler)
+
+	// Paso 5: Logging (lo más interno antes del router)
+	handler = middleware.LoggingMiddleware(handler)
 
 	// 6. Lanzamiento del Servidor
 	port := os.Getenv("PORT")
