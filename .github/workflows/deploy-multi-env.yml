@@ -43,6 +43,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and push to Docker Hub
+        id: docker
         uses: docker/build-push-action@v4
         with:
           context: ./backend
@@ -56,11 +57,7 @@ jobs:
 
       - name: Store image URL
         id: image
-        shell: bash
-        run: |
-          IMAGE_URL="${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
-          echo "url=${IMAGE_URL}" >> $GITHUB_OUTPUT
-          echo "Image: ${IMAGE_URL}"
+        run: echo "url=${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}" >> $GITHUB_OUTPUT
 
   deploy-qa:
     name: Deploy to QA
