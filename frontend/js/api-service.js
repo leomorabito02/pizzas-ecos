@@ -5,21 +5,30 @@
 
 class APIService {
     constructor(baseURL) {
-        this.baseURL = baseURL || this.getDefaultURL();
+        this._baseURL = baseURL;
         this.token = this.getStoredToken();
+    }
+
+    // Getter para baseURL que siempre usa la URL actualizada
+    get baseURL() {
+        if (this._baseURL) return this._baseURL;
+        return this.getDefaultURL();
     }
 
     /**
      * Determina URL del backend según ambiente
      */
     getDefaultURL() {
-        // Usar variable inyectada por el workflow
+        // Verificar si window.BACKEND_URL fue establecida por env.js
         if (window.BACKEND_URL) {
+            console.log('📡 Usando BACKEND_URL:', window.BACKEND_URL);
             return window.BACKEND_URL;
         }
         
         const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-        return isDev ? 'http://localhost:8080/api/v1' : 'https://pizzas-ecos-backend-qa.run.app/api/v1';
+        const fallback = isDev ? 'http://localhost:8080/api/v1' : 'https://pizzas-ecos-backend-qa-872448320700.us-central1.run.app/api/v1';
+        console.log('📡 Fallback URL:', fallback);
+        return fallback;
     }
 
     /**
