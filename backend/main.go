@@ -16,6 +16,7 @@ import (
 )
 
 // inicDB inicializa la conexión a la base de datos
+// CORS middleware is properly configured
 func inicDB() error {
 	return config.InitDB()
 }

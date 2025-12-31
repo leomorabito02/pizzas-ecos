@@ -292,16 +292,20 @@ function agregarProductoAlPedido() {
         total: producto.precio * cantidad
     });
     
+    // Reset del formulario - limpiar ambos campos
     document.getElementById('comboTipo').value = '';
     document.getElementById('comboCantidad').value = '1';
+    document.getElementById('comboPrice').textContent = '$0.00';
+    
     actualizarResumen();
     renderizarPedido();
     verificarBtnAgregarAlPedido();
+    UIUtils.showMessage('Producto agregado al pedido', 'success');
 }
 
 function actualizarResumen() {
     const total = productosEnVenta.reduce((sum, p) => sum + p.total, 0);
-    const el = document.getElementById('totalPedido');
+    const el = document.getElementById('totalVenta');
     if (el) el.textContent = UIUtils.formatCurrency(total);
 }
 
@@ -309,9 +313,15 @@ function actualizarPrecio() {
     const tipo = document.getElementById('comboTipo').value;
     const cantidad = parseInt(document.getElementById('comboCantidad').value) || 1;
     
-    const producto = datosNegocio.productos?.find(p => p.id == tipo);
+    if (!tipo) {
+        document.getElementById('comboPrice').textContent = '$0.00';
+        return;
+    }
+    
+    const producto = datosNegocio.productos?.find(p => String(p.id) === String(tipo));
     if (!producto) {
-        document.getElementById('comboPrice').textContent = '$0';
+        Logger.log('Producto no encontrado:', tipo);
+        document.getElementById('comboPrice').textContent = '$0.00';
         return;
     }
     
