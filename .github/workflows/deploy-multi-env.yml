@@ -4,16 +4,7 @@ on:
   push:
     branches:
       - develop    # Build → Push Docker Hub → Deploy a QA
-      - main       # Build → Push Docker Hub → Deploy a Prod
-  workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Ambiente a desplegar'
-        required: true
-        type: choice
-        options:
-          - qa
-          - production
+      - main       # Build → Push Docker Hub → Await approval → Deploy to Prod
 
 env:
   REGISTRY: docker.io
@@ -22,63 +13,8 @@ env:
   GCP_REGION: us-central1
 
 jobs:
-  detect-changes:
-    name: Detectar qué cambió
-    runs-on: ubuntu-latest
-    outputs:
-      backend_changed: ${{ steps.changes.outputs.backend }}
-      frontend_changed: ${{ steps.changes.outputs.frontend }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Detect file changes
-        id: changes
-        run: |
-          if git diff --quiet origin/main...HEAD -- backend/ 2>/dev/null; then
-            echo "backend=false" >> $GITHUB_OUTPUT
-          else
-            echo "backend=true" >> $GITHUB_OUTPUT
-          fi
-          if git diff --quiet origin/main...HEAD -- frontend/ 2>/dev/null; then
-            echo "frontend=false" >> $GITHUB_OUTPUT
-          else
-            echo "frontend=true" >> $GITHUB_OUTPUT
-          fi
-
-  validate:
-    name: Validar código
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: '1.25'
-          cache: true
-          cache-dependency-path: backend/go.sum
-      - name: Backend - Run linter
-        run: |
-          cd backend
-          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-          golangci-lint run ./... --timeout=5m
-        continue-on-error: true
-      - name: Backend - Run tests
-        run: cd backend && go test -v -race -coverprofile=coverage.out ./...
-        continue-on-error: true
-      - name: Frontend - Check HTML syntax
-        run: |
-          cd frontend
-          for file in *.html; do
-            if ! grep -q "<!DOCTYPE html>" "$file"; then
-              echo "⚠️  Warning: $file may not be valid HTML5"
-            fi
-          done
-
-  build-and-push-dockerhub:
+  build-and-push:
     name: Build & Push to Docker Hub
-    needs: [detect-changes, validate]
-    if: needs.detect-changes.outputs.backend_changed == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -108,14 +44,14 @@ jobs:
         id: image
         run: echo "url=${{ env.REGISTRY }}/${{ env.DOCKER_PATH }}/${{ env.IMAGE_NAME }}:${{ github.sha }}" >> $GITHUB_OUTPUT
 
-  deploy-qa-backend:
-    name: Deploy Backend to QA (Cloud Run)
-    needs: [detect-changes, validate, build-and-push-dockerhub]
-    if: github.ref == 'refs/heads/develop' && needs.detect-changes.outputs.backend_changed == 'true'
+  deploy-qa:
+    name: Deploy to QA
+    needs: build-and-push
+    if: github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
     environment:
       name: qa
-      url: ${{ steps.get-url.outputs.url }}
+      url: ${{ steps.backend-url.outputs.url }}
     permissions:
       contents: read
       id-token: write
@@ -128,51 +64,39 @@ jobs:
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_QA }}
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v1
-      - name: Deploy to Cloud Run (QA)
+      - name: Deploy Backend to Cloud Run (QA)
         run: |
           gcloud run deploy pizzas-ecos-backend-qa \
-            --image ${{ needs.build-and-push-dockerhub.outputs.image_url }} \
+            --image ${{ needs.build-and-push.outputs.image_url }} \
             --platform managed \
             --region ${{ env.GCP_REGION }} \
             --allow-unauthenticated \
             --port 8080 \
             --memory 512Mi \
-            --cpu 1 \
-            --max-instances 2 \
+            --cpu 0.5 \
+            --max-instances 1 \
             --min-instances 0 \
             --timeout 60 \
             --concurrency 50 \
-            --set-env-vars DATABASE_URL=${{ secrets.DATABASE_URL_QA }},JWT_SECRET=${{ secrets.JWT_SECRET_QA }},CORS_ALLOWED_ORIGINS=${{ secrets.CORS_ALLOWED_ORIGINS_QA }},ENV=qa,DEBUG=false \
-            --project ${{ secrets.GCP_PROJECT_ID_QA }}
-      - name: Get Cloud Run URL (QA)
-        id: get-url
+            --set-env-vars DATABASE_URL=${{ secrets.DATABASE_URL}},JWT_SECRET=${{ secrets.JWT_SECRET_QA }},CORS_ALLOWED_ORIGINS=${{ secrets.CORS_ALLOWED_ORIGINS_QA }},ENV=qa,DEBUG=false \
+            --project ${{ secrets.GCP_PROJECT_ID }}
+      - name: Get Backend URL
+        id: backend-url
         run: |
           URL=$(gcloud run services describe pizzas-ecos-backend-qa \
             --platform managed \
             --region ${{ env.GCP_REGION }} \
             --format 'value(status.url)' \
-            --project ${{ secrets.GCP_PROJECT_ID_QA }})
+            --project ${{ secrets.GCP_PROJECT_ID }})
           echo "url=$URL" >> $GITHUB_OUTPUT
-      - name: Test endpoint (QA)
-        run: curl -s ${{ steps.get-url.outputs.url }}/api/v1/health | head -c 100
-
-  deploy-qa-frontend:
-    name: Deploy Frontend to QA (Netlify)
-    needs: [detect-changes, validate]
-    if: github.ref == 'refs/heads/develop' && needs.detect-changes.outputs.frontend_changed == 'true'
-    runs-on: ubuntu-latest
-    environment:
-      name: qa
-      url: https://qa-ecos-ventas-pizzas.netlify.app
-    steps:
-      - uses: actions/checkout@v4
-      - name: Deploy to Netlify (QA)
+          echo "✅ QA Backend: $URL"
+      - name: Deploy Frontend to Netlify (QA)
         uses: nwtgck/actions-netlify@v2.1
         with:
           publish-dir: './frontend'
           production-deploy: false
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          deploy-message: 'Deploy to QA from ${{ github.sha }}'
+          deploy-message: 'QA deploy from ${{ github.sha }}'
           github-deployment-environment: qa
           github-deployment-status: success
           netlify-config-path: './netlify.toml'
@@ -181,26 +105,24 @@ jobs:
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID_QA }}
 
   approve-production:
-    name: Aprobar despliegue a Producción
-    needs: [detect-changes]
+    name: Approve Production Deployment
+    needs: build-and-push
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
       name: production
     steps:
-      - name: Check for manual approval
-        run: |
-          echo "✅ Aprobación manual requerida"
-          echo "Este job bloquea hasta que se apruebe en GitHub"
+      - name: Waiting for approval
+        run: echo "⏳ Awaiting manual approval to deploy to production..."
 
-  deploy-prod-backend:
-    name: Deploy Backend to Production (Cloud Run)
-    needs: [detect-changes, validate, approve-production, build-and-push-dockerhub]
-    if: github.ref == 'refs/heads/main' && needs.detect-changes.outputs.backend_changed == 'true'
+  deploy-prod:
+    name: Deploy to Production
+    needs: [build-and-push, approve-production]
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
       name: production
-      url: ${{ steps.get-url.outputs.url }}
+      url: ${{ steps.backend-url.outputs.url }}
     permissions:
       contents: read
       id-token: write
@@ -210,198 +132,36 @@ jobs:
         uses: google-github-actions/auth@v1
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER_PROD }}
-          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_PROD }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v1
-      - name: Deploy to Cloud Run (Production)
+      - name: Deploy Backend to Cloud Run (Production)
         run: |
           gcloud run deploy pizzas-ecos-backend-prod \
-            --image ${{ needs.build-and-push-dockerhub.outputs.image_url }} \
+            --image ${{ needs.build-and-push.outputs.image_url }} \
             --platform managed \
             --region ${{ env.GCP_REGION }} \
             --allow-unauthenticated \
             --port 8080 \
             --memory 1Gi \
-            --cpu 1 \
-            --max-instances 5 \
-            --min-instances 1 \
+            --cpu 0.8 \
+            --max-instances 1 \
+            --min-instances 0 \
             --timeout 120 \
             --concurrency 100 \
-            --set-env-vars DATABASE_URL=${{ secrets.DATABASE_URL_PROD }},JWT_SECRET=${{ secrets.JWT_SECRET_PROD }},CORS_ALLOWED_ORIGINS=${{ secrets.CORS_ALLOWED_ORIGINS_PROD }},ENV=prod,DEBUG=false \
-            --project ${{ secrets.GCP_PROJECT_ID_PROD }}
-      - name: Get Cloud Run URL (Production)
-        id: get-url
+            --set-env-vars DATABASE_URL=${{ secrets.DATABASE_URL }},JWT_SECRET=${{ secrets.JWT_SECRET_PROD }},CORS_ALLOWED_ORIGINS=${{ secrets.CORS_ALLOWED_ORIGINS_PROD }},ENV=prod,DEBUG=false \
+            --project ${{ secrets.GCP_PROJECT_ID_}}
+      - name: Get Backend URL
+        id: backend-url
         run: |
           URL=$(gcloud run services describe pizzas-ecos-backend-prod \
-            --platform managed \
-            --region ${{ env.GCP_REGION }} \
-            --format 'value(status.url)' \
-            --project ${{ secrets.GCP_PROJECT_ID_PROD }})
-          echo "url=$URL" >> $GITHUB_OUTPUT
-      - name: Test endpoint (Production)
-        run: curl -s ${{ steps.get-url.outputs.url }}/api/v1/health | head -c 100
-
-  deploy-prod-frontend:
-    name: Deploy Frontend to Production (Netlify)
-    needs: [detect-changes, validate, approve-production]
-    if: github.ref == 'refs/heads/main' && needs.detect-changes.outputs.frontend_changed == 'true'
-    runs-on: ubuntu-latest
-    environment:
-      name: production
-      url: https://ecos-ventas-pizzas.netlify.app
-    steps:
-      - uses: actions/checkout@v4
-      - name: Deploy to Netlify (Production)
-        uses: nwtgck/actions-netlify@v2.1
-        with:
-          publish-dir: './frontend'
-          production-deploy: true
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          deploy-message: '🚀 Production deploy from ${{ github.sha }}'
-          github-deployment-environment: production
-          github-deployment-status: success
-          netlify-config-path: './netlify.toml'
-        env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID_PROD }}
-    runs-on: ubuntu-latest
-    environment:
-      name: qa
-      url: ${{ steps.get-url.outputs.url }}
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - uses: actions/checkout@v4
-      - name: Authenticate to Google Cloud (QA)
-        uses: google-github-actions/auth@v1
-        with:
-          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER_QA }}
-          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_QA }}
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v1
-      - name: Deploy to Cloud Run (QA)
-        run: |
-          gcloud run deploy pizzas-ecos-backend-qa \
-            --image ${{ needs.build-and-push-dockerhub.outputs.image_url }} \
-            --platform managed \
-            --region ${{ env.GCP_REGION }} \
-            --allow-unauthenticated \
-            --port 8080 \
-            --memory 512Mi \
-            --cpu 1 \
-            --max-instances 2 \
-            --min-instances 0 \
-            --timeout 60 \
-            --concurrency 50 \
-            --set-env-vars DATABASE_URL=${{ secrets.DATABASE_URL_QA }},JWT_SECRET=${{ secrets.JWT_SECRET_QA }},CORS_ALLOWED_ORIGINS=${{ secrets.CORS_ALLOWED_ORIGINS_QA }},ENV=qa,DEBUG=false \
-            --project ${{ secrets.GCP_PROJECT_ID }}
-      - name: Get Cloud Run URL (QA)
-        id: get-url
-        run: |
-          URL=$(gcloud run services describe pizzas-ecos-backend-qa
             --platform managed \
             --region ${{ env.GCP_REGION }} \
             --format 'value(status.url)' \
             --project ${{ secrets.GCP_PROJECT_ID }})
           echo "url=$URL" >> $GITHUB_OUTPUT
-      - name: Test endpoint (QA)
-        run: sleep 5 && curl -s "${{ steps.get-url.outputs.url }}/api/v1/data" | head -c 100 || true
-
-  deploy-qa-frontend:
-    name: Deploy Frontend to QA (Netlify)
-    needs: [detect-changes, validate]
-    if: github.ref == 'refs/heads/develop' && needs.detect-changes.outputs.frontend_changed == 'true'
-    runs-on: ubuntu-latest
-    environment:
-      name: qa
-      url: https://qa-ecos-ventas-pizzas.netlify.app
-    steps:
-      - uses: actions/checkout@v4
-      - name: Deploy to Netlify (QA)
-        uses: nwtgck/actions-netlify@v2.1
-        with:
-          publish-dir: './frontend'
-          production-deploy: false
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          deploy-message: 'Deploy to QA from ${{ github.sha }}'
-          github-deployment-environment: qa
-          github-deployment-status: success
-          netlify-config-path: './netlify.toml'
-        env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID_QA }}
-
-  approve-production:
-    name: Aprobar despliegue a Producción
-    needs: [deploy-qa-backend, deploy-qa-frontend]
-    if: always()
-    runs-on: ubuntu-latest
-    environment:
-      name: production
-    steps:
-      - name: Check QA deployment
-        run: echo "✅ QA deployment completed. Waiting for manual approval for production..."
-
-  deploy-prod-backend:
-    name: Deploy Backend to Production (Cloud Run)
-    needs: [detect-changes, validate, build-and-push-dockerhub, approve-production]
-    if: (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch') && needs.detect-changes.outputs.backend_changed == 'true'
-    runs-on: ubuntu-latest
-    environment:
-      name: production
-      url: ${{ steps.get-url.outputs.url }}
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - uses: actions/checkout@v4
-      - name: Authenticate to Google Cloud (Production)
-        uses: google-github-actions/auth@v1
-        with:
-          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER_PROD }}
-          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_PROD }}
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v1
-      - name: Deploy to Cloud Run (Production)
-        run: |
-          gcloud run deploy pizzas-ecos-backend-prod \
-            --image ${{ needs.build-and-push-dockerhub.outputs.image_url }} \
-            --platform managed \
-            --region ${{ env.GCP_REGION }} \
-            --allow-unauthenticated \
-            --port 8080 \
-            --memory 1Gi \
-            --cpu 1 \
-            --max-instances 5 \
-            --min-instances 1 \
-            --timeout 120 \
-            --concurrency 100 \
-            --set-env-vars DATABASE_URL=${{ secrets.DATABASE_URL_PROD }},JWT_SECRET=${{ secrets.JWT_SECRET_PROD }},CORS_ALLOWED_ORIGINS=${{ secrets.CORS_ALLOWED_ORIGINS_PROD }},ENV=production,DEBUG=false \
-            --project ${{ secrets.GCP_PROJECT_ID_PROD }}
-      - name: Get Cloud Run URL (Production)
-        id: get-url
-        run: |
-          URL=$(gcloud run services describe pizzas-ecos-backend-prod \
-            --platform managed \
-            --region ${{ env.GCP_REGION }} \
-            --format 'value(status.url)' \
-            --project ${{ secrets.GCP_PROJECT_ID_PROD }})
-          echo "url=$URL" >> $GITHUB_OUTPUT
-      - name: Test endpoint (Production)
-        run: sleep 5 && curl -s "${{ steps.get-url.outputs.url }}/api/v1/data" | head -c 100 || true
-
-  deploy-prod-frontend:
-    name: Deploy Frontend to Production (Netlify)
-    needs: [detect-changes, validate, approve-production]
-    if: (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch') && needs.detect-changes.outputs.frontend_changed == 'true'
-    runs-on: ubuntu-latest
-    environment:
-      name: production
-      url: https://ecos-ventas-pizzas.netlify.app
-    steps:
-      - uses: actions/checkout@v4
-      - name: Deploy to Netlify (Production)
+          echo "✅ Production Backend: $URL"
+      - name: Deploy Frontend to Netlify (Production)
         uses: nwtgck/actions-netlify@v2.1
         with:
           publish-dir: './frontend'
