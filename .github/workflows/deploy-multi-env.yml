@@ -81,6 +81,14 @@ jobs:
           JWT_SEC: ${{ env.JWT_SECRET }}
           CORS_ORIGINS: ${{ env.CORS_ALLOWED_ORIGINS }}
         run: |
+          cat > /tmp/env-vars-qa.yaml <<EOF
+          DATABASE_URL: "${DB_URL}"
+          JWT_SECRET: "${JWT_SEC}"
+          CORS_ALLOWED_ORIGINS: "${CORS_ORIGINS}"
+          ENV: qa
+          DEBUG: "false"
+          EOF
+          
           gcloud run deploy pizzas-ecos-backend-qa \
             --image ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
             --platform managed \
@@ -93,7 +101,7 @@ jobs:
             --min-instances 0 \
             --timeout 60 \
             --concurrency 50 \
-            --set-env-vars DATABASE_URL="${DB_URL}",JWT_SECRET="${JWT_SEC}",CORS_ALLOWED_ORIGINS="${CORS_ORIGINS}",ENV=qa,DEBUG=false \
+            --env-vars-file /tmp/env-vars-qa.yaml \
             --project ${{ env.GCP_PROJECT_ID }}
 
       - name: Get Backend URL
@@ -159,6 +167,14 @@ jobs:
           JWT_SEC: ${{ env.JWT_SECRET }}
           CORS_ORIGINS: ${{ env.CORS_ALLOWED_ORIGINS }}
         run: |
+          cat > /tmp/env-vars-prod.yaml <<EOF
+          DATABASE_URL: "${DB_URL}"
+          JWT_SECRET: "${JWT_SEC}"
+          CORS_ALLOWED_ORIGINS: "${CORS_ORIGINS}"
+          ENV: prod
+          DEBUG: "false"
+          EOF
+          
           gcloud run deploy pizzas-ecos-backend-prod \
             --image ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
             --platform managed \
@@ -171,7 +187,7 @@ jobs:
             --min-instances 0 \
             --timeout 120 \
             --concurrency 100 \
-            --set-env-vars DATABASE_URL="${DB_URL}",JWT_SECRET="${JWT_SEC}",CORS_ALLOWED_ORIGINS="${CORS_ORIGINS}",ENV=prod,DEBUG=false \
+            --env-vars-file /tmp/env-vars-prod.yaml \
             --project ${{ env.GCP_PROJECT_ID }}
 
       - name: Get Backend URL
