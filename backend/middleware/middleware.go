@@ -33,22 +33,76 @@ func AuthMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		// Permitir rutas públicas sin autenticación
-		publicPaths := map[string]bool{
-			"/api/v1/auth/login": true,
-			"/api/v1/login":      true,
-			"/api/v1/data":       true,
-			"/api/v1/health":     true,
+		path := r.URL.Path
+		method := r.Method
+
+		// 🔐 RUTAS COMPLETAMENTE PROTEGIDAS
+		protectedPaths := map[string]bool{
+			"/api/v1/admin": true, // Admin dashboard
 		}
 
-		if publicPaths[r.URL.Path] {
-			next.ServeHTTP(w, r)
-			return
+		if protectedPaths[path] {
+			goto requireAuth
 		}
 
+		// 🔐 OPERACIONES PROTEGIDAS (POST/PUT/DELETE en productos y vendedores)
+		// POST crear productos (solo admin)
+		if method == http.MethodPost && (path == "/api/v1/productos" || path == "/api/v1/crear-producto") {
+			goto requireAuth
+		}
+
+		// PUT/DELETE editar/eliminar productos (solo admin)
+		if (method == http.MethodPut || method == http.MethodDelete) && path == "/api/v1/productos" {
+			goto requireAuth
+		}
+		if method == http.MethodPut && (path == "/api/v1/actualizar-producto" || path == "/api/v1/productos/:id") {
+			goto requireAuth
+		}
+		if method == http.MethodDelete && (path == "/api/v1/eliminar-producto" || path == "/api/v1/productos/:id") {
+			goto requireAuth
+		}
+
+		// POST crear vendedores (solo admin)
+		if method == http.MethodPost && (path == "/api/v1/vendedores" || path == "/api/v1/crear-vendedor") {
+			goto requireAuth
+		}
+
+		// PUT/DELETE editar/eliminar vendedores (solo admin)
+		if (method == http.MethodPut || method == http.MethodDelete) && path == "/api/v1/vendedores" {
+			goto requireAuth
+		}
+		if method == http.MethodPut && (path == "/api/v1/actualizar-vendedor" || path == "/api/v1/vendedores/:id") {
+			goto requireAuth
+		}
+		if method == http.MethodDelete && (path == "/api/v1/eliminar-vendedor" || path == "/api/v1/vendedores/:id") {
+			goto requireAuth
+		}
+
+		// POST crear usuarios (solo admin)
+		if method == http.MethodPost && (path == "/api/v1/usuarios" || path == "/api/v1/crear-usuario") {
+			goto requireAuth
+		}
+
+		// PUT/DELETE usuarios (solo admin)
+		if (method == http.MethodPut || method == http.MethodDelete) && (path == "/api/v1/usuarios" || path == "/api/v1/actualizar-usuario" || path == "/api/v1/eliminar-usuario") {
+			goto requireAuth
+		}
+
+		// ✅ TODO LO DEMÁS ES PÚBLICO
+		// - Todos pueden autenticarse (/login, /auth/login)
+		// - Todos pueden ver datos iniciales (/data)
+		// - Todos pueden ver productos (GET)
+		// - Todos pueden ver vendedores (GET)
+		// - Todos pueden crear/editar ventas
+		// - Todos pueden ver estadísticas
+		next.ServeHTTP(w, r)
+		return
+
+	requireAuth:
+		// Validar token JWT
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
-			unauthorized(w, "Token requerido")
+			unauthorized(w, "Token requerido para esta acción")
 			return
 		}
 
