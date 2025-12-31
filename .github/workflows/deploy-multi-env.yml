@@ -114,6 +114,12 @@ jobs:
           echo "url=$URL" >> $GITHUB_OUTPUT
           echo "✅ QA Backend: $URL"
 
+      - name: Inject QA Backend URL for Frontend
+        run: |
+          cat > frontend/env-backend.js << 'EOF'
+          window.__BACKEND_URL = "https://pizzas-ecos-backend-qa.run.app/api/v1";
+          EOF
+
       - name: Deploy Frontend to Netlify (QA)
         uses: nwtgck/actions-netlify@v2.1
         with:
@@ -198,6 +204,12 @@ jobs:
             --project ${{ env.GCP_PROJECT_ID }})
           echo "url=$URL" >> $GITHUB_OUTPUT
           echo "✅ Production Backend: $URL"
+
+      - name: Inject Production Backend URL for Frontend
+        run: |
+          cat > frontend/env-backend.js << 'EOF'
+          window.__BACKEND_URL = "https://pizzas-ecos-backend-prod.run.app/api/v1";
+          EOF
 
       - name: Deploy Frontend to Netlify (Production)
         uses: nwtgck/actions-netlify@v2.1

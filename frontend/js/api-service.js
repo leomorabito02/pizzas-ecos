@@ -13,13 +13,13 @@ class APIService {
      * Determina URL del backend según ambiente
      */
     getDefaultURL() {
-        // Usar variable de entorno inyectada por Netlify si existe
-        if (window.REACT_APP_API_URL) {
-            return window.REACT_APP_API_URL;
+        // Usar variable inyectada por el workflow
+        if (window.BACKEND_URL) {
+            return window.BACKEND_URL;
         }
         
         const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-        return isDev ? 'http://localhost:8080/api/v1' : 'https://pizzas-ecos.onrender.com/api/v1';
+        return isDev ? 'http://localhost:8080/api/v1' : 'https://pizzas-ecos-backend-qa.run.app/api/v1';
     }
 
     /**
