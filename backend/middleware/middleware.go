@@ -113,7 +113,9 @@ func CORSMiddleware(allowedOrigins []string) func(http.Handler) http.Handler {
 
 			// Verificar si origen está permitido
 			isAllowed := false
-			if len(allowedOrigins) == 0 || (len(allowedOrigins) == 1 && allowedOrigins[0] == "*") {
+			if len(allowedOrigins) == 0 {
+				isAllowed = true // Si no hay restricciones, permitir todos
+			} else if len(allowedOrigins) == 1 && allowedOrigins[0] == "*" {
 				isAllowed = true
 			} else {
 				for _, allowed := range allowedOrigins {
@@ -124,12 +126,15 @@ func CORSMiddleware(allowedOrigins []string) func(http.Handler) http.Handler {
 				}
 			}
 
-			if isAllowed {
+			// Siempre establecer headers CORS (importante para preflight)
+			if isAllowed && origin != "" {
 				w.Header().Set("Access-Control-Allow-Origin", origin)
 			}
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			w.Header().Set("Access-Control-Max-Age", "3600")
 
+			// Responder a preflight (OPTIONS)
 			if r.Method == http.MethodOptions {
 				w.WriteHeader(http.StatusOK)
 				return
