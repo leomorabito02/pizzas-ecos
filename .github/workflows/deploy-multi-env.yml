@@ -51,7 +51,6 @@ jobs:
           # Corrección técnica: Usamos directamente el username para evitar errores de scope
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}-latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -62,7 +61,7 @@ jobs:
   deploy-qa:
     name: Deploy to QA
     needs: build-and-push
-    if: github.ref == 'refs/heads/develop'
+    if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
       name: qa
