@@ -5,8 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel Admin - ECOS</title>
     <link rel="icon" type="image/jpeg" href="images/ecoslogo.jpeg">
-    <link rel="stylesheet" href="admin.css">
-    <script src="config.js"></script>
+    <link rel="stylesheet" href="css/admin.css">
 </head>
 <body>
     <!-- Loading Spinner Overlay -->
@@ -34,6 +33,7 @@
                 <li><a class="menu-link active" data-section="dashboard">📊 Dashboard</a></li>
                 <li><a class="menu-link" data-section="productos">🍕 Productos</a></li>
                 <li><a class="menu-link" data-section="vendedores">👔 Vendedores</a></li>
+                <li><a class="menu-link" data-section="usuarios">👥 Usuarios</a></li>
                 <li style="margin-top: 30px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 20px;">
                     <a href="index.html" style="color: rgba(255,255,255,0.8);">📝 Ir al Formulario</a>
                 </li>
@@ -48,11 +48,11 @@
             <!-- Header -->
             <div class="header">
                 <div class="header-left">
-                    <button class="hamburger" id="hamburgerBtn" onclick="toggleSidebar()">☰</button>
+                    <button class="hamburger" id="hamburgerBtn">☰</button>
                 </div>
                 <h2 id="sectionTitle">Dashboard</h2>
                 <div class="header-right">
-                    <button class="logout-btn" onclick="logout()">Salir</button>
+                    <button class="logout-btn" id="logoutBtnHeader">Salir</button>
                 </div>
             </div>
 
@@ -82,6 +82,12 @@
                     <div class="table-container" id="recentSalesContainer">
                         <p class="no-data">Cargando...</p>
                     </div>
+                </div>
+
+                <div class="card danger-zone">
+                    <h3>⚠️ Zona de Peligro</h3>
+                    <p style="margin-bottom: 15px; color: #666;">Esta acción eliminará todos los datos de la aplicación (ventas, productos, vendedores, clientes) pero mantendrá los usuarios.</p>
+                    <button id="clearDatabaseBtn" class="btn-danger">🗑️ Limpiar Base de Datos</button>
                 </div>
             </div>
 
@@ -125,7 +131,7 @@
                 <div class="modal-content">
                     <div class="modal-header">
                         <h2>Editar Producto</h2>
-                        <button class="modal-close" onclick="cerrarModalProducto()">&times;</button>
+                        <button class="modal-close" id="closeModalProducto">&times;</button>
                     </div>
                     <div class="modal-body">
                         <form id="editProductForm">
@@ -144,7 +150,7 @@
                             </div>
                             <div class="modal-actions">
                                 <button type="submit" class="btn-submit">Guardar Cambios</button>
-                                <button type="button" class="btn-cancel" onclick="cerrarModalProducto()">Cancelar</button>
+                                <button type="button" class="btn-cancel" id="cancelModalProducto">Cancelar</button>
                             </div>
                         </form>
                     </div>
@@ -156,7 +162,7 @@
                 <div class="modal-content">
                     <div class="modal-header">
                         <h2>Editar Vendedor</h2>
-                        <button class="modal-close" onclick="cerrarModalVendedor()">&times;</button>
+                        <button class="modal-close" id="closeModalVendedor">&times;</button>
                     </div>
                     <div class="modal-body">
                         <form id="editVendedorForm">
@@ -167,7 +173,7 @@
                             </div>
                             <div class="modal-actions">
                                 <button type="submit" class="btn-submit">Guardar Cambios</button>
-                                <button type="button" class="btn-cancel" onclick="cerrarModalVendedor()">Cancelar</button>
+                                <button type="button" class="btn-cancel" id="cancelModalVendedor">Cancelar</button>
                             </div>
                         </form>
                     </div>
@@ -195,6 +201,84 @@
                         <p class="no-data">Cargando vendedores...</p>
                     </div>
                 </div>
+            </div>
+
+            <div id="usuarios" class="content-section">
+                <div class="card">
+                    <h3>➕ Crear Nuevo Usuario</h3>
+                    <form id="usuarioForm">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="newUsuarioUsername">Usuario <span class="required">*</span></label>
+                                <input type="text" id="newUsuarioUsername" placeholder="Ej: vendedor01" required>
+                                <small class="form-hint">Mínimo 3 caracteres, sin espacios</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="newUsuarioPassword">Contraseña <span class="required">*</span></label>
+                                <input type="password" id="newUsuarioPassword" placeholder="Mín. 4 caracteres" required>
+                                <small class="form-hint">Mínimo 4 caracteres para seguridad</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="newUsuarioRol">Rol <span class="required">*</span></label>
+                                <select id="newUsuarioRol" required>
+                                    <option value="">Seleccionar rol...</option>
+                                    <option value="admin">👤 Admin</option>
+                                    <option value="vendedor">🏷️ Vendedor</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="usuarioFormError" class="error-message"></div>
+                        <button type="submit" class="btn-submit">➕ Crear Usuario</button>
+                    </form>
+                </div>
+
+                <div class="card">
+                    <h3>👥 Usuarios Existentes</h3>
+                    <div id="usuariosTableContainer">
+                        <p class="no-data">Cargando usuarios...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Editar Usuario -->
+        <div id="editUsuarioModal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Editar Usuario</h2>
+                    <button class="modal-close" id="closeEditUsuarioModal">&times;</button>
+                </div>
+                <form id="editUsuarioForm">
+                    <input type="hidden" id="editUsuarioId">
+                    
+                    <div class="form-group">
+                        <label for="editUsuarioUsername">Usuario <span class="required">*</span></label>
+                        <input type="text" id="editUsuarioUsername" required placeholder="Ingresa el nombre de usuario">
+                        <small class="form-hint">Mínimo 3 caracteres</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editUsuarioPassword">Contraseña <span class="optional">(opcional)</span></label>
+                        <input type="password" id="editUsuarioPassword" placeholder="Dejar vacío para no cambiar">
+                        <small class="form-hint">Si la cambias, debe tener al menos 4 caracteres</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editUsuarioRol">Rol <span class="required">*</span></label>
+                        <select id="editUsuarioRol" required>
+                            <option value="">Seleccionar rol...</option>
+                            <option value="admin">👤 Admin</option>
+                            <option value="vendedor">🏷️ Vendedor</option>
+                        </select>
+                    </div>
+
+                    <div id="editUsuarioError" class="error-message"></div>
+                    
+                    <div class="modal-footer">
+                        <button type="button" class="btn-cancel" id="cancelEditUsuario">Cancelar</button>
+                        <button type="submit" class="btn-submit">💾 Guardar Cambios</button>
+                    </div>
+                </form>
             </div>
         </div>
 
@@ -250,730 +334,7 @@
         </div>
     </div>
 
-    <script>
-        // Loading Spinner Functions
-        function showLoadingSpinner(show = true) {
-            const overlay = document.getElementById('loadingOverlay');
-            if (overlay) {
-                if (show) {
-                    overlay.classList.remove('hidden');
-                } else {
-                    overlay.classList.add('hidden');
-                }
-            }
-        }
-
-        function hideLoadingSpinner() {
-            showLoadingSpinner(false);
-        }
-
-        const API_BASE = CONFIG.API_BASE;
-
-        // Check authentication on load
-        window.addEventListener('load', () => {
-            showLoadingSpinner(true);
-            const token = localStorage.getItem('authToken');
-            const user = localStorage.getItem('user');
-
-            if (!token || !user) {
-                window.location.href = 'login.html';
-                return;
-            }
-
-            try {
-                const userData = JSON.parse(user);
-                document.getElementById('currentUser').textContent = userData.username;
-            } catch (e) {
-                console.error('Error parsing user data:', e);
-                window.location.href = 'login.html';
-            }
-
-            // Setup form listeners after DOM is ready
-            setupEditProductForm();
-            setupProductForm();
-            setupVendedorForm();
-            setupEditVendedorForm();
-
-            loadDashboard();
-            hideLoadingSpinner();
-
-            // Header scroll animation for visual feedback
-            const header = document.querySelector('.header');
-            const mainContent = document.querySelector('.main-content');
-            
-            if (mainContent && header) {
-                let scrollTimeout;
-                mainContent.addEventListener('scroll', () => {
-                    clearTimeout(scrollTimeout);
-                    if (mainContent.scrollTop > 10) {
-                        if (!header.classList.contains('scrolled')) {
-                            header.classList.add('scrolled');
-                        }
-                    } else {
-                        header.classList.remove('scrolled');
-                    }
-                }, { passive: true });
-            }
-        });
-
-        // Menu navigation
-        document.querySelectorAll('.menu-link').forEach(link => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                const section = link.getAttribute('data-section');
-                showSection(section);
-
-                // Update active menu item
-                document.querySelectorAll('.menu-link').forEach(l => l.classList.remove('active'));
-                link.classList.add('active');
-            });
-        });
-
-        function showSection(section) {
-            document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
-            document.getElementById(section).classList.add('active');
-
-            // Update title
-            const titles = {
-                dashboard: 'Dashboard',
-                productos: 'Gestión de Productos',
-                vendedores: 'Gestión de Vendedores'
-            };
-            document.getElementById('sectionTitle').textContent = titles[section] || 'Dashboard';
-
-            // Load data for specific sections
-            if (section === 'productos') loadProductos();
-            if (section === 'vendedores') loadVendedores();
-        }
-
-        // Mobile sidebar toggle
-        function toggleSidebar() {
-            const sidebar = document.querySelector('.sidebar');
-            const overlay = document.getElementById('sidebarOverlay');
-            sidebar.classList.toggle('open');
-            if (overlay) {
-                overlay.classList.toggle('open');
-            }
-        }
-
-        // Close sidebar when clicking on a menu link
-        document.querySelectorAll('.sidebar-menu a').forEach(link => {
-            link.addEventListener('click', () => {
-                const sidebar = document.querySelector('.sidebar');
-                const overlay = document.getElementById('sidebarOverlay');
-                sidebar.classList.remove('open');
-                if (overlay) {
-                    overlay.classList.remove('open');
-                }
-            });
-        });
-
-        // Close sidebar when clicking on overlay
-        const overlay = document.getElementById('sidebarOverlay');
-        if (overlay) {
-            overlay.addEventListener('click', () => {
-                const sidebar = document.querySelector('.sidebar');
-                sidebar.classList.remove('open');
-                overlay.classList.remove('open');
-            });
-        }
-
-        // Close sidebar when clicking outside
-        document.addEventListener('click', (e) => {
-            const sidebar = document.querySelector('.sidebar');
-            const hamburger = document.getElementById('hamburgerBtn');
-            const overlay = document.getElementById('sidebarOverlay');
-            if (sidebar && hamburger && !sidebar.contains(e.target) && !hamburger.contains(e.target)) {
-                sidebar.classList.remove('open');
-                if (overlay) {
-                    overlay.classList.remove('open');
-                }
-            }
-        });
-
-        // Logout function
-        function logout() {
-            const modal = document.getElementById('logoutModal');
-            if (modal) {
-                modal.classList.remove('hidden');
-            }
-        }
-
-        // Modal handlers
-        const logoutModal = document.getElementById('logoutModal');
-        const closeLogoutModal = document.getElementById('closeLogoutModal');
-        const cancelLogout = document.getElementById('cancelLogout');
-        const confirmLogout = document.getElementById('confirmLogout');
-
-        function closeModal() {
-            if (logoutModal) {
-                logoutModal.classList.add('hidden');
-            }
-        }
-
-        if (closeLogoutModal) {
-            closeLogoutModal.addEventListener('click', closeModal);
-        }
-
-        if (cancelLogout) {
-            cancelLogout.addEventListener('click', closeModal);
-        }
-
-        if (confirmLogout) {
-            confirmLogout.addEventListener('click', () => {
-                localStorage.removeItem('authToken');
-                localStorage.removeItem('user');
-                window.location.href = 'login.html';
-            });
-        }
-
-        // Close modal when clicking outside
-        if (logoutModal) {
-            logoutModal.addEventListener('click', (e) => {
-                if (e.target === logoutModal) {
-                    closeModal();
-                }
-            });
-        }
-
-        // Keep old logout button handler for backward compatibility
-        const logoutBtn = document.getElementById('logoutBtn');
-        if (logoutBtn) {
-            logoutBtn.addEventListener('click', logout);
-        }
-
-        // Delete Product Modal Handlers
-        const deleteProductModal = document.getElementById('deleteProductModal');
-        const closeDeleteProductModal = document.getElementById('closeDeleteProductModal');
-        const cancelDeleteProduct = document.getElementById('cancelDeleteProduct');
-        const confirmDeleteProduct = document.getElementById('confirmDeleteProduct');
-
-        function closeDeleteProductModalDialog() {
-            if (deleteProductModal) {
-                deleteProductModal.classList.add('hidden');
-            }
-            productIdToDelete = null;
-        }
-
-        if (closeDeleteProductModal) {
-            closeDeleteProductModal.addEventListener('click', closeDeleteProductModalDialog);
-        }
-
-        if (cancelDeleteProduct) {
-            cancelDeleteProduct.addEventListener('click', closeDeleteProductModalDialog);
-        }
-
-        if (confirmDeleteProduct) {
-            confirmDeleteProduct.addEventListener('click', async () => {
-                if (!productIdToDelete) return;
-                
-                try {
-                    const response = await fetch(`${API_BASE}/eliminar-producto?id=${productIdToDelete}`, {
-                        method: 'DELETE'
-                    });
-
-                    const data = await response.json();
-
-                    if (!response.ok) {
-                        showError(data.message || 'Error eliminando producto');
-                        return;
-                    }
-
-                    showSuccess('Producto eliminado exitosamente');
-                    closeDeleteProductModalDialog();
-                    await loadProductos();
-
-                } catch (error) {
-                    console.error('Error:', error);
-                    showError('Error eliminando producto');
-                }
-            });
-        }
-
-        if (deleteProductModal) {
-            deleteProductModal.addEventListener('click', (e) => {
-                if (e.target === deleteProductModal) {
-                    closeDeleteProductModalDialog();
-                }
-            });
-        }
-
-        // Delete Vendedor Modal Handlers
-        const deleteVendedorModal = document.getElementById('deleteVendedorModal');
-        const closeDeleteVendedorModal = document.getElementById('closeDeleteVendedorModal');
-        const cancelDeleteVendedor = document.getElementById('cancelDeleteVendedor');
-        const confirmDeleteVendedor = document.getElementById('confirmDeleteVendedor');
-
-        function closeDeleteVendedorModalDialog() {
-            if (deleteVendedorModal) {
-                deleteVendedorModal.classList.add('hidden');
-            }
-            vendedorIdToDelete = null;
-        }
-
-        if (closeDeleteVendedorModal) {
-            closeDeleteVendedorModal.addEventListener('click', closeDeleteVendedorModalDialog);
-        }
-
-        if (cancelDeleteVendedor) {
-            cancelDeleteVendedor.addEventListener('click', closeDeleteVendedorModalDialog);
-        }
-
-        if (confirmDeleteVendedor) {
-            confirmDeleteVendedor.addEventListener('click', async () => {
-                if (!vendedorIdToDelete) return;
-                
-                try {
-                    const response = await fetch(`${API_BASE}/eliminar-vendedor?id=${vendedorIdToDelete}`, {
-                        method: 'DELETE'
-                    });
-
-                    if (!response.ok) {
-                        showError('Error eliminando vendedor');
-                        return;
-                    }
-
-                    showSuccess('Vendedor eliminado exitosamente');
-                    closeDeleteVendedorModalDialog();
-                    await loadVendedores();
-
-                } catch (error) {
-                    console.error('Error:', error);
-                    showError('Error eliminando vendedor');
-                }
-            });
-        }
-
-        if (deleteVendedorModal) {
-            deleteVendedorModal.addEventListener('click', (e) => {
-                if (e.target === deleteVendedorModal) {
-                    closeDeleteVendedorModalDialog();
-                }
-            });
-        }
-
-        // Load dashboard data
-        async function loadDashboard() {
-            try {
-                showLoadingSpinner(true);
-                
-                // Obtener estadísticas sin canceladas para totales correctos
-                const sheetResponse = await fetch(`${API_BASE}/estadisticas-sheet`, {
-                    headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
-                });
-
-                if (!sheetResponse.ok) throw new Error('Error loading statistics');
-
-                const sheetData = await sheetResponse.json();
-                
-                // Acceder correctamente a resumen dentro de sheetData
-                const resumen = sheetData.resumen || {};
-                document.getElementById('totalVentas').textContent = resumen.ventas_totales || 0;
-                document.getElementById('totalMonto').textContent = `$${(resumen.total_cobrado || 0).toFixed(2)}`;
-
-                // Load additional data
-                const dataResponse = await fetch(`${API_BASE}/data`);
-                const dataInfo = await dataResponse.json();
-                document.getElementById('totalVendedores').textContent = dataInfo.vendedores?.length || 0;
-
-                // Cargar ventas recientes (con todas para mostrar en tabla)
-                const response = await fetch(`${API_BASE}/estadisticas`, {
-                    headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    displayRecentSales(data.slice(0, 10));
-                }
-                
-                hideLoadingSpinner();
-
-            } catch (error) {
-                console.error('Error:', error);
-                showError('Error cargando el dashboard');
-                hideLoadingSpinner();
-            }
-        }
-        
-
-        function displayRecentSales(sales) {
-            const container = document.getElementById('recentSalesContainer');
-
-            if (!sales || sales.length === 0) {
-                container.innerHTML = '<p class="no-data">No hay ventas registradas</p>';
-                return;
-            }
-
-            let html = `
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Vendedor</th>
-                            <th>Cliente</th>
-                            <th>Total</th>
-                            <th>Estado</th>
-                            <th>Fecha</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            `;
-
-            sales.forEach(venta => {
-                const rowClass = venta.estado === 'cancelada' ? 'class="cancelada"' : '';
-                html += `
-                    <tr ${rowClass}>
-                        <td data-label="ID">#${venta.id}</td>
-                        <td data-label="Vendedor">${venta.vendedor}</td>
-                        <td data-label="Cliente">${venta.cliente}</td>
-                        <td data-label="Total">$${venta.total.toFixed(2)}</td>
-                        <td data-label="Estado"><strong>${venta.estado}</strong></td>
-                        <td data-label="Fecha">${new Date(venta.created_at).toLocaleDateString()}</td>
-                    </tr>
-                `;
-            });
-
-            html += '</tbody></table>';
-            container.innerHTML = html;
-        }
-
-        // Productos functionality - setup form listener when DOM is ready
-        function setupProductForm() {
-            const form = document.getElementById('productForm');
-            if (!form) return;
-            
-            form.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                
-                const nombre = document.getElementById('newProductName').value.trim();
-                const descripcion = document.getElementById('newProductDesc').value.trim();
-                const precio = parseFloat(document.getElementById('newProductPrice').value);
-
-                if (!nombre || precio <= 0) {
-                    showError('El nombre y precio del producto son requeridos');
-                    return;
-                }
-
-                try {
-                    const response = await fetch(`${API_BASE}/crear-producto`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            tipo_pizza: nombre,
-                            descripcion: descripcion,
-                            precio: precio
-                        })
-                    });
-
-                    if (!response.ok) {
-                        const errorText = await response.text();
-                        showError(errorText || 'Error creando producto');
-                        return;
-                    }
-
-                    const data = await response.json();
-                    showSuccess('Producto creado exitosamente');
-                    document.getElementById('productForm').reset();
-                    await loadProductos();
-
-                } catch (error) {
-                    console.error('Error:', error);
-                    showError('Error creando producto: ' + error.message);
-                }
-            });
-        }
-
-        async function loadProductos() {
-            try {
-                showLoadingSpinner(true);
-                const response = await fetch(`${API_BASE}/productos`);
-                if (!response.ok) throw new Error('Error loading productos');
-
-                const productos = await response.json();
-                const container = document.getElementById('productosTableContainer');
-
-                if (!productos || productos.length === 0) {
-                    container.innerHTML = '<p class="no-data">No hay productos registrados</p>';
-                    return;
-                }
-
-                let html = `
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Tipo de Pizza</th>
-                                <th>Descripción</th>
-                                <th>Precio</th>
-                                <th>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                `;
-
-                productos.forEach(producto => {
-                    html += `
-                        <tr>
-                            <td data-label="Tipo de Pizza"><strong>${producto.tipo_pizza}</strong></td>
-                            <td data-label="Descripción">${producto.descripcion || '-'}</td>
-                            <td data-label="Precio">$${(producto.precio || 0).toFixed(2)}</td>
-                            <td data-label="Acciones">
-                                <button class="btn-small btn-edit" onclick="abrirModalProducto(${producto.id}, '${producto.tipo_pizza.replace(/'/g, "\\'")}', '${(producto.descripcion || '').replace(/'/g, "\\'")}', ${producto.precio})">Editar</button>
-                                <button class="btn-small btn-delete" onclick="eliminarProducto(${producto.id})">Eliminar</button>
-                            </td>
-                        </tr>
-                    `;
-                });
-
-                html += '</tbody></table>';
-                container.innerHTML = html;
-                hideLoadingSpinner();
-
-            } catch (error) {
-                console.error('Error:', error);
-                document.getElementById('productosTableContainer').innerHTML = '<p class="no-data">Error cargando productos</p>';
-                hideLoadingSpinner();
-            }
-        }
-
-        function abrirModalProducto(productoId, nombre, descripcion, precio) {
-            document.getElementById('editProductId').value = productoId;
-            document.getElementById('editProductName').value = nombre;
-            document.getElementById('editProductDesc').value = descripcion || '';
-            document.getElementById('editProductPrice').value = precio;
-            document.getElementById('modalEditarProducto').classList.remove('hidden');
-        }
-
-        function cerrarModalProducto() {
-            document.getElementById('modalEditarProducto').classList.add('hidden');
-            document.getElementById('editProductForm').reset();
-        }
-
-        // Setup edit product form listener when DOM is ready
-        function setupEditProductForm() {
-            const form = document.getElementById('editProductForm');
-            if (!form) {
-                console.error('editProductForm not found');
-                return;
-            }
-            
-            form.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                
-                const productoId = document.getElementById('editProductId').value;
-                const nombre = document.getElementById('editProductName').value.trim();
-                const descripcion = document.getElementById('editProductDesc').value.trim();
-                const precio = parseFloat(document.getElementById('editProductPrice').value);
-
-                if (!nombre || precio <= 0) {
-                    showError('El nombre y precio son requeridos');
-                    return;
-                }
-
-                try {
-                    const response = await fetch(`${API_BASE}/actualizar-producto?id=${productoId}`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ 
-                            tipo_pizza: nombre,
-                            descripcion: descripcion,
-                            precio: precio, 
-                            activo: true 
-                        })
-                    });
-
-                    if (!response.ok) {
-                        const errorText = await response.text();
-                        showError(errorText || 'Error actualizando producto');
-                        return;
-                    }
-
-                    showSuccess('Producto actualizado exitosamente');
-                    cerrarModalProducto();
-                    await loadProductos();
-
-                } catch (error) {
-                    console.error('Error:', error);
-                    showError('Error actualizando producto: ' + error.message);
-                }
-            });
-        }
-
-        let productIdToDelete = null;
-
-        async function eliminarProducto(productoId) {
-            productIdToDelete = productoId;
-            const modal = document.getElementById('deleteProductModal');
-            if (modal) {
-                modal.classList.remove('hidden');
-            }
-        }
-
-        // Vendedores functionality - setup form listener when DOM is ready
-        function setupVendedorForm() {
-            const form = document.getElementById('vendedorForm');
-            if (!form) return;
-            
-            form.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                
-                const nombre = document.getElementById('newVendedorName').value.trim();
-
-                if (!nombre) {
-                    showError('El nombre del vendedor es requerido');
-                    return;
-                }
-
-                try {
-                    const response = await fetch(`${API_BASE}/crear-vendedor`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ nombre: nombre })
-                    });
-
-                    if (!response.ok) {
-                        const errorText = await response.text();
-                        showError(errorText || 'Error creando vendedor');
-                        return;
-                    }
-
-                    showSuccess('Vendedor creado exitosamente');
-                    document.getElementById('vendedorForm').reset();
-                    await loadVendedores();
-
-                } catch (error) {
-                    console.error('Error:', error);
-                    showError('Error creando vendedor: ' + error.message);
-                }
-            });
-        }
-
-        async function loadVendedores() {
-            try {
-                showLoadingSpinner(true);
-                const response = await fetch(`${API_BASE}/data`);
-                if (!response.ok) throw new Error('Error loading data');
-
-                const data = await response.json();
-                const vendedores = data.vendedores || [];
-                const container = document.getElementById('vendedoresTableContainer');
-
-                if (!vendedores || vendedores.length === 0) {
-                    container.innerHTML = '<p class="no-data">No hay vendedores registrados</p>';
-                    return;
-                }
-
-                let html = `
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Nombre</th>
-                                <th>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                `;
-
-                vendedores.forEach(vendedor => {
-                    const nombre = vendedor.nombre || 'Sin nombre';
-                    html += `
-                        <tr>
-                            <td data-label="Nombre"><strong>${nombre}</strong></td>
-                            <td data-label="Acciones">
-                                <button class="btn-small btn-edit" onclick="abrirModalVendedor(${vendedor.id}, '${nombre.replace(/'/g, "\\'")}')">Editar</button>
-                                <button class="btn-small btn-delete" onclick="eliminarVendedor(${vendedor.id})">Eliminar</button>
-                            </td>
-                        </tr>
-                    `;
-                });
-
-                html += '</tbody></table>';
-                container.innerHTML = html;
-                hideLoadingSpinner();
-
-            } catch (error) {
-                console.error('Error:', error);
-                document.getElementById('vendedoresTableContainer').innerHTML = '<p class="no-data">Error cargando vendedores</p>';
-                hideLoadingSpinner();
-            }
-        }
-
-        function abrirModalVendedor(vendedorId, nombre) {
-            document.getElementById('editVendedorId').value = vendedorId;
-            document.getElementById('editVendedorName').value = nombre;
-            document.getElementById('modalEditarVendedor').classList.remove('hidden');
-        }
-
-        function cerrarModalVendedor() {
-            document.getElementById('modalEditarVendedor').classList.add('hidden');
-            document.getElementById('editVendedorForm').reset();
-        }
-
-        // Setup edit vendedor form listener when DOM is ready
-        function setupEditVendedorForm() {
-            const form = document.getElementById('editVendedorForm');
-            if (!form) {
-                console.error('editVendedorForm not found');
-                return;
-            }
-            
-            form.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                
-                const vendedorId = document.getElementById('editVendedorId').value;
-                const nombre = document.getElementById('editVendedorName').value.trim();
-
-                if (!nombre) {
-                    showError('El nombre del vendedor es requerido');
-                    return;
-                }
-
-                try {
-                    const response = await fetch(`${API_BASE}/actualizar-vendedor?id=${vendedorId}`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ nombre: nombre })
-                    });
-
-                    if (!response.ok) {
-                        const errorText = await response.text();
-                        showError(errorText || 'Error actualizando vendedor');
-                        return;
-                    }
-
-                    showSuccess('Vendedor actualizado exitosamente');
-                    cerrarModalVendedor();
-                    await loadVendedores();
-
-                } catch (error) {
-                    console.error('Error:', error);
-                    showError('Error actualizando vendedor: ' + error.message);
-                }
-            });
-        }
-
-        let vendedorIdToDelete = null;
-
-        async function eliminarVendedor(vendedorId) {
-            vendedorIdToDelete = vendedorId;
-            const modal = document.getElementById('deleteVendedorModal');
-            if (modal) {
-                modal.classList.remove('hidden');
-            }
-        }
-
-        function showSuccess(message) {
-            const msg = document.getElementById('successMessage');
-            msg.textContent = message;
-            msg.classList.add('show');
-            setTimeout(() => msg.classList.remove('show'), 3000);
-        }
-
-        function showError(message) {
-            const msg = document.getElementById('errorMessage');
-            msg.textContent = message;
-            msg.classList.add('show');
-            setTimeout(() => msg.classList.remove('show'), 3000);
-        }
-    </script>
+    <script src="js/api-service.js"></script>
+    <script src="js/admin.js"></script>
 </body>
 </html>

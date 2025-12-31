@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - ECOS</title>
-    <link rel="stylesheet" href="login.css">
-    <script src="config.js"></script>
+    <link rel="icon" type="image/jpeg" href="images/ecoslogo.jpeg">
+    <link rel="stylesheet" href="css/login.css">
+    <script src="js/api-service.js"></script>
 </head>
 <body>
     <div class="login-container">
@@ -75,13 +76,19 @@
                 return;
             }
 
+            if (password.length < 4) {
+                showError('La contraseña debe tener al menos 4 caracteres');
+                return;
+            }
+
             // Deshabilitar botón y mostrar loading
             loginBtn.disabled = true;
             const originalText = loginBtn.textContent;
             loginBtn.innerHTML = '<span class="loading"></span>Autenticando...';
 
             try {
-                const response = await fetch(`${CONFIG.API_BASE}/login`, {
+                const api = new APIService();
+                const response = await fetch(`${api.baseURL}/login`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -117,9 +124,39 @@
                     return;
                 }
 
-                // Guardar token en localStorage
-                localStorage.setItem('authToken', data.token);
-                localStorage.setItem('user', JSON.stringify(data.user));
+                // Guardar token en sessionStorage (más seguro que localStorage)
+                // sessionStorage se limpia automáticamente al cerrar la pestaña
+                console.log('Login response:', data);
+                console.log('data.data:', data.data);
+                
+                // Extraer datos del wrapped response: {status, data: {token, user}, message}
+                // Nota: JSON serializa con minúsculas (token, user, id)
+                const loginData = data.data;
+                
+                if (!loginData || !loginData.token || !loginData.user) {
+                    console.error('Invalid login response structure:', loginData);
+                    showError('Respuesta inválida del servidor. Por favor intenta nuevamente.');
+                    loginBtn.disabled = false;
+                    loginBtn.textContent = originalText;
+                    return;
+                }
+                
+                const token = loginData.token;
+                const userId = loginData.user.id;
+                const usernameFromLogin = loginData.user.username;
+                
+                console.log('Token:', token, 'UserId:', userId);
+                
+                if (!token || !userId) {
+                    showError('Error al procesar la respuesta del servidor.');
+                    loginBtn.disabled = false;
+                    loginBtn.textContent = originalText;
+                    return;
+                }
+                
+                sessionStorage.setItem('authToken', token);
+                sessionStorage.setItem('userId', userId);
+                sessionStorage.setItem('username', usernameFromLogin);
 
                 showSuccess('¡Sesión iniciada correctamente!');
                 

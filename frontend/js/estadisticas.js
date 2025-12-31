@@ -1,19 +1,31 @@
-// estadisticas.js
-let datosVentas = {};
-let ventaEnEdicion = null;
-let productosCache = []; // Cache de productos para generar contadores
+// estadisticas.js - Refactorizado para usar APIService
+// Ya no define su propia URL de API, usa APIService centralizado
 
-function getAPIBase() {
-    // Si está en localhost, usar localhost:8080 para desarrollo
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        return 'http://localhost:8080/api';
+let API_BASE = null;  // Se inicializa en DOMContentLoaded
+
+// Loading Spinner Functions
+function showLoadingSpinner(show = true) {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) {
+        if (show) {
+            overlay.classList.remove('hidden');
+        } else {
+            overlay.classList.add('hidden');
+        }
     }
-    // En producción, usar BACKEND_URL definido en config.js
-    return BACKEND_URL;
 }
 
-const API_BASE = getAPIBase();
-console.log('API Base URL:', API_BASE);
+function hideLoadingSpinner() {
+    showLoadingSpinner(false);
+}
+
+// Logger condicional - solo en desarrollo
+const Logger = {
+    isDev: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1',
+    log: (msg, data) => {
+        if (Logger.isDev) console.log(msg, data || '');
+    }
+};
 
 // Función para parsear números en formato argentino ($1.000,50 -> 1000.50)
 function parseArgentinoFloat(value) {
@@ -33,34 +45,45 @@ function parseArgentinoFloat(value) {
 
 async function cargarDatos() {
     try {
+        showLoadingSpinner(true);
+        const api = new APIService(); // Usar APIService centralizado
+        
         // 1. Obtener productos para cache
-        const productosResponse = await fetch(`${API_BASE}/productos`);
-        if (productosResponse.ok) {
-            productosCache = await productosResponse.json();
-            console.log('Productos cargados:', productosCache);
+        try {
+            const prodResp = await api.obtenerProductos();
+            // El backend retorna {status, data, message}, extraer el array
+            productosCache = (prodResp && prodResp.data) ? prodResp.data : prodResp || [];
+            Logger.log('Productos cargados:', productosCache);
+        } catch (e) {
+            Logger.log('No se pudieron cargar productos');
+            productosCache = [];
         }
 
-        // 2. Obtener datos de estadísticas del sheet
-        const response1 = await fetch(`${API_BASE}/estadisticas-sheet`);
-        if (!response1.ok) throw new Error('No se pudieron cargar las estadísticas');
-        datosVentas = await response1.json();
+        // 2. Obtener datos de estadísticas
+        const statsResp = await api.request('/estadisticas-sheet');
+        datosVentas = (statsResp && statsResp.data) ? statsResp.data : statsResp || {};
         
         // 3. Obtener detalle de ventas para la tabla
-        const response2 = await fetch(`${API_BASE}/estadisticas`);
-        if (response2.ok) {
-            const ventasData = await response2.json();
-            datosVentas.ventas = ventasData;
+        try {
+            const ventasData = await api.obtenerVentas();
+            // El backend retorna {status, data, message}, extraer el array de data
+            datosVentas.ventas = ventasData.data || ventasData || [];
+        } catch (e) {
+            Logger.log('No se pudieron cargar ventas');
+            datosVentas.ventas = [];
         }
-        
-        console.log('Datos de estadísticas:', datosVentas);
+
+        Logger.log('Datos de estadísticas:', datosVentas);
         
         // 4. Renderizar tabs
         renderizarResumen();
         renderizarVendedores();
         renderizarVentas();
+        hideLoadingSpinner();
     } catch (error) {
         console.error('Error:', error);
         showMessage('Error al cargar estadísticas: ' + error.message, 'error');
+        hideLoadingSpinner();
     }
 }
 
@@ -364,8 +387,8 @@ async function guardarCambios() {
     });
 
     try {
+        showLoadingSpinner(true);
         const payload = {
-            id: ventaEnEdicion.id,
             estado: estado,
             payment_method: pago,
             tipo_entrega: entrega,
@@ -376,7 +399,7 @@ async function guardarCambios() {
             payload.productos_eliminar = productosAEliminar;
         }
 
-        const response = await fetch(`${API_BASE}/actualizar-venta`, {
+        const response = await fetch(`${API_BASE}/actualizar-venta/${ventaEnEdicion.id}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -385,13 +408,15 @@ async function guardarCambios() {
         if (response.ok) {
             showMessage('✓ Venta actualizada correctamente', 'success');
             cerrarModal();
-            cargarDatos();
+            await cargarDatos();
         } else {
             const err = await response.text();
             showMessage('✗ Error al actualizar: ' + err, 'error');
         }
     } catch (error) {
         showMessage('Error: ' + error.message, 'error');
+    } finally {
+        hideLoadingSpinner();
     }
 }
 
@@ -474,6 +499,11 @@ function decrementarCantidadProducto() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Inicializar API_BASE desde APIService
+    const api = new APIService();
+    API_BASE = api.baseURL;
+    Logger.log('API Base URL:', API_BASE);
+    
     cargarDatos();
 
     // Botones de tab

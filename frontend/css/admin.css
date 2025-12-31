@@ -1115,3 +1115,90 @@ textarea:focus {
         font-size: 16px;
     }
 }
+
+/* Rol Badge Styles */
+.rol-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.rol-badge.admin {
+    background-color: #ff6b6b;
+    color: white;
+}
+
+.rol-badge.vendedor {
+    background-color: #51cf66;
+    color: white;
+}
+
+/* Form Helpers */
+.required {
+    color: #ff6b6b;
+    font-weight: bold;
+}
+
+.optional {
+    color: #868e96;
+    font-size: 0.85em;
+    font-weight: normal;
+}
+
+.form-hint {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.85em;
+    color: #868e96;
+}
+
+.error-message {
+    color: #ff6b6b;
+    font-size: 0.9em;
+    margin: 8px 0;
+    padding: 8px 12px;
+    background-color: rgba(255, 107, 107, 0.1);
+    border-left: 3px solid #ff6b6b;
+    border-radius: 2px;
+    display: none;
+}
+
+.error-message.show {
+    display: block;
+}
+
+/* Danger Zone */
+.danger-zone {
+    border: 2px solid #ff6b6b;
+    background-color: rgba(255, 107, 107, 0.05);
+}
+
+.danger-zone h3 {
+    color: #ff6b6b;
+}
+
+.btn-danger {
+    background-color: #ff6b6b;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.btn-danger:hover {
+    background-color: #ff5252;
+}
+
+.btn-danger:active {
+    background-color: #e63946;
+}
+
+

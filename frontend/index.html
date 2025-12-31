@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Sistema de Ventas - Pizzas ECOS</title>
     <link rel="icon" type="image/jpeg" href="images/ecoslogo.jpeg">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
     <!-- Loading Spinner Overlay -->
@@ -189,7 +189,16 @@
             document.head.appendChild(script);
         }
     </script>
-    <script src="config.js"></script>
-    <script src="form.js"></script>
+    <!-- Scripts en orden de dependencias -->
+    <!-- 1. Capa de datos y modelos -->
+    <script src="js/api-service.js"></script>
+    <script src="js/models.js"></script>
+    <script src="js/ui-utils.js"></script>
+    
+    <!-- 3. Lógica de negocio -->
+    <script src="js/controllers.js"></script>
+    
+    <!-- 4. Script del formulario (mejorado con MVC) -->
+    <script src="js/form.js"></script>
 </body>
 </html>
