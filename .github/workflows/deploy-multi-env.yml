@@ -8,7 +8,7 @@ on:
 
 env:
   REGISTRY: docker.io
-  DOCKER_PATH: ${{ DOCKER_REGISTRY_PATH }}
+  DOCKER_PATH: ${{ secrets.DOCKER_REGISTRY_PATH }}
   IMAGE_NAME: ecos-backend
   GCP_REGION: us-central1
 
@@ -27,8 +27,8 @@ jobs:
       - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
-          username: ${{ DOCKERHUB_USERNAME }}
-          password: ${{ DOCKERHUB_TOKEN }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Build and push to Docker Hub
         uses: docker/build-push-action@v4
         with:
@@ -60,8 +60,8 @@ jobs:
       - name: Authenticate to Google Cloud (QA)
         uses: google-github-actions/auth@v1
         with:
-          workload_identity_provider: ${{ GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ GCP_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v1
       - name: Deploy Backend to Cloud Run (QA)
@@ -78,8 +78,8 @@ jobs:
             --min-instances 0 \
             --timeout 60 \
             --concurrency 50 \
-            --set-env-vars DATABASE_URL=${{ DATABASE_URL}},JWT_SECRET=${{ JWT_SECRET }},CORS_ALLOWED_ORIGINS=${{ CORS_ALLOWED_ORIGINS }},ENV=qa,DEBUG=false \
-            --project ${{ GCP_PROJECT_ID }}
+            --set-env-vars DATABASE_URL=${{ secrets.DATABASE_URL }},JWT_SECRET=${{ secrets.JWT_SECRET }},CORS_ALLOWED_ORIGINS=${{ secrets.CORS_ALLOWED_ORIGINS }},DATABASE_CA_CERT=${{ secrets.DATABASE_CA_CERT }},ENV=qa,DEBUG=false \
+            --project ${{ secrets.GCP_PROJECT_ID }}
       - name: Get Backend URL
         id: backend-url
         run: |
@@ -87,7 +87,7 @@ jobs:
             --platform managed \
             --region ${{ env.GCP_REGION }} \
             --format 'value(status.url)' \
-            --project ${{ GCP_PROJECT_ID }})
+            --project ${{ secrets.GCP_PROJECT_ID }})
           echo "url=$URL" >> $GITHUB_OUTPUT
           echo "✅ QA Backend: $URL"
       - name: Deploy Frontend to Netlify (QA)
@@ -95,7 +95,6 @@ jobs:
         with:
           publish-dir: './frontend'
           production-deploy: false
-          #github-token: ${{ GITHUB_TOKEN }}
           deploy-message: 'QA deploy from ${{ github.sha }}'
           github-deployment-environment: qa
           github-deployment-status: success
@@ -131,8 +130,8 @@ jobs:
       - name: Authenticate to Google Cloud (Production)
         uses: google-github-actions/auth@v1
         with:
-          workload_identity_provider: ${{ GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ GCP_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v1
       - name: Deploy Backend to Cloud Run (Production)
@@ -149,8 +148,8 @@ jobs:
             --min-instances 0 \
             --timeout 120 \
             --concurrency 100 \
-            --set-env-vars DATABASE_URL=${{ DATABASE_URL }},JWT_SECRET=${{ JWT_SECRET }},CORS_ALLOWED_ORIGINS=${{ CORS_ALLOWED_ORIGINS }},ENV=prod,DEBUG=false \
-            --project ${{ GCP_PROJECT_ID_}}
+            --set-env-vars DATABASE_URL=${{ secrets.DATABASE_URL }},JWT_SECRET=${{ secrets.JWT_SECRET }},CORS_ALLOWED_ORIGINS=${{ secrets.CORS_ALLOWED_ORIGINS }},DATABASE_CA_CERT=${{ secrets.DATABASE_CA_CERT }},ENV=prod,DEBUG=false \
+            --project ${{ secrets.GCP_PROJECT_ID }}
       - name: Get Backend URL
         id: backend-url
         run: |
@@ -158,7 +157,7 @@ jobs:
             --platform managed \
             --region ${{ env.GCP_REGION }} \
             --format 'value(status.url)' \
-            --project ${{ GCP_PROJECT_ID }})
+            --project ${{ secrets.GCP_PROJECT_ID }})
           echo "url=$URL" >> $GITHUB_OUTPUT
           echo "✅ Production Backend: $URL"
       - name: Deploy Frontend to Netlify (Production)
@@ -166,7 +165,6 @@ jobs:
         with:
           publish-dir: './frontend'
           production-deploy: true
-          #github-token: ${{ GITHUB_TOKEN }}
           deploy-message: '🚀 Production deploy from ${{ github.sha }}'
           github-deployment-environment: production
           github-deployment-status: success
