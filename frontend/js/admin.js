@@ -310,12 +310,18 @@ async function loadDashboard() {
 
         // Load additional data
         const dataInfo = await api.getData();
-        document.getElementById('totalVendedores').textContent = dataInfo.vendedores?.length || 0;
+        console.log('Dashboard getData() response:', dataInfo);
+        // Handle response format: could be {status, data: {...}} or direct object
+        const vendedoresData = dataInfo?.data || dataInfo || {};
+        const vendedores = vendedoresData.vendedores || [];
+        console.log('Dashboard vendedores count:', vendedores.length);
+        document.getElementById('totalVendedores').textContent = vendedores.length || 0;
 
         // Cargar ventas recientes (con todas para mostrar en tabla)
         const response = await api.obtenerVentas();
-        const salesData = Array.isArray(response.data) ? response.data : response;
-        displayRecentSales(salesData.slice(0, 10));
+        // Handle both response formats: {status, data, message} or direct array
+        const salesData = Array.isArray(response) ? response : (response?.data || []);
+        displayRecentSales(Array.isArray(salesData) ? salesData.slice(0, 10) : []);
         
         hideLoadingSpinner();
 
@@ -405,7 +411,9 @@ function setupProductForm() {
 async function loadProductos() {
     try {
         showLoadingSpinner(true);
-        const productos = await api.obtenerProductos();
+        const response = await api.obtenerProductos();
+        // Handle both response formats: {status, data, message} or direct array
+        const productos = Array.isArray(response) ? response : (response?.data || []);
         const container = document.getElementById('productosTableContainer');
 
         if (!productos || productos.length === 0) {
@@ -547,11 +555,16 @@ async function loadVendedores() {
     try {
         showLoadingSpinner(true);
         const data = await api.getData();
-        const vendedores = data.vendedores || [];
+        console.log('getData() response:', data);
+        // Handle response format: could be {status, data: {...}} or direct object
+        const vendedoresData = data?.data || data || {};
+        const vendedores = vendedoresData.vendedores || [];
+        console.log('Vendedores extracted:', vendedores);
         const container = document.getElementById('vendedoresTableContainer');
 
         if (!vendedores || vendedores.length === 0) {
             container.innerHTML = '<p class="no-data">No hay vendedores registrados</p>';
+            hideLoadingSpinner();
             return;
         }
 
@@ -709,7 +722,6 @@ function setupUsuarioForm() {
 
         const username = document.getElementById('newUsuarioUsername').value.trim();
         const password = document.getElementById('newUsuarioPassword').value.trim();
-        const rol = document.getElementById('newUsuarioRol').value;
         const errorDiv = document.getElementById('usuarioFormError');
 
         // Limpiar errores previos
@@ -759,16 +771,6 @@ function setupUsuarioForm() {
             return;
         }
 
-        if (!rol) {
-            const msg = 'Selecciona un rol';
-            if (errorDiv) {
-                errorDiv.textContent = msg;
-                errorDiv.classList.add('show');
-            }
-            showError(msg);
-            return;
-        }
-
         try {
             showLoadingSpinner(true);
             const response = await fetch(`${API_BASE}/crear-usuario`, {
@@ -777,7 +779,7 @@ function setupUsuarioForm() {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${sessionStorage.getItem('authToken')}`
                 },
-                body: JSON.stringify({ username, password, rol })
+                body: JSON.stringify({ username, password })
             });
 
             const responseData = await response.json();
@@ -789,9 +791,9 @@ function setupUsuarioForm() {
                     errorDiv.textContent = '';
                 }
                 await loadUsuarios();
-                showSuccess('Usuario creado exitosamente');
+                showSuccess('Admin creado exitosamente');
             } else {
-                const errorMsg = responseData.message || 'Error al crear usuario';
+                const errorMsg = responseData.message || 'Error al crear admin';
                 if (errorDiv) {
                     errorDiv.textContent = errorMsg;
                     errorDiv.classList.add('show');
@@ -800,7 +802,7 @@ function setupUsuarioForm() {
             }
         } catch (error) {
             console.error('Error:', error);
-            const errorMsg = 'Error de conexión al crear usuario';
+            const errorMsg = 'Error de conexión al crear admin';
             if (errorDiv) {
                 errorDiv.textContent = errorMsg;
                 errorDiv.classList.add('show');

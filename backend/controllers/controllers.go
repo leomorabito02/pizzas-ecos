@@ -490,7 +490,7 @@ func (c *UsuarioController) Listar(w http.ResponseWriter, r *http.Request) {
 	errors.WriteSuccess(w, http.StatusOK, usuarios, "Usuarios obtenidos")
 }
 
-// Crear crea un nuevo usuario
+// Crear crea un nuevo usuario (siempre como admin)
 func (c *UsuarioController) Crear(w http.ResponseWriter, r *http.Request) {
 	var req models.CreateUsuarioRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -500,33 +500,25 @@ func (c *UsuarioController) Crear(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validar
-	if req.Username == "" || req.Password == "" || req.Rol == "" {
+	if req.Username == "" || req.Password == "" {
 		logger.Warn("Crear usuario: Validación fallida", map[string]interface{}{
 			"username": req.Username,
 			"password": req.Password,
-			"rol":      req.Rol,
 		})
-		errors.WriteError(w, errors.ErrBadRequest, "Username, password y rol requeridos")
+		errors.WriteError(w, errors.ErrBadRequest, "Username y password requeridos")
 		return
 	}
 
-	// Validar rol
-	if req.Rol != "admin" && req.Rol != "vendedor" {
-		logger.Warn("Crear usuario: Rol inválido", map[string]interface{}{"rol": req.Rol})
-		errors.WriteError(w, errors.ErrBadRequest, "Rol debe ser 'admin' o 'vendedor'")
-		return
-	}
-
-	// Crear usuario
-	usuarioID, err := c.usuarioService.CrearUsuario(req.Username, req.Password, req.Rol)
+	// Crear usuario siempre como admin
+	usuarioID, err := c.usuarioService.CrearUsuario(req.Username, req.Password, "admin")
 	if err != nil {
 		logger.Error("Crear usuario: Error al crear", "USUARIO_CREATE_ERROR", map[string]interface{}{"error": err.Error()})
 		errors.WriteError(w, errors.ErrServerError, "Error al crear usuario")
 		return
 	}
 
-	logger.Info("Crear usuario: Éxito", map[string]interface{}{"usuario_id": usuarioID, "username": req.Username})
-	errors.WriteSuccess(w, http.StatusCreated, map[string]interface{}{"id": usuarioID}, "Usuario creado")
+	logger.Info("Crear usuario: Éxito", map[string]interface{}{"usuario_id": usuarioID, "username": req.Username, "rol": "admin"})
+	errors.WriteSuccess(w, http.StatusCreated, map[string]interface{}{"id": usuarioID}, "Usuario creado como admin")
 }
 
 // Actualizar actualiza un usuario existente

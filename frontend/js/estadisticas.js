@@ -67,7 +67,8 @@ async function cargarDatos() {
         try {
             const ventasData = await api.obtenerVentas();
             // El backend retorna {status, data, message}, extraer el array de data
-            datosVentas.ventas = ventasData.data || ventasData || [];
+            const ventasArray = Array.isArray(ventasData) ? ventasData : (ventasData?.data || []);
+            datosVentas.ventas = Array.isArray(ventasArray) ? ventasArray : [];
         } catch (e) {
             Logger.log('No se pudieron cargar ventas');
             datosVentas.ventas = [];
@@ -102,12 +103,14 @@ function renderizarProductosCounters() {
     });
 
     // Sumar cantidades de cada producto (excluyendo canceladas)
-    datosVentas.ventas.forEach(venta => {
-        if (venta.estado === 'cancelada') return;
-        // Las ventas llegadas del backend deben tener información de productos
-        // Por ahora contamos desde el array de items si existen
-        // Si no, hacemos un conteo genérico
-    });
+    if (datosVentas.ventas && Array.isArray(datosVentas.ventas)) {
+        datosVentas.ventas.forEach(venta => {
+            if (venta.estado === 'cancelada') return;
+            // Las ventas llegadas del backend deben tener información de productos
+            // Por ahora contamos desde el array de items si existen
+            // Si no, hacemos un conteo genérico
+        });
+    }
 
     // Renderizar tarjetas para cada producto
     productosCache.forEach(producto => {
