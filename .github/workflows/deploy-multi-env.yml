@@ -114,24 +114,22 @@ jobs:
           echo "url=$URL" >> $GITHUB_OUTPUT
           echo "✅ QA Backend: $URL"
 
-      - name: Deploy Frontend to Netlify (QA)
+      - name: Clear Netlify Cache (QA)
         run: |
-          npm install -g netlify-cli
-          netlify deploy --site $NETLIFY_SITE_ID_QA --auth $NETLIFY_AUTH_TOKEN --dir=frontend --message "QA deploy from $GITHUB_SHA" --clearCache
+          curl -X POST \
+            -H "Authorization: Bearer $NETLIFY_AUTH_TOKEN" \
+            https://api.netlify.com/api/v1/sites/$NETLIFY_SITE_ID_QA/clear-cache
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID_QA: ${{ secrets.NETLIFY_SITE_ID_QA }}
 
-  approve-production:
-    name: Approve Production Deployment
-    needs: build-and-push
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    environment:
-      name: production
-    steps:
-      - name: Waiting for approval
-        run: echo "⏳ Awaiting manual approval to deploy to production..."
+      - name: Deploy Frontend to Netlify (QA)
+        run: |
+          npm install -g netlify-cli
+          netlify deploy --site $NETLIFY_SITE_ID_QA --auth $NETLIFY_AUTH_TOKEN --dir=frontend --message "QA deploy from $GITHUB_SHA"
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID_QA: ${{ secrets.NETLIFY_SITE_ID_QA }}
 
   deploy-prod:
     name: Deploy to Production
@@ -194,10 +192,19 @@ jobs:
           echo "url=$URL" >> $GITHUB_OUTPUT
           echo "✅ Production Backend: $URL"
 
+      - name: Clear Netlify Cache (Production)
+        run: |
+          curl -X POST \
+            -H "Authorization: Bearer $NETLIFY_AUTH_TOKEN" \
+            https://api.netlify.com/api/v1/sites/$NETLIFY_SITE_ID_PROD/clear-cache
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID_PROD: ${{ secrets.NETLIFY_SITE_ID_PROD }}
+
       - name: Deploy Frontend to Netlify (Production)
         run: |
           npm install -g netlify-cli
-          netlify deploy --site $NETLIFY_SITE_ID_PROD --auth $NETLIFY_AUTH_TOKEN --dir=frontend --prod --message "🚀 Production deploy from $GITHUB_SHA" --clearCache
+          netlify deploy --site $NETLIFY_SITE_ID_PROD --auth $NETLIFY_AUTH_TOKEN --dir=frontend --prod --message "🚀 Production deploy from $GITHUB_SHA"
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID_PROD: ${{ secrets.NETLIFY_SITE_ID_PROD }}
