@@ -31,46 +31,11 @@ services:
       start_period: 5s
     networks:
       - ecos-network
-    depends_on:
-      - mysql
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
-
-  # MySQL Database
-  mysql:
-    image: mysql:8.0-alpine
-    container_name: ecos-mysql
-    ports:
-      - "3306:3306"
-    environment:
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-root}
-      - MYSQL_DATABASE=${MYSQL_DATABASE:-ecos}
-      - MYSQL_USER=${MYSQL_USER:-ecos_user}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-ecos_pass}
-      - MYSQL_INITDB_SKIP_TZINFO=1
-    volumes:
-      - mysql_data:/var/lib/mysql
-      - ./backend/create_user.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - ecos-network
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-volumes:
-  mysql_data:
-    driver: local
 
 networks:
   ecos-network:

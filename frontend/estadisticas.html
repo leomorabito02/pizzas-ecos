@@ -9,6 +9,14 @@
     <link rel="stylesheet" href="css/estadisticas.css">
 </head>
 <body>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay hidden">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <p class="loading-text">Cargando datos...</p>
+        </div>
+    </div>
+
     <div class="container">
         <div class="header">
             <h1>📊 Estadísticas de Ventas</h1>
@@ -34,15 +42,23 @@
             
             <!-- Sección: Ventas por Producto (Dinámico) -->
             <div class="resumen-section">
-                <h2 style="margin-bottom: 15px; color: #333;">📦 Ventas por Producto</h2>
+                <h2 style="margin-bottom: 15px; color: #333;">📦 Ventas por Combos</h2>
                 <div class="stats-grid" id="productosCounters">
                     <!-- Los contadores de productos se generarán dinámicamente aquí -->
                 </div>
             </div>
 
-            <!-- Sección: Entregas -->
+            <!-- Sección: Ventas por Tipo de Producto -->
+            <div class="resumen-section">
+                <h2 style="margin-bottom: 15px; color: #333;">📦 Ventas por Productos</h2>
+                <div class="stats-grid" id="productosPorTipoCounters">
+                    <!-- Los contadores de productos por tipo se generarán dinámicamente aquí -->
+                </div>
+            </div>
+
+            <!-- Sección: Ventas -->
             <div class="resumen-section" style="margin-top: 30px;">
-                <h2 style="margin-bottom: 15px; color: #333;">🚚 Entregas</h2>
+                <h2 style="margin-bottom: 15px; color: #333;">📃 Ventas</h2>
                 <div class="stats-grid">
                     <div class="stat-card">
                         <div class="stat-label">🚚 Para Delivery</div>
@@ -110,15 +126,35 @@
 
         <!-- TAB 3: TODAS LAS VENTAS -->
         <div id="tab-ventas" class="tab-content">
-            <div class="filter-section" style="margin-bottom: 20px; display: flex; gap: 10px; align-items: center;">
-                <label for="filtroEntrega" style="font-weight: 600; color: #333;">Filtrar por entrega:</label>
-                <select id="filtroEntrega" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px;">
-                    <option value="">Todas las ventas</option>
-                    <option value="no-entregada">❌ No entregadas</option>
-                    <option value="entregada">✓ Solo entregadas</option>
-                    <option value="delivery">🚗 Solo Delivery</option>
-                    <option value="retiro">🏪 Solo Retiro</option>
-                </select>
+            <div class="filters-container">
+                <!-- Filtro de Vendedor -->
+                <div class="filter-item">
+                    <label for="filtroVendedor">👤 Vendedor:</label>
+                    <select id="filtroVendedor">
+                        <option value="">Ver todos</option>
+                    </select>
+                </div>
+
+                <!-- Filtro de Entrega (editado) -->
+                <div class="filter-item">
+                    <label for="filtroEntrega">🚚 Entrega:</label>
+                    <select id="filtroEntrega">
+                        <option value="">Ver todos</option>
+                        <option value="delivery">🚗 Delivery</option>
+                        <option value="retiro">🏪 Retiro en Parroquia</option>
+                    </select>
+                </div>
+
+                <!-- Filtro de Estado de Pago (nuevo) -->
+                <div class="filter-item">
+                    <label for="filtroPago">💳 Estado de Pago:</label>
+                    <select id="filtroPago">
+                        <option value="">Ver todos</option>
+                        <option value="sin-pagar">❌ Sin pagar</option>
+                        <option value="pagada">✓ Pagado</option>
+                        <option value="entregada">🚚 Entregado</option>
+                    </select>
+                </div>
             </div>
             <div class="tabla-container tabla-grande">
                 <table class="tabla-ventas tabla-responsive">

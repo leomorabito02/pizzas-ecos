@@ -2,6 +2,7 @@
 // Ya no define su propia URL de API, usa APIService centralizado
 
 let API_BASE = null;  // Se inicializa en DOMContentLoaded
+let loadingTimeout = null;  // Para timeout de pantalla de carga
 
 // Loading Spinner Functions
 function showLoadingSpinner(show = true) {
@@ -9,8 +10,21 @@ function showLoadingSpinner(show = true) {
     if (overlay) {
         if (show) {
             overlay.classList.remove('hidden');
+            
+            // Timeout: ocultar automáticamente después de 10 segundos
+            if (loadingTimeout) clearTimeout(loadingTimeout);
+            loadingTimeout = setTimeout(() => {
+                hideLoadingSpinner();
+                Logger.log('Loading timeout - se ocultó después de 10 segundos');
+            }, 10000);
         } else {
             overlay.classList.add('hidden');
+            
+            // Limpiar timeout si se oculta manualmente
+            if (loadingTimeout) {
+                clearTimeout(loadingTimeout);
+                loadingTimeout = null;
+            }
         }
     }
 }
@@ -41,6 +55,49 @@ function parseArgentinoFloat(value) {
     str = str.replace(',', '.');
     
     return parseFloat(str) || 0;
+}
+
+// Función para inicializar filtros (llamada DESPUÉS de cargar datos)
+function inicializarFiltros() {
+    const filtroVendedor = document.getElementById('filtroVendedor');
+    const filtroEntrega = document.getElementById('filtroEntrega');
+    const filtroPago = document.getElementById('filtroPago');
+
+    // Llenar lista de vendedores en el filtro
+    if (filtroVendedor && datosVentas.ventas && datosVentas.ventas.length > 0) {
+        // Limpiar opciones previas (excepto la primera que es "Ver todos")
+        while (filtroVendedor.options.length > 1) {
+            filtroVendedor.remove(1);
+        }
+
+        const vendedoresUnicos = [...new Set(datosVentas.ventas.map(v => v.vendedor))].filter(v => v).sort();
+        Logger.log('Vendedores únicos encontrados:', vendedoresUnicos);
+        
+        vendedoresUnicos.forEach(vendedor => {
+            const option = document.createElement('option');
+            option.value = vendedor;
+            option.textContent = vendedor;
+            filtroVendedor.appendChild(option);
+        });
+
+        filtroVendedor.addEventListener('change', () => {
+            renderizarVentas();
+        });
+    }
+
+    if (filtroEntrega) {
+        filtroEntrega.addEventListener('change', () => {
+            renderizarVentas();
+        });
+    }
+
+    if (filtroPago) {
+        filtroPago.addEventListener('change', () => {
+            renderizarVentas();
+        });
+    }
+
+    Logger.log('Filtros inicializados');
 }
 
 async function cargarDatos() {
@@ -84,6 +141,12 @@ async function cargarDatos() {
         renderizarResumen();
         renderizarVendedores();
         renderizarVentas();
+        renderizarComboCounters();
+        renderizarProductosPorTipo();
+        
+        // 5. Inicializar filtros (DESPUÉS de cargar datos)
+        inicializarFiltros();
+        
         hideLoadingSpinner();
     } catch (error) {
         console.error('Error:', error);
@@ -93,6 +156,125 @@ async function cargarDatos() {
 }
 
 // Nueva función para renderizar contadores de productos dinámicamente
+// Mapeo de combos a cantidades de pizzas por tipo
+const COMBO_PIZZA_MAP = {
+    'Muzza': { 'Muzza': 1, 'Muzza y Jamón': 0 },
+    'Muzza y Jamón': { 'Muzza': 0, 'Muzza y Jamón': 1 },
+    'La dupla | 1 Muzza + 1 Muzza y Jamón': { 'Muzza': 1, 'Muzza y Jamón': 1 },
+    'Mix Familia grande | 2 Muzza + 1 Muzza y Jamón': { 'Muzza': 2, 'Muzza y Jamón': 1 },
+    'Mix Juntada amigos | 3 Muzza + 2 Muzza y jamón': { 'Muzza': 3, 'Muzza y Jamón': 2 }
+};
+
+function renderizarComboCounters() {
+    if (!datosVentas.ventas || !productosCache) return;
+
+    const container = document.getElementById('productosCounters');
+    container.innerHTML = '';
+
+    // Contar ventas por producto desde detalle_ventas (sin canceladas)
+    const ventasPorProducto = {};
+    
+    productosCache.forEach(producto => {
+        ventasPorProducto[producto.id] = 0;
+    });
+
+    // Sumar cantidades de cada producto (excluyendo canceladas)
+    if (datosVentas.ventas && Array.isArray(datosVentas.ventas)) {
+        datosVentas.ventas.forEach(venta => {
+            if (venta.estado === 'cancelada') return;
+            // Las ventas llegadas del backend deben tener información de productos
+            // Por ahora contamos desde el array de items si existen
+            // Si no, hacemos un conteo genérico
+        });
+    }
+
+    // Renderizar tarjetas para cada producto
+    productosCache.forEach(producto => {
+        // Calcular total vendido para este producto (excluyendo canceladas)
+        let totalVendido = 0;
+        if (datosVentas.ventas && Array.isArray(datosVentas.ventas)) {
+            datosVentas.ventas.forEach(venta => {
+                // Excluir ventas canceladas
+                if (venta.estado === 'cancelada') return;
+                // Si la venta tiene array de items con product_id
+                if (venta.items && Array.isArray(venta.items)) {
+                    venta.items.forEach(item => {
+                        if (item.product_id === producto.id) {
+                            totalVendido += item.cantidad || 0;
+                        }
+                    });
+                }
+            });
+        }
+
+        const card = document.createElement('div');
+        card.className = 'stat-card';
+        card.innerHTML = `
+            <div class="stat-label">${producto.tipo_pizza}</div>
+            <div class="stat-value">${totalVendido}</div>
+            <div style="font-size: 12px; color: #666; margin-top: 5px;">$${producto.precio.toFixed(2)} c/u</div>
+        `;
+        container.appendChild(card);
+    });
+}
+
+// Nueva función para calcular y renderizar pizzas por tipo (Muzza y Muzza y Jamón)
+function renderizarProductosPorTipo() {
+    if (!datosVentas.ventas) return;
+
+    const container = document.getElementById('productosPorTipoCounters');
+    if (!container) return; // El contenedor debe existir en el HTML
+
+    container.innerHTML = '';
+
+    // Inicializar contadores
+    const pizzasPorTipo = {
+        'Muzza': 0,
+        'Muzza y Jamón': 0
+    };
+
+    // Procesar cada venta
+    if (Array.isArray(datosVentas.ventas)) {
+        datosVentas.ventas.forEach(venta => {
+            // Excluir ventas canceladas
+            if (venta.estado === 'cancelada') return;
+
+            // Procesar items de la venta
+            if (venta.items && Array.isArray(venta.items)) {
+                venta.items.forEach(item => {
+                    const cantidad = parseInt(item.cantidad) || 0;
+                    if (cantidad <= 0) return; // Ignorar items con cantidad 0 o negativa
+                    
+                    const comboNombre = item.tipo || item.tipo_pizza;
+                    
+                    // Primero, verificar si es un combo mapeado
+                    if (COMBO_PIZZA_MAP[comboNombre]) {
+                        const pizzasDelCombo = COMBO_PIZZA_MAP[comboNombre];
+                        
+                        pizzasPorTipo['Muzza'] += (pizzasDelCombo['Muzza'] || 0) * cantidad;
+                        pizzasPorTipo['Muzza y Jamón'] += (pizzasDelCombo['Muzza y Jamón'] || 0) * cantidad;
+                    } else if (pizzasPorTipo.hasOwnProperty(comboNombre)) {
+                        // Si no es un combo, pero es un tipo de pizza directo, contar como producto individual
+                        pizzasPorTipo[comboNombre] = (pizzasPorTipo[comboNombre] || 0) + cantidad;
+                    }
+                });
+            }
+        });
+    }
+
+    // Renderizar tarjetas para cada tipo de pizza
+    Object.entries(pizzasPorTipo).forEach(([tipo, cantidad]) => {
+        const card = document.createElement('div');
+        card.className = 'stat-card';
+        card.innerHTML = `
+            <div class="stat-label">${tipo}</div>
+            <div class="stat-value">${cantidad}</div>
+            <div style="font-size: 12px; color: #666; margin-top: 5px;">pizzas vendidas</div>
+        `;
+        container.appendChild(card);
+    });
+}
+
 function renderizarProductosCounters() {
     if (!datosVentas.ventas || !productosCache) return;
 
@@ -183,20 +365,66 @@ function renderizarVendedores() {
     const container = document.getElementById('vendedoresDetail');
     container.innerHTML = '';
 
+    // Mensaje si no hay vendedores
+    if (!vendedores || vendedores.length === 0) {
+        container.innerHTML = '<div style="padding: 20px; text-align: center; color: #999;">❌ No se encontraron vendedores</div>';
+        return;
+    }
+
     vendedores.forEach(vendedor => {
         // Filtrar ventas sin pagar de este vendedor
         const ventasSinPagar = ventas.filter(v => 
             v.vendedor === vendedor.nombre && v.estado === 'sin pagar'
         );
 
-        // Calcular total de items vendidos por este vendedor
-        let totalItems = 0;
+        // Calcular pizzas vendidas por tipo (Muzza y Muzza y Jamón)
+        let pizzasMuzza = 0;
+        let pizzasMuzzaJamon = 0;
+        
         ventas.forEach(v => {
-            if (v.vendedor === vendedor.nombre) {
+            if (v.vendedor === vendedor.nombre && v.estado !== 'cancelada') {
                 if (v.items && Array.isArray(v.items)) {
                     v.items.forEach(item => {
-                        totalItems += item.cantidad || 0;
+                        const comboNombre = item.tipo || item.tipo_pizza;
+                        const cantidad = parseInt(item.cantidad) || 0;
+                        
+                        // Buscar en COMBO_PIZZA_MAP
+                        if (COMBO_PIZZA_MAP[comboNombre]) {
+                            const pizzasDelCombo = COMBO_PIZZA_MAP[comboNombre];
+                            pizzasMuzza += (pizzasDelCombo['Muzza'] || 0) * cantidad;
+                            pizzasMuzzaJamon += (pizzasDelCombo['Muzza y Jamón'] || 0) * cantidad;
+                        } else if (comboNombre === 'Muzza') {
+                            pizzasMuzza += cantidad;
+                        } else if (comboNombre === 'Muzza y Jamón') {
+                            pizzasMuzzaJamon += cantidad;
+                        }
                     });
+                }
+            }
+        });
+
+        // Calcular desgloses por método de pago para DEUDAS (sin pagar)
+        let deudaEfectivo = 0, deudaTransferencia = 0;
+        ventas.forEach(v => {
+            if (v.vendedor === vendedor.nombre && v.estado === 'sin pagar') {
+                const monto = parseArgentinoFloat(v.total);
+                if (v.payment_method === 'efectivo') {
+                    deudaEfectivo += monto;
+                } else if (v.payment_method === 'transferencia') {
+                    deudaTransferencia += monto;
+                }
+            }
+        });
+
+        // Calcular desgloses por método de pago para PAGOS (pagada o entregada)
+        let pagadoEfectivo = 0, pagadoTransferencia = 0;
+        ventas.forEach(v => {
+            if (v.vendedor === vendedor.nombre && (v.estado === 'pagada' || v.estado === 'entregada')) {
+                const monto = parseArgentinoFloat(v.total);
+                if (v.payment_method === 'efectivo') {
+                    pagadoEfectivo += monto;
+                } else if (v.payment_method === 'transferencia') {
+                    pagadoTransferencia += monto;
                 }
             }
         });
@@ -204,63 +432,151 @@ function renderizarVendedores() {
         const card = document.createElement('div');
         card.className = 'vendedor-card';
         card.innerHTML = `
-            <h3>👤 ${vendedor.nombre}</h3>
-            <div class="vendedor-stat">
-                <span class="vendedor-stat-label">📊 Cantidad de ventas:</span>
-                <span class="vendedor-stat-value">${Math.round(vendedor.cantidad || 0)}</span>
-            </div>
-            <div class="vendedor-stat">
-                <span class="vendedor-stat-label">📦 Total de productos vendidos:</span>
-                <span class="vendedor-stat-value">${Math.round(totalItems)}</span>
-            </div>
-            <div class="vendedor-stat">
-                <span class="vendedor-stat-label">⏳ Monto sin pagar:</span>
-                <span class="vendedor-stat-value">$${(vendedor.deuda || 0).toFixed(2)}</span>
-            </div>
-            <div class="vendedor-stat">
-                <span class="vendedor-stat-label">✓ Monto pagado:</span>
-                <span class="vendedor-stat-value">$${(vendedor.pagado || 0).toFixed(2)}</span>
-            </div>
-            <div class="vendedor-stat" style="background: #f0f0f0; padding: 8px; border-radius: 4px; margin-top: 10px;">
-                <span class="vendedor-stat-label" style="font-weight: 600;">💰 Total vendedor:</span>
-                <span class="vendedor-stat-value" style="font-size: 24px; color: #ff6b35;">$${(vendedor.total || 0).toFixed(2)}</span>
-            </div>
-            ${ventasSinPagar.length > 0 ? `
-                <div class="vendedor-deudas" style="margin-top: 15px; padding: 10px; background: #fff3cd; border-left: 4px solid #ff6b35; border-radius: 4px;">
-                    <h4 style="margin: 0 0 8px 0; color: #ff6b35;">⚠️ Clientes que no pagaron (${ventasSinPagar.length})</h4>
-                    ${ventasSinPagar.map(venta => `
-                        <div class="deuda-item" style="margin: 5px 0; font-size: 14px;">
-                            <strong>${venta.cliente}:</strong> $${parseArgentinoFloat(venta.total).toFixed(2)}
-                        </div>
-                    `).join('')}
+            <h3 style="margin: 0 0 12px 0; font-size: 18px;">👤 ${vendedor.nombre}</h3>
+            
+            <!-- ESTADÍSTICAS PRINCIPALES -->
+            <div class="vendedor-stats-grid">
+                <div class="vendedor-stat">
+                    <span class="vendedor-stat-label">📊 Ventas:</span>
+                    <span class="vendedor-stat-value">${Math.round(vendedor.cantidad || 0)}</span>
                 </div>
-            ` : '<div style="color: #28a745; padding: 10px; text-align: center; font-weight: 600; margin-top: 10px;">✓ Todos los clientes pagaron</div>'}
+                <div class="vendedor-stat">
+                    <span class="vendedor-stat-label">🍕 Muzzas:</span>
+                    <span class="vendedor-stat-value">${pizzasMuzza}</span>
+                </div>
+                <div class="vendedor-stat">
+                    <span class="vendedor-stat-label">🍕 Muzza y Jamón:</span>
+                    <span class="vendedor-stat-value">${pizzasMuzzaJamon}</span>
+                </div>
+            </div>
+            
+            <!-- DESGLOSE DE DEUDAS -->
+            <div class="vendedor-desglose vendedor-desglose-deuda">
+                <div class="desglose-header">
+                    <span class="desglose-title">⏳ Monto sin pagar</span>
+                    <span class="desglose-total">$${(vendedor.deuda || 0).toFixed(2)}</span>
+                </div>
+                <div class="desglose-items">
+                    <div class="desglose-item">
+                        <span>💵 Efectivo:</span>
+                        <strong>$${deudaEfectivo.toFixed(2)}</strong>
+                    </div>
+                    <div class="desglose-item">
+                        <span>🏦 Transferencia:</span>
+                        <strong>$${deudaTransferencia.toFixed(2)}</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DESGLOSE DE PAGOS -->
+            <div class="vendedor-desglose vendedor-desglose-pago">
+                <div class="desglose-header">
+                    <span class="desglose-title">✓ Monto pagado</span>
+                    <span class="desglose-total">$${(vendedor.pagado || 0).toFixed(2)}</span>
+                </div>
+                <div class="desglose-items">
+                    <div class="desglose-item">
+                        <span>💵 Efectivo:</span>
+                        <strong>$${pagadoEfectivo.toFixed(2)}</strong>
+                    </div>
+                    <div class="desglose-item">
+                        <span>🏦 Transferencia:</span>
+                        <strong>$${pagadoTransferencia.toFixed(2)}</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TOTAL VENDEDOR -->
+            <div class="vendedor-total">
+                <span class="vendedor-stat-label">💰 Total vendedor:</span>
+                <span class="vendedor-stat-value">$${(vendedor.total || 0).toFixed(2)}</span>
+            </div>
+            
+            <!-- DEUDORES -->
+            ${ventasSinPagar.length > 0 ? `
+                <div class="vendedor-deudores">
+                    <h4 style="margin: 0 0 8px 0; font-size: 14px;">⚠️ Clientes que no pagaron (${ventasSinPagar.length})</h4>
+                    <div class="deudores-list">
+                        ${ventasSinPagar.map(venta => {
+                            const metodo = venta.payment_method === 'efectivo' ? '💵' : 
+                                          venta.payment_method === 'transferencia' ? '🏦' : 
+                                          '❓';
+                            const metodoText = venta.payment_method === 'efectivo' ? 'Efectivo' : 
+                                             venta.payment_method === 'transferencia' ? 'Transferencia' : 
+                                             'Otro';
+                            return `<div class="deuda-item-mobile">
+                                <div class="deuda-info">
+                                    <strong>${venta.cliente}</strong>
+                                    <span class="deuda-metodo">${metodo} ${metodoText}</span>
+                                </div>
+                                <div class="deuda-monto">$${parseArgentinoFloat(venta.total).toFixed(2)}</div>
+                            </div>`;
+                        }).join('')}
+                    </div>
+                </div>
+            ` : '<div class="vendedor-pagado-completo">✓ Todos los clientes pagaron</div>'}
         `;
         container.appendChild(card);
     });
 }
 
-function renderizarVentas(filtro = '') {
+function renderizarVentas() {
     if (!datosVentas.ventas) return;
 
     const tbody = document.getElementById('ventasTableBody');
     tbody.innerHTML = '';
 
-    // Filtrar ventas según el filtro seleccionado
-    let ventasFiltradas = datosVentas.ventas;
-    
-    if (filtro === 'no-entregada') {
-        // Mostrar solo ventas no entregadas (estado != 'entregada')
-        ventasFiltradas = datosVentas.ventas.filter(v => v.estado !== 'entregada' && v.estado !== 'cancelada');
-    } else if (filtro === 'entregada') {
-        // Mostrar solo ventas entregadas
-        ventasFiltradas = datosVentas.ventas.filter(v => v.estado === 'entregada');
-    } else if (filtro === 'delivery') {
-        // Solo delivery
-        ventasFiltradas = datosVentas.ventas.filter(v => v.tipo_entrega === 'delivery' || v.tipo_entrega === 'envio');
-    } else if (filtro === 'retiro') {
-        // Solo retiro
-        ventasFiltradas = datosVentas.ventas.filter(v => v.tipo_entrega === 'retiro');
+    // Obtener valores de todos los filtros
+    const filtroVendedor = document.getElementById('filtroVendedor')?.value || '';
+    const filtroEntrega = document.getElementById('filtroEntrega')?.value || '';
+    const filtroPago = document.getElementById('filtroPago')?.value || '';
+
+    // Filtrar ventas según TODOS los filtros activos
+    let ventasFiltradas = datosVentas.ventas.filter(venta => {
+        // Filtro por vendedor
+        if (filtroVendedor && venta.vendedor !== filtroVendedor) {
+            return false;
+        }
+
+        // Filtro por tipo de entrega
+        if (filtroEntrega) {
+            if (filtroEntrega === 'delivery') {
+                if (venta.tipo_entrega !== 'delivery' && venta.tipo_entrega !== 'envio') {
+                    return false;
+                }
+            } else if (filtroEntrega === 'retiro') {
+                if (venta.tipo_entrega !== 'retiro') {
+                    return false;
+                }
+            }
+        }
+
+        // Filtro por estado de pago
+        if (filtroPago) {
+            if (filtroPago === 'sin-pagar') {
+                if (venta.estado !== 'sin pagar' && venta.estado !== undefined) {
+                    return false;
+                }
+            } else if (filtroPago === 'pagada') {
+                if (venta.estado !== 'pagada') {
+                    return false;
+                }
+            } else if (filtroPago === 'entregada') {
+                if (venta.estado !== 'entregada') {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    });
+
+    // Mensaje si no hay ventas después de filtrar
+    if (ventasFiltradas.length === 0) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td colspan="9" style="text-align: center; padding: 20px; color: #999;">❌ No se encontraron ventas</td>';
+        tbody.appendChild(tr);
+        return;
     }
 
     ventasFiltradas.forEach(venta => {
@@ -527,14 +843,6 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById(`tab-${tab}`).classList.add('active');
         });
     });
-
-    // Filtro de entregas en la tabla de ventas
-    const filtroEntrega = document.getElementById('filtroEntrega');
-    if (filtroEntrega) {
-        filtroEntrega.addEventListener('change', (e) => {
-            renderizarVentas(e.target.value);
-        });
-    }
 
     // Volver al home
     document.getElementById('btnVolver').addEventListener('click', () => {

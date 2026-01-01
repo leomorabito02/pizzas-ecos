@@ -250,26 +250,23 @@ func GetResumen() (map[string]interface{}, error) {
 		return nil, err
 	}
 
-	// Ahora calcular items por separado
+	// Ahora calcular cantidad de ventas por tipo de entrega
 	itemsQuery := `
 		SELECT 
-			COALESCE(SUM(dv.cantidad), 0) as total_items,
-			COALESCE(SUM(CASE WHEN v.tipo_entrega IN ('delivery', 'envio') OR (v.tipo_entrega IS NULL OR v.tipo_entrega = '') THEN dv.cantidad ELSE 0 END), 0) as total_delivery,
-			COALESCE(SUM(CASE WHEN v.tipo_entrega='retiro' THEN dv.cantidad ELSE 0 END), 0) as total_retiro
-		FROM detalle_ventas dv
-		JOIN ventas v ON dv.venta_id = v.id
+			COALESCE(COUNT(DISTINCT CASE WHEN v.tipo_entrega IN ('delivery', 'envio') OR (v.tipo_entrega IS NULL OR v.tipo_entrega = '') THEN v.id END), 0) as total_ventas_delivery,
+			COALESCE(COUNT(DISTINCT CASE WHEN v.tipo_entrega='retiro' THEN v.id END), 0) as total_ventas_retiro
+		FROM ventas v
 		WHERE v.estado != 'cancelada'
 	`
 
-	var totalItems, delivery, retiro int
-	err = DB.QueryRow(itemsQuery).Scan(&totalItems, &delivery, &retiro)
+	var delivery, retiro int
+	err = DB.QueryRow(itemsQuery).Scan(&delivery, &retiro)
 	if err != nil {
 		log.Printf("Error en GetResumen items: %v", err)
-		totalItems, delivery, retiro = 0, 0, 0
+		delivery, retiro = 0, 0
 	}
 
 	return map[string]interface{}{
-		"total_items":           totalItems,
 		"total_delivery":        delivery,
 		"total_retiro":          retiro,
 		"efectivo_cobrado":      efectivo,

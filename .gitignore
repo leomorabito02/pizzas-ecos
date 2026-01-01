@@ -47,3 +47,5 @@ RENDER_*.md
 
 # Otros
 .DS_Store
+
+/frontend/js/backend-config.js

@@ -1,5 +1,70 @@
 /* Estadísticas CSS */
 
+/* ==================== LOADING OVERLAY ==================== */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    backdrop-filter: blur(4px);
+}
+
+.loading-overlay.hidden {
+    display: none;
+}
+
+.loading-content {
+    background: white;
+    border-radius: 12px;
+    padding: 40px;
+    text-align: center;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid #e0e0e0;
+    border-top-color: #073C5C;
+    border-radius: 50%;
+    margin: 0 auto 20px;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.loading-text {
+    color: #555;
+    font-size: 16px;
+    font-weight: 500;
+    margin: 0;
+    letter-spacing: 0.5px;
+}
+
+/* ==================== ESTILOS EXISTENTES ==================== */
+
 .nav-buttons {
     display: flex;
     align-items: center;
@@ -438,15 +503,17 @@
 
 .agregar-producto-grid {
     display: grid;
-    grid-template-columns: 1fr 120px auto;
+    grid-template-columns: minmax(200px, 1fr) 120px auto;
     gap: 8px;
     align-items: end;
+    max-width: 600px;
 }
 
 .cantidad-controls-modal {
     display: flex;
     align-items: center;
     gap: 6px;
+    flex-wrap: nowrap;
 }
 
 .btn-cantidad-menos-modal,
@@ -732,10 +799,41 @@
     .agregar-producto-grid {
         grid-template-columns: 1fr;
         gap: 8px;
+        align-items: stretch;
     }
 
-    .agregar-producto-grid button {
+    .agregar-producto-grid select {
+        width: 100%;
         padding: 10px;
+        font-size: 14px;
+    }
+
+    .cantidad-controls-modal {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 6px;
+        align-items: center;
+    }
+
+    .btn-cantidad-menos-modal,
+    .btn-cantidad-mas-modal {
+        width: 40px;
+        height: 40px;
+        padding: 0;
+        font-size: 18px;
+    }
+
+    .cantidad-controls-modal input {
+        width: 100%;
+        padding: 8px;
+        text-align: center;
+        font-size: 14px;
+    }
+
+    #btnAgregarProducto {
+        width: 100%;
+        padding: 10px;
+        font-size: 14px;
     }
 }
 
@@ -983,5 +1081,533 @@
         width: 30px;
         height: 30px;
         font-size: 14px;
+    }
+}
+
+/* ==================== VENDEDOR CARD RESPONSIVE ==================== */
+
+.vendedor-card {
+    background: white;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border: 1px solid #e0e0e0;
+}
+
+.vendedor-card h3 {
+    color: #073C5C;
+    font-size: 18px;
+    margin-bottom: 12px;
+}
+
+/* Grid de estadísticas principales */
+.vendedor-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.vendedor-stat {
+    display: flex;
+    flex-direction: column;
+    padding: 8px;
+    background: #f9f9f9;
+    border-radius: 4px;
+}
+
+.vendedor-stat-label {
+    font-size: 12px;
+    color: #666;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.vendedor-stat-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: #073C5C;
+}
+
+/* Desgloses (Deudas y Pagos) */
+.vendedor-desglose {
+    margin: 12px 0;
+    padding: 10px;
+    border-radius: 4px;
+    border-left: 4px solid #999;
+}
+
+.vendedor-desglose-deuda {
+    background: #fff0f0;
+    border-left-color: #ff6b35;
+}
+
+.vendedor-desglose-pago {
+    background: #f0f8f0;
+    border-left-color: #28a745;
+}
+
+.desglose-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.desglose-title {
+    font-weight: 600;
+    font-size: 14px;
+    color: #333;
+}
+
+.vendedor-desglose-deuda .desglose-title {
+    color: #d32f2f;
+}
+
+.vendedor-desglose-pago .desglose-title {
+    color: #28a745;
+}
+
+.desglose-total {
+    font-weight: 700;
+    font-size: 16px;
+}
+
+.vendedor-desglose-deuda .desglose-total {
+    color: #d32f2f;
+}
+
+.vendedor-desglose-pago .desglose-total {
+    color: #28a745;
+}
+
+.desglose-items {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.desglose-item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    padding: 4px 0;
+}
+
+.desglose-item span {
+    color: #666;
+}
+
+.desglose-item strong {
+    color: #333;
+    font-weight: 700;
+}
+
+/* Total vendedor */
+.vendedor-total {
+    background: #f0f0f0;
+    padding: 10px;
+    border-radius: 4px;
+    margin: 10px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.vendedor-total .vendedor-stat-label {
+    font-size: 13px;
+    margin-bottom: 0;
+}
+
+.vendedor-total .vendedor-stat-value {
+    font-size: 22px;
+    color: #ff6b35;
+}
+
+/* Lista de deudores */
+.vendedor-deudores {
+    margin-top: 15px;
+    padding: 10px;
+    background: #fff3cd;
+    border-left: 4px solid #ff6b35;
+    border-radius: 4px;
+}
+
+.vendedor-deudores h4 {
+    color: #ff6b35;
+}
+
+.deudores-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.deuda-item-mobile {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px;
+    background: #fffacd;
+    border-radius: 3px;
+    gap: 8px;
+}
+
+.deuda-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+
+.deuda-info strong {
+    font-size: 13px;
+    color: #333;
+    word-break: break-word;
+}
+
+.deuda-metodo {
+    font-size: 11px;
+    color: #888;
+    font-weight: 500;
+}
+
+.deuda-monto {
+    font-weight: 700;
+    color: #d32f2f;
+    white-space: nowrap;
+    font-size: 13px;
+}
+
+.vendedor-pagado-completo {
+    color: #28a745;
+    padding: 10px;
+    text-align: center;
+    font-weight: 600;
+    margin-top: 10px;
+    background: #f0f8f0;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+/* ==================== RESPONSIVE MOBILE ==================== */
+
+@media (max-width: 768px) {
+    .vendedor-card {
+        padding: 12px;
+        margin-bottom: 12px;
+    }
+
+    .vendedor-card h3 {
+        font-size: 16px;
+        margin-bottom: 10px;
+    }
+
+    .vendedor-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+
+    .vendedor-stat {
+        padding: 6px;
+    }
+
+    .vendedor-stat-label {
+        font-size: 11px;
+    }
+
+    .vendedor-stat-value {
+        font-size: 18px;
+    }
+
+    .vendedor-desglose {
+        margin: 10px 0;
+        padding: 8px;
+    }
+
+    .desglose-header {
+        margin-bottom: 6px;
+        gap: 6px;
+    }
+
+    .desglose-title {
+        font-size: 13px;
+    }
+
+    .desglose-total {
+        font-size: 14px;
+    }
+
+    .desglose-items {
+        gap: 6px;
+    }
+
+    .desglose-item {
+        font-size: 11px;
+        padding: 3px 0;
+    }
+
+    .vendedor-total {
+        padding: 8px;
+        margin: 8px 0;
+        gap: 6px;
+    }
+
+    .vendedor-total .vendedor-stat-label {
+        font-size: 12px;
+    }
+
+    .vendedor-total .vendedor-stat-value {
+        font-size: 18px;
+    }
+
+    .vendedor-deudores {
+        margin-top: 12px;
+        padding: 8px;
+    }
+
+    .vendedor-deudores h4 {
+        font-size: 13px;
+        margin: 0 0 6px 0;
+    }
+
+    .deudores-list {
+        gap: 4px;
+    }
+
+    .deuda-item-mobile {
+        padding: 5px;
+        gap: 6px;
+    }
+
+    .deuda-info strong {
+        font-size: 12px;
+    }
+
+    .deuda-metodo {
+        font-size: 10px;
+    }
+
+    .deuda-monto {
+        font-size: 12px;
+    }
+
+    .vendedor-pagado-completo {
+        font-size: 13px;
+        padding: 8px;
+        margin-top: 8px;
+    }
+}
+
+@media (max-width: 480px) {
+    .vendedor-card {
+        padding: 10px;
+        margin-bottom: 10px;
+    }
+
+    .vendedor-card h3 {
+        font-size: 14px;
+        margin-bottom: 8px;
+    }
+
+    .vendedor-stats-grid {
+        grid-template-columns: 1fr;
+        gap: 6px;
+        margin-bottom: 10px;
+    }
+
+    .vendedor-stat {
+        padding: 5px;
+    }
+
+    .vendedor-stat-label {
+        font-size: 10px;
+    }
+
+    .vendedor-stat-value {
+        font-size: 16px;
+    }
+
+    .vendedor-desglose {
+        margin: 8px 0;
+        padding: 6px;
+    }
+
+    .desglose-header {
+        flex-direction: column;
+        align-items: flex-start;
+        margin-bottom: 4px;
+        gap: 2px;
+    }
+
+    .desglose-title {
+        font-size: 12px;
+    }
+
+    .desglose-total {
+        font-size: 13px;
+        align-self: flex-start;
+    }
+
+    .desglose-items {
+        grid-template-columns: 1fr;
+        gap: 4px;
+    }
+
+    .desglose-item {
+        font-size: 10px;
+        padding: 2px 0;
+    }
+
+    .vendedor-total {
+        padding: 6px;
+        margin: 6px 0;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+
+    .vendedor-total .vendedor-stat-label {
+        font-size: 11px;
+    }
+
+    .vendedor-total .vendedor-stat-value {
+        font-size: 16px;
+    }
+
+    .vendedor-deudores {
+        margin-top: 10px;
+        padding: 6px;
+    }
+
+    .vendedor-deudores h4 {
+        font-size: 12px;
+        margin: 0 0 4px 0;
+    }
+
+    .deudores-list {
+        gap: 3px;
+    }
+
+    .deuda-item-mobile {
+        padding: 4px;
+        gap: 4px;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .deuda-info strong {
+        font-size: 11px;
+    }
+
+    .deuda-metodo {
+        font-size: 9px;
+    }
+
+    .deuda-monto {
+        font-size: 11px;
+        align-self: flex-start;
+    }
+
+    .vendedor-pagado-completo {
+        font-size: 12px;
+        padding: 6px;
+        margin-top: 6px;
+    }
+}
+
+/* ==================== FILTROS SECTION ==================== */
+.filters-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 25px;
+    padding: 15px;
+    background: #f9f9f9;
+    border-radius: 8px;
+    border-left: 4px solid #073C5C;
+}
+
+.filter-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.filter-item label {
+    font-weight: 600;
+    color: #333;
+    font-size: 14px;
+}
+
+.filter-item select {
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.filter-item select:hover {
+    border-color: #073C5C;
+    box-shadow: 0 0 8px rgba(7, 60, 92, 0.1);
+}
+
+.filter-item select:focus {
+    outline: none;
+    border-color: #073C5C;
+    box-shadow: 0 0 12px rgba(7, 60, 92, 0.2);
+}
+
+/* Responsive Tablets */
+@media (max-width: 1024px) {
+    .filters-container {
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+}
+
+/* Responsive Mobile */
+@media (max-width: 768px) {
+    .filters-container {
+        grid-template-columns: 1fr;
+        gap: 10px;
+        padding: 12px;
+    }
+
+    .filter-item label {
+        font-size: 13px;
+    }
+
+    .filter-item select {
+        padding: 8px 10px;
+        font-size: 13px;
+    }
+}
+
+@media (max-width: 480px) {
+    .filters-container {
+        grid-template-columns: 1fr;
+        gap: 8px;
+        padding: 10px;
+        border-left-width: 3px;
+    }
+
+    .filter-item label {
+        font-size: 12px;
+    }
+
+    .filter-item select {
+        padding: 6px 8px;
+        font-size: 12px;
     }
 }

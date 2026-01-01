@@ -2,13 +2,28 @@
 // Maneja toda la lógica de administración de productos y vendedores
 
 // Loading Spinner Functions
+let loadingTimeout = null;  // Para timeout de pantalla de carga
+
 function showLoadingSpinner(show = true) {
     const overlay = document.getElementById('loadingOverlay');
     if (overlay) {
         if (show) {
             overlay.classList.remove('hidden');
+            
+            // Timeout: ocultar automáticamente después de 10 segundos
+            if (loadingTimeout) clearTimeout(loadingTimeout);
+            loadingTimeout = setTimeout(() => {
+                hideLoadingSpinner();
+                console.log('Loading timeout - se ocultó después de 10 segundos');
+            }, 10000);
         } else {
             overlay.classList.add('hidden');
+            
+            // Limpiar timeout si se oculta manualmente
+            if (loadingTimeout) {
+                clearTimeout(loadingTimeout);
+                loadingTimeout = null;
+            }
         }
     }
 }
