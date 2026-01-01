@@ -115,17 +115,12 @@ jobs:
           echo "✅ QA Backend: $URL"
 
       - name: Deploy Frontend to Netlify (QA)
-        uses: nwtgck/actions-netlify@v2.1
-        with:
-          publish-dir: './frontend'
-          production-deploy: false
-          deploy-message: 'QA deploy from ${{ github.sha }}'
-          github-deployment-environment: qa
-          github-deployment-status: success
-          netlify-config-path: './netlify.toml'
+        run: |
+          npm install -g netlify-cli
+          netlify deploy --site $NETLIFY_SITE_ID_QA --auth $NETLIFY_AUTH_TOKEN --dir=frontend --message "QA deploy from $GITHUB_SHA" --clearCache
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID_QA }}
+          NETLIFY_SITE_ID_QA: ${{ secrets.NETLIFY_SITE_ID_QA }}
 
   approve-production:
     name: Approve Production Deployment
@@ -200,14 +195,9 @@ jobs:
           echo "✅ Production Backend: $URL"
 
       - name: Deploy Frontend to Netlify (Production)
-        uses: nwtgck/actions-netlify@v2.1
-        with:
-          publish-dir: './frontend'
-          production-deploy: true
-          deploy-message: '🚀 Production deploy from ${{ github.sha }}'
-          github-deployment-environment: production
-          github-deployment-status: success
-          netlify-config-path: './netlify.toml'
+        run: |
+          npm install -g netlify-cli
+          netlify deploy --site $NETLIFY_SITE_ID_PROD --auth $NETLIFY_AUTH_TOKEN --dir=frontend --prod --message "🚀 Production deploy from $GITHUB_SHA" --clearCache
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID_PROD }}
+          NETLIFY_SITE_ID_PROD: ${{ secrets.NETLIFY_SITE_ID_PROD }}
