@@ -126,7 +126,7 @@ jobs:
       - name: Deploy Frontend to Netlify (QA)
         run: |
           npm install -g netlify-cli
-          netlify deploy --site $NETLIFY_SITE_ID_QA --auth $NETLIFY_AUTH_TOKEN --dir=frontend --message "QA deploy from $GITHUB_SHA"
+          netlify deploy --site $NETLIFY_SITE_ID_QA --auth $NETLIFY_AUTH_TOKEN --dir=frontend --prod --message "QA deploy from $GITHUB_SHA"
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID_QA: ${{ secrets.NETLIFY_SITE_ID_QA }}
