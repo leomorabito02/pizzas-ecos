@@ -120,6 +120,28 @@
 
         <!-- TAB 2: VENDEDORES -->
         <div id="tab-vendedores" class="tab-content">
+            <!-- Filtros de Vendedores -->
+            <div class="filters-container" style="margin-bottom: 20px;">
+                <!-- Filtro 1: Estado de Ventas -->
+                <div class="filter-item">
+                    <label for="filtroEstadoVendedores">📊 Estado:</label>
+                    <select id="filtroEstadoVendedores">
+                        <option value="">Ver todos</option>
+                        <option value="con-ventas">Con ventas</option>
+                        <option value="sin-ventas">Sin ventas</option>
+                    </select>
+                </div>
+
+                <!-- Filtro 2: Vendedor Específico -->
+                <div class="filter-item">
+                    <label for="filtroVendedorEspecifico">👤 Vendedor:</label>
+                    <select id="filtroVendedorEspecifico">
+                        <option value="">Ver todos</option>
+                        <optgroup label="Vendedores" id="optgroupVendedores">
+                        </optgroup>
+                    </select>
+                </div>
+            </div>
             <div id="vendedoresDetail" class="vendedores-grid">
             </div>
         </div>

@@ -97,6 +97,73 @@ function inicializarFiltros() {
         });
     }
 
+    // Filtros de Vendedores en Tab Vendedores
+    const filtroEstadoVendedores = document.getElementById('filtroEstadoVendedores');
+    const filtroVendedorEspecifico = document.getElementById('filtroVendedorEspecifico');
+    const optgroupVendedores = document.getElementById('optgroupVendedores');
+    
+    // Función para actualizar dinámicamente el optgroup según el filtro de estado
+    function actualizarOptgroupVendedores() {
+        if (!optgroupVendedores || !datosVentas.vendedores) return;
+        
+        optgroupVendedores.innerHTML = '';
+        
+        // Obtener todos los vendedores registrados
+        const todosVendedores = datosVentas.vendedores.sort((a, b) => a.nombre.localeCompare(b.nombre));
+        
+        // Contar ventas por vendedor
+        const ventasPorVendedor = {};
+        (datosVentas.ventas || []).forEach(v => {
+            if (v.vendedor) {
+                ventasPorVendedor[v.vendedor] = (ventasPorVendedor[v.vendedor] || 0) + 1;
+            }
+        });
+        
+        // Obtener estado actual del primer filtro
+        const estadoActual = filtroEstadoVendedores?.value || '';
+        
+        // Filtrar vendedores según el estado
+        let vendedoresAMostrar = todosVendedores;
+        
+        if (estadoActual === 'con-ventas') {
+            vendedoresAMostrar = todosVendedores.filter(v => (ventasPorVendedor[v.nombre] || 0) > 0);
+        } else if (estadoActual === 'sin-ventas') {
+            vendedoresAMostrar = todosVendedores.filter(v => (ventasPorVendedor[v.nombre] || 0) === 0);
+        }
+        
+        Logger.log('Vendedores a mostrar en optgroup:', vendedoresAMostrar);
+        
+        // Agregar opciones al optgroup
+        vendedoresAMostrar.forEach(vendedor => {
+            const option = document.createElement('option');
+            option.value = vendedor.nombre;
+            const cantidadVentas = ventasPorVendedor[vendedor.nombre] || 0;
+            option.textContent = `${vendedor.nombre} (${cantidadVentas} ${cantidadVentas === 1 ? 'venta' : 'ventas'})`;
+            optgroupVendedores.appendChild(option);
+        });
+    }
+    
+    // Inicializar el optgroup
+    actualizarOptgroupVendedores();
+    
+    if (filtroEstadoVendedores) {
+        filtroEstadoVendedores.addEventListener('change', () => {
+            // Limpiar el segundo filtro cuando cambia el primero
+            if (filtroVendedorEspecifico) {
+                filtroVendedorEspecifico.value = '';
+            }
+            // Actualizar opciones del segundo filtro
+            actualizarOptgroupVendedores();
+            renderizarVendedores();
+        });
+    }
+    
+    if (filtroVendedorEspecifico) {
+        filtroVendedorEspecifico.addEventListener('change', () => {
+            renderizarVendedores();
+        });
+    }
+
     Logger.log('Filtros inicializados');
 }
 
@@ -371,7 +438,51 @@ function renderizarVendedores() {
         return;
     }
 
-    vendedores.forEach(vendedor => {
+    // Obtener valores de los filtros
+    const filtroEstado = document.getElementById('filtroEstadoVendedores')?.value || '';
+    const filtroVendedor = document.getElementById('filtroVendedorEspecifico')?.value || '';
+
+    // Contar ventas por vendedor
+    const ventasPorVendedor = {};
+    ventas.forEach(v => {
+        if (v.vendedor) {
+            ventasPorVendedor[v.vendedor] = (ventasPorVendedor[v.vendedor] || 0) + 1;
+        }
+    });
+
+    // Aplicar Filtro 1: Estado de Ventas
+    let vendedoresFiltrados = vendedores.filter(v => {
+        const tieneVentas = (ventasPorVendedor[v.nombre] || 0) > 0;
+        
+        if (filtroEstado === 'con-ventas') {
+            return tieneVentas;
+        } else if (filtroEstado === 'sin-ventas') {
+            return !tieneVentas;
+        }
+        // Si es "" (Ver todos), no filtrar por estado
+        return true;
+    });
+
+    // Aplicar Filtro 2: Vendedor Específico
+    if (filtroVendedor) {
+        vendedoresFiltrados = vendedoresFiltrados.filter(v => v.nombre === filtroVendedor);
+    }
+
+    // Mensaje si no hay resultados
+    if (vendedoresFiltrados.length === 0) {
+        let mensaje = '❌ No hay vendedores';
+        if (filtroEstado === 'con-ventas') {
+            mensaje = '❌ No hay vendedores con ventas';
+        } else if (filtroEstado === 'sin-ventas') {
+            mensaje = '❌ No hay vendedores sin ventas';
+        } else if (filtroVendedor) {
+            mensaje = `❌ No se encontró el vendedor "${filtroVendedor}"`;
+        }
+        container.innerHTML = `<div style="padding: 20px; text-align: center; color: #999;">${mensaje}</div>`;
+        return;
+    }
+
+    vendedoresFiltrados.forEach(vendedor => {
         // Filtrar ventas sin pagar de este vendedor
         const ventasSinPagar = ventas.filter(v => 
             v.vendedor === vendedor.nombre && v.estado === 'sin pagar'
