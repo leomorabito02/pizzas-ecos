@@ -133,7 +133,7 @@ jobs:
 
   deploy-prod:
     name: Deploy to Production
-    needs: [build-and-push, approve-production]
+    needs: [deploy-qa]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
