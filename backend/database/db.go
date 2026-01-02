@@ -38,16 +38,17 @@ func GetVendedorID(nombre string) (int, error) {
 }
 
 // GetClientesPorVendedor obtiene clientes agrupados por vendedor
-func GetClientesPorVendedor() (map[string][]string, error) {
-	result := make(map[string][]string)
+func GetClientesPorVendedor() (map[string][]models.Cliente, error) {
+	// Nuevo: retornar clientes con su id y teléfono para cada vendedor
+	result := make(map[string][]models.Cliente)
 
 	query := `
-		SELECT ve.nombre, c.nombre, c.apellido
+		SELECT DISTINCT ve.nombre, c.id, c.nombre, COALESCE(c.telefono, 0)
 		FROM ventas v
 		JOIN vendedores ve ON v.vendedor_id = ve.id
 		LEFT JOIN clientes c ON v.cliente_id = c.id
 		WHERE c.id IS NOT NULL
-		ORDER BY ve.nombre, c.nombre, c.apellido
+		ORDER BY ve.nombre, c.nombre
 	`
 
 	rows, err := DB.Query(query)
@@ -57,28 +58,29 @@ func GetClientesPorVendedor() (map[string][]string, error) {
 	defer rows.Close()
 
 	for rows.Next() {
-		var vendedorNombre, clienteNombre string
-		var clienteApellido sql.NullString
-		if err := rows.Scan(&vendedorNombre, &clienteNombre, &clienteApellido); err != nil {
+		var vendedorNombre string
+		var clienteID int
+		var clienteNombre string
+		var telefono int
+		if err := rows.Scan(&vendedorNombre, &clienteID, &clienteNombre, &telefono); err != nil {
 			return nil, err
 		}
-		// Construir nombre completo del cliente
-		fullName := clienteNombre
-		if clienteApellido.Valid && clienteApellido.String != "" {
-			fullName = clienteNombre + " " + clienteApellido.String
+		cliente := models.Cliente{
+			ID:       clienteID,
+			Nombre:   strings.TrimSpace(clienteNombre),
+			Telefono: telefono,
 		}
-		fullName = strings.TrimSpace(fullName)
 
-		// Evitar duplicados
-		encontrado := false
+		// Evitar duplicados por ID
+		exists := false
 		for _, c := range result[vendedorNombre] {
-			if c == fullName {
-				encontrado = true
+			if c.ID == cliente.ID {
+				exists = true
 				break
 			}
 		}
-		if !encontrado {
-			result[vendedorNombre] = append(result[vendedorNombre], fullName)
+		if !exists {
+			result[vendedorNombre] = append(result[vendedorNombre], cliente)
 		}
 	}
 
@@ -87,21 +89,91 @@ func GetClientesPorVendedor() (map[string][]string, error) {
 
 // GetOrCreateCliente obtiene o crea un cliente
 func GetOrCreateCliente(nombre string) (int, error) {
-	// Buscar si existe
+	// Limpieza básica
+	nombre = strings.TrimSpace(nombre)
+
+	// Usamos transacción para asegurar lectura consistente o escritura
+	tx, err := DB.Begin()
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback() // Rollback seguro si no hay commit
+
 	var id int
-	err := DB.QueryRow("SELECT id FROM clientes WHERE nombre = ?", nombre).Scan(&id)
+	// Intentamos buscar primero
+	err = tx.QueryRow("SELECT id FROM clientes WHERE nombre = ?", nombre).Scan(&id)
 	if err == nil {
-		return id, nil
+		return id, nil // Ya existe, no hacemos commit porque fue solo lectura, rollback limpia el contexto
 	}
 
-	// Crear si no existe
-	res, err := DB.Exec("INSERT INTO clientes (nombre) VALUES (?)", nombre)
+	// Si no existe, creamos
+	res, err := tx.Exec("INSERT INTO clientes (nombre) VALUES (?)", nombre)
 	if err != nil {
 		return 0, err
 	}
 
-	idInt, _ := res.LastInsertId()
+	idInt, err := res.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+
+	if err = tx.Commit(); err != nil {
+		return 0, err
+	}
+
 	return int(idInt), nil
+}
+
+// GetClienteByNombre devuelve id y telefono (0 si null) y si existe
+func GetClienteByNombre(nombre string) (int, int, bool, error) {
+	var id int
+	var telefono sql.NullInt64
+	err := DB.QueryRow("SELECT id, telefono FROM clientes WHERE nombre = ?", nombre).Scan(&id, &telefono)
+	if err == sql.ErrNoRows {
+		return 0, 0, false, nil
+	}
+	if err != nil {
+		return 0, 0, false, err
+	}
+	tel := 0
+	if telefono.Valid {
+		tel = int(telefono.Int64)
+	}
+	return id, tel, true, nil
+}
+
+// CreateClienteWithTelefono crea un cliente con telefono opcional
+func CreateClienteWithTelefono(nombre string, telefono *int) (int, error) {
+	if telefono != nil {
+		res, err := DB.Exec("INSERT INTO clientes (nombre, telefono) VALUES (?, ?)", nombre, *telefono)
+		if err != nil {
+			return 0, err
+		}
+		id64, _ := res.LastInsertId()
+		return int(id64), nil
+	}
+	res, err := DB.Exec("INSERT INTO clientes (nombre) VALUES (?)", nombre)
+	if err != nil {
+		return 0, err
+	}
+	id64, _ := res.LastInsertId()
+	return int(id64), nil
+}
+
+// UpdateClienteTelefono actualiza el telefono de un cliente
+func UpdateClienteTelefono(id int, telefono *int) error {
+	if telefono == nil {
+		_, err := DB.Exec("UPDATE clientes SET telefono = NULL WHERE id = ?", id)
+		return err
+	}
+	_, err := DB.Exec("UPDATE clientes SET telefono = ? WHERE id = ?", *telefono, id)
+	return err
+}
+
+// UpdateVentaClienteID asocia una venta a un cliente
+func UpdateVentaClienteID(ventaID int, clienteID int) error {
+	_, err := DB.Exec("UPDATE ventas SET cliente_id = ? WHERE id = ?", clienteID, ventaID)
+	return err
 }
 
 // GetProductos retorna lista de productos activos
@@ -164,9 +236,10 @@ func GetAllVentas(includeCanceladas bool) ([]models.VentaStats, error) {
 		whereClause = "WHERE v.estado != 'cancelada'"
 	}
 
-	query := `
+	// 1. Obtener solo las ventas (sin detalles)
+	ventasQuery := `
 		SELECT v.id, ve.nombre, COALESCE(c.nombre, 'Sin cliente'), 
-		       v.total, v.payment_method, v.estado, v.tipo_entrega, v.created_at
+		       COALESCE(c.telefono, 0), v.total, v.payment_method, v.estado, v.tipo_entrega, v.created_at
 		FROM ventas v
 		JOIN vendedores ve ON v.vendedor_id = ve.id
 		LEFT JOIN clientes c ON v.cliente_id = c.id
@@ -174,52 +247,81 @@ func GetAllVentas(includeCanceladas bool) ([]models.VentaStats, error) {
 		ORDER BY v.created_at DESC
 	`
 
-	rows, err := DB.Query(query)
+	rows, err := DB.Query(ventasQuery)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var ventas []models.VentaStats
-	for rows.Next() {
-		var v models.VentaStats
+	// Construir un mapa de punteros y una lista de IDs para preservar orden
+	ventaOrder := []int{}
+	ventaIDs := []int{}
+	ventasMap := make(map[int]*models.VentaStats)
 
-		if err := rows.Scan(&v.ID, &v.Vendedor, &v.Cliente, &v.Total, &v.PaymentMethod, &v.Estado, &v.TipoEntrega, &v.CreatedAt); err != nil {
+	for rows.Next() {
+		v := &models.VentaStats{}
+		if err := rows.Scan(&v.ID, &v.Vendedor, &v.Cliente, &v.TelefonoCliente, &v.Total, &v.PaymentMethod, &v.Estado, &v.TipoEntrega, &v.CreatedAt); err != nil {
 			return nil, err
 		}
+		v.Items = []models.ProductoItem{}
+		ventaOrder = append(ventaOrder, v.ID)
+		ventaIDs = append(ventaIDs, v.ID)
+		ventasMap[v.ID] = v
+	}
 
-		// Cargar items (detalles) para esta venta
+	// 2. Si hay ventas, obtener todos los items de una sola vez
+	if len(ventaIDs) > 0 {
+		// Construir placeholders para la query
+		placeholders := ""
+		args := make([]interface{}, len(ventaIDs))
+		for i, id := range ventaIDs {
+			if i > 0 {
+				placeholders += ","
+			}
+			placeholders += "?"
+			args[i] = id
+		}
+
 		itemsQuery := `
-			SELECT dv.id, dv.producto_id, dv.cantidad, p.tipo_pizza, p.precio
+			SELECT dv.venta_id, dv.id, dv.producto_id, dv.cantidad, p.tipo_pizza, p.precio
 			FROM detalle_ventas dv
 			JOIN productos p ON dv.producto_id = p.id
-			WHERE dv.venta_id = ?
+			WHERE dv.venta_id IN (` + placeholders + `)
+			ORDER BY dv.venta_id, dv.id
 		`
-		itemRows, err := DB.Query(itemsQuery, v.ID)
+
+		itemRows, err := DB.Query(itemsQuery, args...)
 		if err == nil {
 			for itemRows.Next() {
+				var ventaID int
 				var item models.ProductoItem
 				var productoID int
 				var tipo_pizza string
 				var precio float64
 				var cantidad int
-				if err := itemRows.Scan(&item.DetalleID, &productoID, &cantidad, &tipo_pizza, &precio); err == nil {
+
+				if err := itemRows.Scan(&ventaID, &item.DetalleID, &productoID, &cantidad, &tipo_pizza, &precio); err == nil {
 					item.ProductID = productoID
 					item.Cantidad = cantidad
 					item.Tipo = tipo_pizza
 					item.Precio = precio
 					item.Total = float64(cantidad) * precio
-					v.Items = append(v.Items, item)
+
+					if venta, ok := ventasMap[ventaID]; ok {
+						venta.Items = append(venta.Items, item)
+					}
 				}
 			}
 			itemRows.Close()
 		}
+	}
 
-		if v.Items == nil {
-			v.Items = []models.ProductoItem{} // Array vacío en lugar de null
+	// Reconstruir slice en el mismo orden en que se obtuvieron las ventas
+	ventas := make([]models.VentaStats, 0, len(ventaOrder))
+	for _, id := range ventaOrder {
+		if vptr, ok := ventasMap[id]; ok {
+			ventas = append(ventas, *vptr)
 		}
-
-		ventas = append(ventas, v)
 	}
 
 	return ventas, nil
@@ -336,62 +438,102 @@ func GetVendedoresConStats() ([]map[string]interface{}, error) {
 	return result, nil
 }
 
-// UpdateVenta actualiza una venta (estado, pago, y productos)
+// UpdateVenta actualiza una venta de forma atómica usando transacciones
 func UpdateVenta(ventaID int, estado, paymentMethod, tipoEntrega string, productosEliminar []int, productos []map[string]interface{}) error {
-	// 1. Actualizar estado, payment_method y tipo_entrega de la venta
-	query := `UPDATE ventas SET estado = ?, payment_method = ?, tipo_entrega = ? WHERE id = ?`
-	_, err := DB.Exec(query, estado, paymentMethod, tipoEntrega, ventaID)
+	// 1. Iniciar Transacción
+	tx, err := DB.Begin()
 	if err != nil {
-		return fmt.Errorf("error actualizando venta: %w", err)
+		return fmt.Errorf("error iniciando transacción: %w", err)
 	}
 
-	// 2. Eliminar productos si se proporcionan
-	for _, detalleID := range productosEliminar {
+	// Defer para Rollback en caso de pánico o error no manejado explícitamente
+	defer func() {
+		if p := recover(); p != nil {
+			tx.Rollback()
+			panic(p) // Re-lanzar pánico después de rollback
+		} else if err != nil {
+			tx.Rollback() // Rollback si hay error retornado
+		}
+	}()
+
+	// 2. Actualizar cabecera de venta
+	query := `UPDATE ventas SET estado = ?, payment_method = ?, tipo_entrega = ? WHERE id = ?`
+	if _, err = tx.Exec(query, estado, paymentMethod, tipoEntrega, ventaID); err != nil {
+		return fmt.Errorf("error actualizando cabecera venta: %w", err)
+	}
+
+	// 3. Eliminar productos (Batch)
+	if len(productosEliminar) > 0 {
+		// Nota de eficiencia: Podríamos usar IN (?) dinámico, pero un loop simple dentro de Tx es aceptable para pocos items
 		deleteQuery := `DELETE FROM detalle_ventas WHERE id = ?`
-		_, err := DB.Exec(deleteQuery, detalleID)
+		stmt, err := tx.Prepare(deleteQuery)
 		if err != nil {
-			log.Printf("Error eliminando producto: %v", err)
-			return fmt.Errorf("error eliminando producto: %w", err)
+			return err
+		}
+		defer stmt.Close()
+
+		for _, detalleID := range productosEliminar {
+			if _, err = stmt.Exec(detalleID); err != nil {
+				return fmt.Errorf("error eliminando producto %d: %w", detalleID, err)
+			}
 		}
 	}
 
-	// 3. Actualizar/insertar productos si se proporcionan
+	// 4. Upsert (Insertar o Actualizar) productos
+	// Preparamos los statements fuera del loop para eficiencia
+	insertStmt, err := tx.Prepare(`INSERT INTO detalle_ventas (venta_id, producto_id, cantidad, precio_unitario, subtotal) VALUES (?, ?, ?, ?, ?)`)
+	if err != nil {
+		return err
+	}
+	defer insertStmt.Close()
+
+	updateStmt, err := tx.Prepare(`UPDATE detalle_ventas SET cantidad = ?, subtotal = ? WHERE id = ?`)
+	if err != nil {
+		return err
+	}
+	defer updateStmt.Close()
+
 	for _, p := range productos {
 		detalleID := p["detalle_id"]
 		productoID := int(p["producto_id"].(float64))
 		cantidad := int(p["cantidad"].(float64))
 
+		// Necesitamos el precio actual del producto para consistencia
+		var precio float64
+		err = tx.QueryRow("SELECT precio FROM productos WHERE id = ?", productoID).Scan(&precio)
+		if err != nil {
+			return fmt.Errorf("producto %d no encontrado o inactivo", productoID)
+		}
+
+		subtotal := float64(cantidad) * precio
+
 		if detalleID == nil {
-			// Nuevo producto - insertar en detalle_ventas
-			insertQuery := `INSERT INTO detalle_ventas (venta_id, producto_id, cantidad) VALUES (?, ?, ?)`
-			_, err := DB.Exec(insertQuery, ventaID, productoID, cantidad)
-			if err != nil {
-				log.Printf("Error insertando producto: %v", err)
-				return fmt.Errorf("error insertando producto: %w", err)
+			if _, err = insertStmt.Exec(ventaID, productoID, cantidad, precio, subtotal); err != nil {
+				return err
 			}
 		} else {
-			// Actualizar cantidad existente
 			detalleIDInt := int(detalleID.(float64))
-			updateQuery := `UPDATE detalle_ventas SET cantidad = ? WHERE id = ?`
-			_, err := DB.Exec(updateQuery, cantidad, detalleIDInt)
-			if err != nil {
-				log.Printf("Error actualizando producto: %v", err)
-				return fmt.Errorf("error actualizando producto: %w", err)
+			if _, err = updateStmt.Exec(cantidad, subtotal, detalleIDInt); err != nil {
+				return err
 			}
 		}
 	}
 
-	// 4. Recalcular total de la venta
+	// 5. Recalcular total usando la misma transacción (ve los cambios no confirmados)
 	var nuevoTotal float64
-	totalQuery := `SELECT COALESCE(SUM(dv.cantidad * p.precio), 0) FROM detalle_ventas dv JOIN productos p ON dv.producto_id = p.id WHERE dv.venta_id = ?`
-	err = DB.QueryRow(totalQuery, ventaID).Scan(&nuevoTotal)
-	if err != nil {
-		log.Printf("Error calculando nuevo total: %v", err)
-	} else {
-		_, err := DB.Exec(`UPDATE ventas SET total = ? WHERE id = ?`, nuevoTotal, ventaID)
-		if err != nil {
-			log.Printf("Error actualizando total: %v", err)
-		}
+	// Sumamos directamente de detalle_ventas que ya tiene el subtotal actualizado
+	totalQuery := `SELECT COALESCE(SUM(subtotal), 0) FROM detalle_ventas WHERE venta_id = ?`
+	if err = tx.QueryRow(totalQuery, ventaID).Scan(&nuevoTotal); err != nil {
+		return fmt.Errorf("error recalculando total: %w", err)
+	}
+
+	if _, err = tx.Exec(`UPDATE ventas SET total = ? WHERE id = ?`, nuevoTotal, ventaID); err != nil {
+		return fmt.Errorf("error actualizando total final: %w", err)
+	}
+
+	// 6. Commit final
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("error en commit: %w", err)
 	}
 
 	return nil

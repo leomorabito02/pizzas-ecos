@@ -121,22 +121,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     const vend = document.getElementById('vendedor');
     if (vend) {
         vend.addEventListener('change', (e) => {
-            const clientes = (datosNegocio.clientesPorVendedor && datosNegocio.clientesPorVendedor[e.target.value]) || [];
+                const clientes = (datosNegocio.clientesPorVendedor && datosNegocio.clientesPorVendedor[e.target.value]) || [];
             const drop = document.getElementById('clientes-dropdown');
             const lista = document.getElementById('clientes-list');
             if (e.target.value && clientes.length > 0) {
                 drop.classList.remove('hidden');
                 lista.innerHTML = '';
-                clientes.forEach(c => {
-                    const div = document.createElement('div');
-                    div.className = 'cliente-item';
-                    div.textContent = c;
-                    div.addEventListener('click', () => {
-                        document.getElementById('cliente').value = c;
-                        drop.classList.add('hidden');
+                    clientes.forEach(c => {
+                        const div = document.createElement('div');
+                        div.className = 'cliente-item';
+                        // c puede ser string (legacy) o objeto {id, nombre, telefono}
+                        const nombre = (typeof c === 'string') ? c : c.nombre;
+                        const telefono = (typeof c === 'string') ? null : c.telefono;
+                        div.textContent = nombre;
+                        div.addEventListener('click', () => {
+                            document.getElementById('cliente').value = nombre;
+                            // Si tenemos teléfono, cargarlo en el input (editable)
+                            const telInput = document.getElementById('telefono_cliente');
+                            if (telInput) {
+                                if (telefono) telInput.value = telefono;
+                                else telInput.value = '';
+                            }
+                            drop.classList.add('hidden');
+                        });
+                        lista.appendChild(div);
                     });
-                    lista.appendChild(div);
-                });
             } else {
                 drop.classList.add('hidden');
             }
@@ -228,6 +237,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const data = {
                 vendedor: vend,
                 cliente: cliente,
+                telefono_cliente: parseInt(document.getElementById('telefono_cliente').value) || 0,
                 items: combos,
                 payment_method: pago,
                 estado: est,

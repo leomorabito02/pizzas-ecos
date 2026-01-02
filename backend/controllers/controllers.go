@@ -8,6 +8,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v4"
 
+	"pizzas-ecos/database"
 	"pizzas-ecos/errors"
 	"pizzas-ecos/httputil"
 	"pizzas-ecos/logger"
@@ -110,6 +111,34 @@ func (c *VentaController) ActualizarVenta(w http.ResponseWriter, r *http.Request
 		})
 		errors.WriteError(w, errors.ErrServerError, "Error al actualizar venta")
 		return
+	}
+
+	// Manejar actualización o creación del teléfono del cliente si viene en el payload
+	if clienteRaw, ok := req["cliente"].(string); ok {
+		if telRaw, exists := req["telefono_cliente"]; exists {
+			// telRaw puede ser float64 (number) o nil
+			if telRaw == nil {
+				// borrar teléfono si existe
+				id, _, found, err := database.GetClienteByNombre(clienteRaw)
+				if err == nil && found {
+					_ = database.UpdateClienteTelefono(id, nil)
+				}
+			} else if telFloat, ok2 := telRaw.(float64); ok2 {
+				telInt := int(telFloat)
+				id, _, found, err := database.GetClienteByNombre(clienteRaw)
+				if err == nil && found {
+					_ = database.UpdateClienteTelefono(id, &telInt)
+					// asociar venta a cliente si no estaba asociada
+					_ = database.UpdateVentaClienteID(ventaID, id)
+				} else {
+					// crear cliente y asociar
+					newID, err := database.CreateClienteWithTelefono(clienteRaw, &telInt)
+					if err == nil {
+						_ = database.UpdateVentaClienteID(ventaID, newID)
+					}
+				}
+			}
+		}
 	}
 
 	logger.Info("ActualizarVenta: Venta actualizada", map[string]interface{}{"venta_id": ventaID})

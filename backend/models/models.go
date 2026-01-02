@@ -18,19 +18,20 @@ type ProductoItem struct {
 
 // VentaRequest representa la solicitud para crear una venta
 type VentaRequest struct {
-	Vendedor      string         `json:"vendedor"`
-	Cliente       string         `json:"cliente"`
-	Items         []ProductoItem `json:"items"` // array de items con producto_id
-	PaymentMethod string         `json:"payment_method"`
-	Estado        string         `json:"estado"`
-	TipoEntrega   string         `json:"tipo_entrega"` // retiro o envio
+	Vendedor        string         `json:"vendedor"`
+	Cliente         string         `json:"cliente"`
+	Items           []ProductoItem `json:"items"` // array de items con producto_id
+	PaymentMethod   string         `json:"payment_method"`
+	Estado          string         `json:"estado"`
+	TipoEntrega     string         `json:"tipo_entrega"` // retiro o envio
+	TelefonoCliente int            `json:"telefono_cliente"`
 }
 
 // DataResponse retorna vendedores, clientes y productos
 type DataResponse struct {
-	ClientesPorVendedor map[string][]string `json:"clientesPorVendedor"`
-	Vendedores          []Vendedor          `json:"vendedores"`
-	Productos           []Producto          `json:"productos"`
+	ClientesPorVendedor map[string][]Cliente `json:"clientesPorVendedor"`
+	Vendedores          []Vendedor           `json:"vendedores"`
+	Productos           []Producto           `json:"productos"`
 }
 
 // Pizza estructura para pizzas (legado)
@@ -42,15 +43,23 @@ type Pizza struct {
 
 // VentaStats retorna estadísticas de una venta
 type VentaStats struct {
-	ID            int            `json:"id"`
-	Vendedor      string         `json:"vendedor"`
-	Cliente       string         `json:"cliente"`
-	Total         float64        `json:"total"`
-	PaymentMethod string         `json:"payment_method"`
-	Estado        string         `json:"estado"`
-	TipoEntrega   string         `json:"tipo_entrega"`
-	CreatedAt     time.Time      `json:"created_at"`
-	Items         []ProductoItem `json:"items"`
+	ID              int            `json:"id"`
+	Vendedor        string         `json:"vendedor"`
+	Cliente         string         `json:"cliente"`
+	TelefonoCliente int            `json:"telefono_cliente"`
+	Total           float64        `json:"total"`
+	PaymentMethod   string         `json:"payment_method"`
+	Estado          string         `json:"estado"`
+	TipoEntrega     string         `json:"tipo_entrega"`
+	CreatedAt       time.Time      `json:"created_at"`
+	Items           []ProductoItem `json:"items"`
+}
+
+// Cliente representa un cliente con teléfono
+type Cliente struct {
+	ID       int    `json:"id"`
+	Nombre   string `json:"nombre"`
+	Telefono int    `json:"telefono"`
 }
 
 // Auth structs

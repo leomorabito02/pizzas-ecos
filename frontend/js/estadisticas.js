@@ -685,7 +685,7 @@ function renderizarVentas() {
     // Mensaje si no hay ventas después de filtrar
     if (ventasFiltradas.length === 0) {
         const tr = document.createElement('tr');
-        tr.innerHTML = '<td colspan="9" style="text-align: center; padding: 20px; color: #999;">❌ No se encontraron ventas</td>';
+        tr.innerHTML = '<td colspan="10" style="text-align: center; padding: 20px; color: #999;">❌ No se encontraron ventas</td>';
         tbody.appendChild(tr);
         return;
     }
@@ -709,6 +709,7 @@ function renderizarVentas() {
             <td>${venta.id}</td>
             <td>${venta.vendedor}</td>
             <td>${venta.cliente}</td>
+            <td>${venta.telefono_cliente || '-'}</td>
             <td style="font-size: 12px;">${itemsResumen}</td>
             <td><strong>$${totalParseado.toFixed(2)}</strong></td>
             <td><span class="estado-badge ${estadoClass}">${venta.estado || 'sin pagar'}</span></td>
@@ -736,6 +737,11 @@ function abrirModalEditar(id) {
     document.getElementById('editarEstado').value = venta.estado || 'sin pagar';
     document.getElementById('editarPago').value = venta.payment_method || 'efectivo';
     document.getElementById('editarEntrega').value = venta.tipo_entrega || 'delivery';
+    // Cargar teléfono en modal si existe
+    const editarTel = document.getElementById('editarTelefono');
+    if (editarTel) {
+        editarTel.value = venta.telefono_cliente || '';
+    }
     
     // Actualizar previsualización del tipo de entrega
     actualizarPreviaEntrega(venta.tipo_entrega || 'delivery');
@@ -826,7 +832,12 @@ async function guardarCambios() {
             estado: estado,
             payment_method: pago,
             tipo_entrega: entrega,
-            productos: productosActualizados
+                productos: productosActualizados,
+                cliente: ventaEnEdicion.cliente,
+                telefono_cliente: (function(){
+                    const v = document.getElementById('editarTelefono').value || '';
+                    return v.trim() === '' ? null : parseInt(v);
+                })()
         };
         
         if (productosAEliminar.length > 0) {

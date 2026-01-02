@@ -41,9 +41,25 @@ func (s *VentaService) CrearVenta(req *models.VentaRequest) (int, error) {
 	// Obtener o crear cliente
 	var clienteID *int
 	if req.Cliente != "" {
-		id, err := database.GetOrCreateCliente(req.Cliente)
-		if err == nil {
+		// Intentar obtener cliente existente para posiblemente actualizar su teléfono
+		id, tel, exists, err := database.GetClienteByNombre(req.Cliente)
+		if err == nil && exists {
+			// Si se envió teléfono y es distinto, actualizarlo
+			if req.TelefonoCliente != 0 && req.TelefonoCliente != tel {
+				_ = database.UpdateClienteTelefono(id, &req.TelefonoCliente)
+			}
 			clienteID = &id
+		} else {
+			// Crear cliente nuevo con teléfono opcional
+			var telPtr *int
+			if req.TelefonoCliente != 0 {
+				t := req.TelefonoCliente
+				telPtr = &t
+			}
+			newID, err := database.CreateClienteWithTelefono(req.Cliente, telPtr)
+			if err == nil {
+				clienteID = &newID
+			}
 		}
 	}
 
