@@ -19,16 +19,30 @@ class APIService {
      * Determina URL del backend según ambiente
      */
     getDefaultURL() {
-        // Verificar si window.BACKEND_URL fue establecida por env.js
+        // Verificar si window.BACKEND_URL fue establecida por build.sh en Netlify
         if (window.BACKEND_URL) {
             console.log('📡 Usando BACKEND_URL:', window.BACKEND_URL);
             return window.BACKEND_URL;
         }
         
-        const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-        const fallback = isDev ? 'http://localhost:8080/api/v1' : 'https://pizzas-ecos-backend-qa-872448320700.us-central1.run.app/api/v1';
-        console.log('📡 Fallback URL:', fallback);
-        return fallback;
+        const hostname = window.location.hostname;
+        const isDev = hostname === 'localhost' || hostname === '127.0.0.1';
+        
+        // Detectar ambiente según el hostname del frontend
+        let backendUrl;
+        if (isDev) {
+            backendUrl = 'http://localhost:8080/api/v1';
+        } else if (hostname.includes('qa-ecos')) {
+            backendUrl = 'https://pizzas-ecos-backend-qa-872448320700.us-central1.run.app/api/v1';
+        } else if (hostname.includes('ecos-ventas-pizzas')) {
+            backendUrl = 'https://pizzas-ecos-backend-prod-872448320700.us-central1.run.app/api/v1';
+        } else {
+            // Fallback a QA si no se reconoce el hostname
+            backendUrl = 'https://pizzas-ecos-backend-qa-872448320700.us-central1.run.app/api/v1';
+        }
+        
+        console.log('📡 Backend URL detectada:', backendUrl);
+        return backendUrl;
     }
 
     /**
