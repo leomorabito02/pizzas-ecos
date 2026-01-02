@@ -502,22 +502,6 @@ go test ./...        # Tests backend
 
 ---
 
-## 📝 Notas de Desarrollo
-
-### Convenciones
-- **Nombres de variables**: camelCase en JS, snake_case en Go
-- **Commits**: Mensajes en español, descriptivos
-- **Branches**: `develop` para QA, `main` para PROD
-- **PRs**: Requieren aprobación antes de merge
-
-### Mejoras Futuras
-- [ ] Exportar reportes a PDF/CSV
-- [ ] Búsqueda avanzada en tablas
-- [ ] Modo oscuro
-- [ ] Notificaciones por email
-- [ ] App móvil nativa
-- [ ] Integración con sistemas de pago
-
 ---
 
 ## 📞 Contacto y Soporte
