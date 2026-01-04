@@ -734,14 +734,19 @@ function abrirModalEditar(id) {
     if (!venta) return;
 
     ventaEnEdicion = venta;
-    document.getElementById('editarEstado').value = venta.estado || 'sin pagar';
-    document.getElementById('editarPago').value = venta.payment_method || 'efectivo';
-    document.getElementById('editarEntrega').value = venta.tipo_entrega || 'delivery';
+    // Cargar cliente
+    const editarCliente = document.getElementById('editarCliente');
+    if (editarCliente) {
+        editarCliente.value = venta.cliente || '';
+    }
     // Cargar teléfono en modal si existe
     const editarTel = document.getElementById('editarTelefono');
     if (editarTel) {
         editarTel.value = venta.telefono_cliente || '';
     }
+    document.getElementById('editarEstado').value = venta.estado || 'sin pagar';
+    document.getElementById('editarPago').value = venta.payment_method || 'efectivo';
+    document.getElementById('editarEntrega').value = venta.tipo_entrega || 'delivery';
     
     // Actualizar previsualización del tipo de entrega
     actualizarPreviaEntrega(venta.tipo_entrega || 'delivery');
@@ -800,6 +805,13 @@ async function guardarCambios() {
     const estado = document.getElementById('editarEstado').value;
     const pago = document.getElementById('editarPago').value;
     const entrega = document.getElementById('editarEntrega').value;
+    const cliente = (document.getElementById('editarCliente').value || '').trim();
+    
+    // Validar que cliente no esté vacío
+    if (!cliente) {
+        showMessage('El cliente no puede estar vacío', 'error');
+        return;
+    }
     
     // Recopilar cambios en productos
     const productosActualizados = [];
@@ -832,12 +844,12 @@ async function guardarCambios() {
             estado: estado,
             payment_method: pago,
             tipo_entrega: entrega,
-                productos: productosActualizados,
-                cliente: ventaEnEdicion.cliente,
-                telefono_cliente: (function(){
-                    const v = document.getElementById('editarTelefono').value || '';
-                    return v.trim() === '' ? null : parseInt(v);
-                })()
+            cliente: cliente,
+            telefono_cliente: (function(){
+                const v = document.getElementById('editarTelefono').value || '';
+                return v.trim() === '' ? null : parseInt(v);
+            })(),
+            productos: productosActualizados
         };
         
         if (productosAEliminar.length > 0) {
