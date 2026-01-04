@@ -226,7 +226,7 @@ func GetAllVentas(includeCanceladas bool) ([]models.VentaStats, error) {
 	// 1. Obtener solo las ventas (sin detalles)
 	ventasQuery := `
 		SELECT v.id, ve.nombre, COALESCE(c.nombre, 'Sin cliente'), 
-		       COALESCE(c.telefono, 0), v.total, v.payment_method, v.estado, v.tipo_entrega, v.created_at
+		       c.telefono, v.total, v.payment_method, v.estado, v.tipo_entrega, v.created_at
 		FROM ventas v
 		JOIN vendedores ve ON v.vendedor_id = ve.id
 		LEFT JOIN clientes c ON v.cliente_id = c.id
@@ -247,8 +247,15 @@ func GetAllVentas(includeCanceladas bool) ([]models.VentaStats, error) {
 
 	for rows.Next() {
 		v := &models.VentaStats{}
-		if err := rows.Scan(&v.ID, &v.Vendedor, &v.Cliente, &v.TelefonoCliente, &v.Total, &v.PaymentMethod, &v.Estado, &v.TipoEntrega, &v.CreatedAt); err != nil {
+		var telefono sql.NullInt64
+		if err := rows.Scan(&v.ID, &v.Vendedor, &v.Cliente, &telefono, &v.Total, &v.PaymentMethod, &v.Estado, &v.TipoEntrega, &v.CreatedAt); err != nil {
 			return nil, err
+		}
+		if telefono.Valid {
+			tel := int(telefono.Int64)
+			v.TelefonoCliente = &tel
+		} else {
+			v.TelefonoCliente = nil
 		}
 		v.Items = []models.ProductoItem{}
 		ventaOrder = append(ventaOrder, v.ID)

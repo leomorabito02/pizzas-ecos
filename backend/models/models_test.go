@@ -290,11 +290,12 @@ func TestCliente_Validation(t *testing.T) {
 
 func TestVenta_CalculateTotal(t *testing.T) {
 	// Arrange
+	tel := 123456789
 	venta := VentaStats{
 		ID:              1,
 		Vendedor:        "Juan Pérez",
 		Cliente:         "María García",
-		TelefonoCliente: 123456789,
+		TelefonoCliente: &tel,
 		Total:           0, // Se calculará
 		PaymentMethod:   "efectivo",
 		Estado:          "pagada",

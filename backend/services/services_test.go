@@ -231,7 +231,7 @@ func (s *TestableVentaService) validarVentaRequest(req *models.VentaRequest) err
 		}
 	}
 	// Teléfono es opcional, solo validar formato si está presente
-	if req.TelefonoCliente != 0 && (req.TelefonoCliente < 10000000 || req.TelefonoCliente > 999999999) {
+	if req.TelefonoCliente != nil && (*req.TelefonoCliente < 10000000 || *req.TelefonoCliente > 999999999) {
 		return fmt.Errorf("teléfono debe tener entre 8 y 9 dígitos")
 	}
 	return nil

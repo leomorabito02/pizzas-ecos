@@ -241,7 +241,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             const data = {
                 vendedor: vend,
                 cliente: cliente,
-                telefono_cliente: parseInt(document.getElementById('telefono_cliente').value) || 0,
+                telefono_cliente: (function(){
+                    const v = document.getElementById('telefono_cliente').value || '';
+                    return v.trim() === '' ? null : parseInt(v);
+                })(),
                 items: combos,
                 payment_method: pago,
                 estado: est,

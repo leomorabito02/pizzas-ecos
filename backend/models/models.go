@@ -24,7 +24,7 @@ type VentaRequest struct {
 	PaymentMethod   string         `json:"payment_method"`
 	Estado          string         `json:"estado"`
 	TipoEntrega     string         `json:"tipo_entrega"` // retiro o envio
-	TelefonoCliente int            `json:"telefono_cliente"`
+	TelefonoCliente *int           `json:"telefono_cliente"`
 }
 
 // DataResponse retorna vendedores, clientes y productos
@@ -46,7 +46,7 @@ type VentaStats struct {
 	ID              int            `json:"id"`
 	Vendedor        string         `json:"vendedor"`
 	Cliente         string         `json:"cliente"`
-	TelefonoCliente int            `json:"telefono_cliente"`
+	TelefonoCliente *int           `json:"telefono_cliente"`
 	Total           float64        `json:"total"`
 	PaymentMethod   string         `json:"payment_method"`
 	Estado          string         `json:"estado"`

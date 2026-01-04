@@ -159,8 +159,8 @@ func ValidateVentaRequestCompleto(req interface{}) *ValidateRequest {
 	}
 
 	// Validar teléfono (opcional)
-	if ventaReq.TelefonoCliente != 0 {
-		if ventaReq.TelefonoCliente < 10000000 || ventaReq.TelefonoCliente > 999999999 {
+	if ventaReq.TelefonoCliente != nil {
+		if *ventaReq.TelefonoCliente < 10000000 || *ventaReq.TelefonoCliente > 999999999 {
 			v.Add("telefono_cliente", "Teléfono debe tener entre 8 y 9 dígitos")
 		}
 	}

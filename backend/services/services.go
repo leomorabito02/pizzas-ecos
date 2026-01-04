@@ -83,18 +83,13 @@ func (s *VentaService) CrearVenta(req *models.VentaRequest) (int, error) {
 		id, tel, exists, err := database.GetClienteByNombre(cliente)
 		if err == nil && exists {
 			// Si se envió teléfono y es distinto, actualizarlo
-			if req.TelefonoCliente != 0 && req.TelefonoCliente != tel {
-				_ = database.UpdateClienteTelefono(id, &req.TelefonoCliente)
+			if req.TelefonoCliente != nil && *req.TelefonoCliente != tel {
+				_ = database.UpdateClienteTelefono(id, req.TelefonoCliente)
 			}
 			clienteID = &id
 		} else {
 			// Crear cliente nuevo con teléfono opcional
-			var telPtr *int
-			if req.TelefonoCliente != 0 {
-				t := req.TelefonoCliente
-				telPtr = &t
-			}
-			newID, err := database.CreateClienteWithTelefono(req.Cliente, telPtr)
+			newID, err := database.CreateClienteWithTelefono(req.Cliente, req.TelefonoCliente)
 			if err == nil {
 				clienteID = &newID
 			}
@@ -242,7 +237,7 @@ func (s *VentaService) validarVentaRequest(req *models.VentaRequest) error {
 		return fmt.Errorf("nombre de cliente demasiado largo")
 	}
 
-	if req.TelefonoCliente != 0 && (req.TelefonoCliente < 10000000 || req.TelefonoCliente > 999999999) {
+	if req.TelefonoCliente != nil && (*req.TelefonoCliente < 10000000 || *req.TelefonoCliente > 999999999) {
 		return fmt.Errorf("teléfono debe tener entre 8 y 9 dígitos")
 	}
 
