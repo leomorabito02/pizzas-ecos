@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"pizzas-ecos/database"
 	"pizzas-ecos/logger"
@@ -41,8 +42,16 @@ func (s *VentaService) CrearVenta(req *models.VentaRequest) (int, error) {
 	// Obtener o crear cliente
 	var clienteID *int
 	if req.Cliente != "" {
+		// Validar que cliente no sea solo espacios (trim)
+		cliente := strings.TrimSpace(req.Cliente)
+		if cliente == "" {
+			logger.Warn("CrearVenta: Cliente vacío después de trim", map[string]interface{}{
+				"cliente_original": req.Cliente,
+			})
+			return 0, fmt.Errorf("cliente no puede estar vacío")
+		}
 		// Intentar obtener cliente existente para posiblemente actualizar su teléfono
-		id, tel, exists, err := database.GetClienteByNombre(req.Cliente)
+		id, tel, exists, err := database.GetClienteByNombre(cliente)
 		if err == nil && exists {
 			// Si se envió teléfono y es distinto, actualizarlo
 			if req.TelefonoCliente != 0 && req.TelefonoCliente != tel {

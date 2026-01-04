@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
@@ -38,14 +39,16 @@ func (c *VentaController) CrearVenta(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validar request - solo validar que no esté vacío
+	// Validar request - vendedor, cliente y items requeridos
+	req.Vendedor = strings.TrimSpace(req.Vendedor)
+	req.Cliente = strings.TrimSpace(req.Cliente)
 	if req.Vendedor == "" || req.Cliente == "" || len(req.Items) == 0 {
 		logger.Warn("CrearVenta: Validación fallida", map[string]interface{}{
 			"vendedor": req.Vendedor,
 			"cliente":  req.Cliente,
 			"items":    len(req.Items),
 		})
-		errors.WriteError(w, errors.ErrBadRequest, "Vendedor, cliente e items requeridos")
+		errors.WriteError(w, errors.ErrBadRequest, "Vendedor, cliente e items requeridos (sin espacios vacíos)")
 		return
 	}
 
