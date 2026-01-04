@@ -150,8 +150,8 @@ function validateResponse(response, expectedStatus = 200, expectedData = null) {
  * Pruebas de Health Check
  */
 async function testHealthCheck() {
-  const response = await makeRequest(`${BASE_URL}/health`);
-  return validateResponse(response, 200, (data) => data && data.status === 'ok');
+  const response = await makeRequest(`${API_BASE}/health`);
+  return validateResponse(response, 200, (data) => data && data.data && data.data.status === 'ok');
 }
 
 /**
@@ -168,8 +168,8 @@ async function testAuthLogin() {
     body: loginData
   });
 
-  if (response.status === 200 && response.data && response.data.token) {
-    authToken = response.data.token;
+  if (response.status === 200 && response.data && response.data.data && response.data.data.token) {
+    authToken = response.data.data.token;
     return true;
   }
 
@@ -186,7 +186,7 @@ async function testAuthMe() {
  */
 async function testGetProductos() {
   const response = await makeRequest(`${API_BASE}/productos`);
-  return validateResponse(response, 200, (data) => Array.isArray(data));
+  return validateResponse(response, 200, (data) => data && data.data && Array.isArray(data.data));
 }
 
 async function testCreateProducto() {
@@ -209,7 +209,7 @@ async function testCreateProducto() {
  */
 async function testGetVendedores() {
   const response = await makeRequest(`${API_BASE}/vendedores`);
-  return validateResponse(response, 200, (data) => Array.isArray(data));
+  return validateResponse(response, 200, (data) => data && data.data && Array.isArray(data.data));
 }
 
 /**
@@ -222,7 +222,7 @@ async function testGetVentas() {
 
 async function testGetEstadisticas() {
   const response = await makeRequest(`${API_BASE}/estadisticas-sheet`);
-  return validateResponse(response, 200, (data) => data && typeof data === 'object');
+  return validateResponse(response, 200, (data) => data && data.data && typeof data.data === 'object');
 }
 
 async function testCreateVenta() {
@@ -230,15 +230,15 @@ async function testCreateVenta() {
   const productosResp = await makeRequest(`${API_BASE}/productos`);
   const vendedoresResp = await makeRequest(`${API_BASE}/vendedores`);
 
-  if (productosResp.data && productosResp.data.length > 0 &&
-      vendedoresResp.data && vendedoresResp.data.length > 0) {
+  if (productosResp.data && productosResp.data.data && productosResp.data.data.length > 0 &&
+      vendedoresResp.data && vendedoresResp.data.data && vendedoresResp.data.data.length > 0) {
 
     const ventaData = {
-      vendedor: vendedoresResp.data[0].nombre,
+      vendedor: vendedoresResp.data.data[0].nombre,
       cliente: 'Cliente Test',
       telefono_cliente: 123456789,
       items: [{
-        product_id: productosResp.data[0].id,
+        product_id: productosResp.data.data[0].id,
         cantidad: 1
       }],
       payment_method: 'efectivo',
@@ -263,10 +263,10 @@ async function testCreateVenta() {
 async function testGetDataInicial() {
   const response = await makeRequest(`${API_BASE}/data`);
   return validateResponse(response, 200, (data) =>
-    data &&
-    typeof data === 'object' &&
-    data.vendedores && Array.isArray(data.vendedores) &&
-    data.productos && Array.isArray(data.productos)
+    data && data.data &&
+    typeof data.data === 'object' &&
+    data.data.vendedores && Array.isArray(data.data.vendedores) &&
+    data.data.productos && Array.isArray(data.data.productos)
   );
 }
 

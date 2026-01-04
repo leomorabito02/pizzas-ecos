@@ -243,6 +243,7 @@ func SetupRoutes() *Router {
 	// GRUPO: Vendedores (SIN MIDDLEWARE - Auth aplicado globalmente)
 	// ============================================
 	vendedorGroup := router.Group("/api/v1/vendedores")
+	vendedorGroup.GET("", vendedorCtrl.Listar, "Listar vendedores")
 	vendedorGroup.POST("", vendedorCtrl.Crear, "Crear vendedor")
 	vendedorGroup.PUT("/:id", vendedorCtrl.Actualizar, "Actualizar vendedor")
 	vendedorGroup.DELETE("/:id", vendedorCtrl.Eliminar, "Eliminar vendedor")

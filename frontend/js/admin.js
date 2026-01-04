@@ -897,6 +897,8 @@ function abrirModalUsuario(id) {
     document.getElementById('editUsuarioId').value = usuarioAEditar.id;
     document.getElementById('editUsuarioUsername').value = usuarioAEditar.username;
     document.getElementById('editUsuarioPassword').value = '';
+    // Store the current rol for the update
+    document.getElementById('editUsuarioId').dataset.rol = usuarioAEditar.rol;
 
     document.getElementById('editUsuarioModal').classList.remove('hidden');
 }
@@ -941,7 +943,10 @@ function setupEditUsuarioForm() {
             return;
         }
 
-        const body = { username };
+        const body = { 
+            username,
+            rol: document.getElementById('editUsuarioId').dataset.rol
+        };
         if (password) {
             body.password = password;
         }
