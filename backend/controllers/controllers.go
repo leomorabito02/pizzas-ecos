@@ -82,6 +82,9 @@ func (c *VentaController) ActualizarVenta(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// Log del request completo
+	logger.Info("ActualizarVenta: Payload recibido", req)
+
 	// Extraer campos con validación
 	estado, _ := req["estado"].(string)
 	paymentMethod, _ := req["payment_method"].(string)
@@ -116,32 +119,73 @@ func (c *VentaController) ActualizarVenta(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Manejar actualización o creación del teléfono del cliente si viene en el payload
+	// Manejar actualización del cliente (SIEMPRE, si viene en el payload)
 	if clienteRaw, ok := req["cliente"].(string); ok {
-		if telRaw, exists := req["telefono_cliente"]; exists {
-			// telRaw puede ser float64 (number) o nil
-			if telRaw == nil {
-				// borrar teléfono si existe
-				id, _, found, err := database.GetClienteByNombre(clienteRaw)
-				if err == nil && found {
-					_ = database.UpdateClienteTelefono(id, nil)
-				}
-			} else if telFloat, ok2 := telRaw.(float64); ok2 {
+		clienteRaw = strings.TrimSpace(clienteRaw)
+		if clienteRaw == "" {
+			logger.Warn("ActualizarVenta: Cliente vacío", map[string]interface{}{"venta_id": ventaID})
+			errors.WriteError(w, errors.ErrBadRequest, "El cliente no puede estar vacío")
+			return
+		}
+
+		// Obtener teléfono si existe
+		var telPtr *int
+		if telRaw, exists := req["telefono_cliente"]; exists && telRaw != nil {
+			if telFloat, ok2 := telRaw.(float64); ok2 {
 				telInt := int(telFloat)
-				id, _, found, err := database.GetClienteByNombre(clienteRaw)
-				if err == nil && found {
-					_ = database.UpdateClienteTelefono(id, &telInt)
-					// asociar venta a cliente si no estaba asociada
-					_ = database.UpdateVentaClienteID(ventaID, id)
-				} else {
-					// crear cliente y asociar
-					newID, err := database.CreateClienteWithTelefono(clienteRaw, &telInt)
-					if err == nil {
-						_ = database.UpdateVentaClienteID(ventaID, newID)
-					}
-				}
+				telPtr = &telInt
 			}
 		}
+
+		// Obtener o crear cliente
+		id, existingTel, found, err := database.GetClienteByNombre(clienteRaw)
+		if err == nil && found {
+			// Cliente existe: actualizar teléfono si es diferente
+			if telPtr != nil && *telPtr != existingTel {
+				if err := database.UpdateClienteTelefono(id, telPtr); err != nil {
+					logger.Error("ActualizarVenta: Error actualizando teléfono", "PHONE_UPDATE_ERROR", map[string]interface{}{
+						"cliente_id": id,
+						"error":      err.Error(),
+					})
+				}
+			}
+			// Asociar venta a este cliente
+			if err := database.UpdateVentaClienteID(ventaID, id); err != nil {
+				logger.Error("ActualizarVenta: Error asignando cliente a venta", "VENTA_CLIENT_ASSIGN_ERROR", map[string]interface{}{
+					"venta_id":   ventaID,
+					"cliente_id": id,
+					"error":      err.Error(),
+				})
+				errors.WriteError(w, errors.ErrServerError, "Error al asignar cliente a venta")
+				return
+			}
+		} else {
+			// Cliente no existe: crear con teléfono opcional
+			newID, err := database.CreateClienteWithTelefono(clienteRaw, telPtr)
+			if err != nil {
+				logger.Error("ActualizarVenta: Error creando cliente", "CLIENT_CREATE_ERROR", map[string]interface{}{
+					"cliente": clienteRaw,
+					"error":   err.Error(),
+				})
+				errors.WriteError(w, errors.ErrServerError, "Error al crear cliente")
+				return
+			}
+			// Asociar venta a nuevo cliente
+			if err := database.UpdateVentaClienteID(ventaID, newID); err != nil {
+				logger.Error("ActualizarVenta: Error asignando nuevo cliente a venta", "VENTA_NEW_CLIENT_ASSIGN_ERROR", map[string]interface{}{
+					"venta_id":   ventaID,
+					"cliente_id": newID,
+					"error":      err.Error(),
+				})
+				errors.WriteError(w, errors.ErrServerError, "Error al asignar cliente a venta")
+				return
+			}
+		}
+
+		logger.Info("ActualizarVenta: Cliente actualizado", map[string]interface{}{
+			"venta_id": ventaID,
+			"cliente":  clienteRaw,
+		})
 	}
 
 	logger.Info("ActualizarVenta: Venta actualizada", map[string]interface{}{"venta_id": ventaID})

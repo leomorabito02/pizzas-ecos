@@ -854,6 +854,8 @@ async function guardarCambios() {
     const entrega = document.getElementById('editarEntrega').value;
     const cliente = (document.getElementById('editarCliente').value || '').trim();
     
+    Logger.log('guardarCambios - cliente:', cliente);
+    
     // Validar que cliente no esté vacío
     if (!cliente) {
         showMessage('El cliente no puede estar vacío', 'error');
@@ -908,6 +910,9 @@ async function guardarCambios() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
+
+        Logger.log('guardarCambios - response status:', response.status);
+        Logger.log('guardarCambios - payload enviado:', payload);
 
         if (response.ok) {
             showMessage('✓ Venta actualizada correctamente', 'success');
