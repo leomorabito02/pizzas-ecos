@@ -237,7 +237,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-          cache: false
 
       - name: Wait for services to be ready
         run: |
