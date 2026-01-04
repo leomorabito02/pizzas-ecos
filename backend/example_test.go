@@ -40,13 +40,13 @@ func TestWithSubtests(t *testing.T) {
 	}
 }
 
-// ExampleTest - This appears in go test -v output
+// Example - This appears in go test -v output
 // Example:
 // $ go test -v -run Example
 // Output:
-// === RUN   ExampleTest
-// --- PASS: ExampleTest (0.00s)
-func ExampleTest() {
+// === RUN   Example
+// --- PASS: Example (0.00s)
+func Example() {
 	// Example code here
 	// println("example")
 	// Output:

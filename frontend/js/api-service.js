@@ -268,3 +268,11 @@ class APIService {
 
 // Exportar instancia global
 const api = new APIService();
+
+// Exports para testing
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        APIService,
+        api
+    };
+}

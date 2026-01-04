@@ -105,3 +105,16 @@ class AppState {
 
 // Instancia global del estado
 const appState = new AppState();
+
+// Exports para testing
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        ProductoItem,
+        Producto,
+        Vendedor,
+        Cliente,
+        Venta,
+        AppState,
+        appState
+    };
+}

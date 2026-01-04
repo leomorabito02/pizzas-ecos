@@ -1,0 +1,64 @@
+{
+  "name": "pizzas-ecos-frontend",
+  "version": "1.0.0",
+  "description": "Frontend para el sistema de ventas Pizzas ECOS",
+  "main": "index.html",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:integration": "node test-endpoints.js",
+    "lint": "echo 'No linter configured yet'",
+    "serve": "python server.py"
+  },
+  "jest": {
+    "testEnvironment": "jsdom",
+    "collectCoverageFrom": [
+      "js/**/*.js",
+      "!js/**/*.test.js",
+      "!node_modules/**"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 70,
+        "functions": 70,
+        "lines": 70,
+        "statements": 70
+      }
+    },
+    "moduleFileExtensions": [
+      "js",
+      "json"
+    ],
+    "testMatch": [
+      "**/__tests__/**/*.js",
+      "**/?(*.)+(spec|test).js"
+    ],
+    "setupFilesAfterEnv": [
+      "<rootDir>/jest.setup.js"
+    ],
+    "globals": {
+      "testTimeout": 10000
+    },
+    "reporters": [
+      "default",
+      ["jest-junit", {
+        "outputDirectory": ".",
+        "outputName": "junit.xml"
+      }]
+    ]
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "jest-junit": "^16.0.0"
+  },
+  "keywords": [
+    "pizzas",
+    "ventas",
+    "frontend",
+    "javascript"
+  ],
+  "author": "Leonardo Morabito",
+  "license": "MIT"
+}

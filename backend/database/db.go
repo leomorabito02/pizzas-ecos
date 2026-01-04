@@ -37,56 +37,38 @@ func GetVendedorID(nombre string) (int, error) {
 	return id, err
 }
 
-// GetClientesPorVendedor obtiene clientes agrupados por vendedor (TODOS los clientes, no solo los con ventas)
+// GetClientesPorVendedor obtiene clientes agrupados por vendedor (solo clientes que han tenido ventas con ese vendedor)
 func GetClientesPorVendedor() (map[string][]models.Cliente, error) {
 	result := make(map[string][]models.Cliente)
 
-	// Primero obtener todos los vendedores
-	vendedoresQuery := `SELECT id, nombre FROM vendedores ORDER BY nombre`
-	vendedores := make(map[int]string)
-	rows, err := DB.Query(vendedoresQuery)
+	// Query para obtener clientes por vendedor basándose en ventas
+	query := `
+		SELECT DISTINCT
+			v.nombre as vendedor,
+			c.id,
+			c.nombre,
+			COALESCE(c.telefono, 0) as telefono
+		FROM ventas vt
+		JOIN vendedores v ON vt.vendedor_id = v.id
+		JOIN clientes c ON vt.cliente_id = c.id
+		ORDER BY v.nombre, c.nombre
+	`
+
+	rows, err := DB.Query(query)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
+	// Procesar resultados y agrupar por vendedor
 	for rows.Next() {
-		var id int
-		var nombre string
-		if err := rows.Scan(&id, &nombre); err != nil {
+		var vendedor string
+		var cliente models.Cliente
+		if err := rows.Scan(&vendedor, &cliente.ID, &cliente.Nombre, &cliente.Telefono); err != nil {
 			return nil, err
 		}
-		vendedores[id] = nombre
-	}
-
-	// Luego obtener clientes (sin filtro de vendedor, ya que los clientes no tienen vendedor_id)
-	clientesQuery := `SELECT id, nombre, COALESCE(telefono, 0) FROM clientes ORDER BY nombre`
-	clientesRows, err := DB.Query(clientesQuery)
-	if err != nil {
-		return nil, err
-	}
-	defer clientesRows.Close()
-
-	clientesList := []models.Cliente{}
-	for clientesRows.Next() {
-		var id int
-		var nombre string
-		var telefono int
-		if err := clientesRows.Scan(&id, &nombre, &telefono); err != nil {
-			return nil, err
-		}
-		clientesList = append(clientesList, models.Cliente{
-			ID:       id,
-			Nombre:   strings.TrimSpace(nombre),
-			Telefono: telefono,
-		})
-	}
-
-	// Asignar todos los clientes a cada vendedor (modelo simplificado)
-	for vendedorID, vendedorNombre := range vendedores {
-		if vendedorID > 0 {
-			result[vendedorNombre] = clientesList
-		}
+		cliente.Nombre = strings.TrimSpace(cliente.Nombre)
+		result[vendedor] = append(result[vendedor], cliente)
 	}
 
 	return result, nil

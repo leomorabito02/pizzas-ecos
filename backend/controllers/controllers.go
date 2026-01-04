@@ -21,7 +21,7 @@ import (
 
 // VentaController maneja requests relacionados con ventas
 type VentaController struct {
-	ventaService *services.VentaService
+	ventaService services.VentaServiceInterface
 }
 
 func NewVentaController() *VentaController {
@@ -39,16 +39,13 @@ func (c *VentaController) CrearVenta(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validar request - vendedor, cliente y items requeridos
-	req.Vendedor = strings.TrimSpace(req.Vendedor)
-	req.Cliente = strings.TrimSpace(req.Cliente)
-	if req.Vendedor == "" || req.Cliente == "" || len(req.Items) == 0 {
+	// Validar request completo
+	validation := validators.ValidateVentaRequestCompleto(&req)
+	if !validation.IsValid() {
 		logger.Warn("CrearVenta: Validación fallida", map[string]interface{}{
-			"vendedor": req.Vendedor,
-			"cliente":  req.Cliente,
-			"items":    len(req.Items),
+			"errors": validation.GetMessage(),
 		})
-		errors.WriteError(w, errors.ErrBadRequest, "Vendedor, cliente e items requeridos (sin espacios vacíos)")
+		errors.WriteError(w, errors.ErrBadRequest, validation.GetMessage())
 		return
 	}
 
@@ -218,7 +215,7 @@ func (c *VentaController) ObtenerTodasVentas(w http.ResponseWriter, r *http.Requ
 
 // ProductoController maneja requests relacionados con productos
 type ProductoController struct {
-	productoService *services.ProductoService
+	productoService services.ProductoServiceInterface
 }
 
 func NewProductoController() *ProductoController {
@@ -252,13 +249,13 @@ func (c *ProductoController) Crear(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validar
-	if req.TipoPizza == "" || req.Precio <= 0 {
+	// Validar request completo
+	validation := validators.ValidateProductoRequestCompleto(&req)
+	if !validation.IsValid() {
 		logger.Warn("Crear producto: Validación fallida", map[string]interface{}{
-			"tipo_pizza": req.TipoPizza,
-			"precio":     req.Precio,
+			"errors": validation.GetMessage(),
 		})
-		errors.WriteError(w, errors.ErrBadRequest, "Tipo de pizza y precio requeridos")
+		errors.WriteError(w, errors.ErrBadRequest, validation.GetMessage())
 		return
 	}
 
@@ -339,13 +336,29 @@ func (c *ProductoController) Eliminar(w http.ResponseWriter, r *http.Request) {
 
 // VendedorController maneja requests relacionados con vendedores
 type VendedorController struct {
-	vendedorService *services.VendedorService
+	vendedorService services.VendedorServiceInterface
 }
 
 func NewVendedorController() *VendedorController {
 	return &VendedorController{
 		vendedorService: &services.VendedorService{},
 	}
+}
+
+// Listar obtiene lista de vendedores
+func (c *VendedorController) Listar(w http.ResponseWriter, r *http.Request) {
+	vendedores, err := c.vendedorService.ObtenerVendedores()
+	if err != nil {
+		logger.Error("Listar vendedores: Error", "VENDEDORES_LIST_ERROR", map[string]interface{}{"error": err.Error()})
+		errors.WriteError(w, errors.ErrServerError, "Error al obtener vendedores")
+		return
+	}
+
+	if len(vendedores) == 0 {
+		vendedores = []models.Vendedor{}
+	}
+
+	errors.WriteSuccess(w, http.StatusOK, vendedores, "")
 }
 
 // Crear crea un nuevo vendedor
@@ -360,9 +373,9 @@ func (c *VendedorController) Crear(w http.ResponseWriter, r *http.Request) {
 	nombre := req["nombre"]
 
 	// Validar
-	validation := validators.ValidateVendedorRequest(nombre)
+	validation := validators.ValidateVendedorRequestCompleto(nombre)
 	if !validation.IsValid() {
-		logger.Warn("Crear vendedor: Validación fallida", map[string]interface{}{"errors": validation.Errors})
+		logger.Warn("Crear vendedor: Validación fallida", map[string]interface{}{"errors": validation.GetMessage()})
 		errors.WriteError(w, errors.ErrBadRequest, validation.GetMessage())
 		return
 	}
@@ -480,7 +493,7 @@ func (c *DataController) LimpiarBaseDatos(w http.ResponseWriter, r *http.Request
 
 // AuthController maneja requests de autenticación
 type AuthController struct {
-	authService *services.AuthService
+	authService services.AuthServiceInterface
 }
 
 func NewAuthController() *AuthController {

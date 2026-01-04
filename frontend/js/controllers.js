@@ -31,16 +31,11 @@ class VentaController {
     async crearVenta(ventaData) {
         try {
             UIUtils.showSpinner(true);
-            
-            // Validar datos requeridos
-            UIUtils.validateRequired(ventaData.vendedor, 'Vendedor');
-            UIUtils.validateRequired(ventaData.cliente, 'Cliente');
-            
-            if (!ventaData.items || ventaData.items.length === 0) {
-                throw new Error('Debe agregar al menos un producto');
-            }
 
-            const response = await this.api.criarVenta(ventaData);
+            // Validar datos de venta
+            Validators.validateVenta(ventaData);
+
+            const response = await this.api.crearVenta(ventaData);
             UIUtils.showMessage('Venta guardada exitosamente', 'success');
             return response;
         } catch (error) {
@@ -143,8 +138,8 @@ class ProductoController {
      */
     async crearProducto(productoData) {
         try {
-            UIUtils.validateRequired(productoData.tipo_pizza, 'Tipo de pizza');
-            UIUtils.validatePositive(productoData.precio, 'Precio');
+            // Validar datos del producto
+            Validators.validateProducto(productoData);
 
             UIUtils.showSpinner(true);
             const response = await this.api.crearProducto(productoData);
@@ -183,8 +178,8 @@ class ProductoController {
      */
     async actualizarProducto(id, productoData) {
         try {
-            UIUtils.validateRequired(productoData.tipo_pizza, 'Tipo de pizza');
-            UIUtils.validatePositive(productoData.precio, 'Precio');
+            // Validar datos del producto
+            Validators.validateProducto(productoData);
 
             UIUtils.showSpinner(true);
             const response = await this.api.actualizarProducto(id, productoData);
@@ -239,10 +234,8 @@ class VendedorController {
      */
     async crearVendedor(vendedorData) {
         try {
-            UIUtils.validateRequired(vendedorData.nombre, 'Nombre del vendedor');
-            if (vendedorData.nombre.length < 2) {
-                throw new Error('El nombre debe tener al menos 2 caracteres');
-            }
+            // Validar datos del vendedor
+            Validators.validateVendedor(vendedorData);
 
             UIUtils.showSpinner(true);
             const response = await this.api.crearVendedor(vendedorData);
@@ -281,10 +274,8 @@ class VendedorController {
      */
     async actualizarVendedor(id, vendedorData) {
         try {
-            UIUtils.validateRequired(vendedorData.nombre, 'Nombre del vendedor');
-            if (vendedorData.nombre.length < 2) {
-                throw new Error('El nombre debe tener al menos 2 caracteres');
-            }
+            // Validar datos del vendedor
+            Validators.validateVendedor(vendedorData);
 
             UIUtils.showSpinner(true);
             const response = await this.api.actualizarVendedor(id, vendedorData);
@@ -338,8 +329,8 @@ class AuthController {
      */
     async login(username, password) {
         try {
-            UIUtils.validateRequired(username, 'Usuario');
-            UIUtils.validateRequired(password, 'Contraseña');
+            // Validar credenciales de login
+            Validators.validateLogin({ username, password });
 
             UIUtils.showSpinner(true);
             const response = await this.api.login(username, password);
@@ -380,3 +371,17 @@ const ventaController = new VentaController();
 const productoController = new ProductoController();
 const vendedorController = new VendedorController();
 const authController = new AuthController();
+
+// Exports para testing
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        VentaController,
+        ProductoController,
+        VendedorController,
+        AuthController,
+        ventaController,
+        productoController,
+        vendedorController,
+        authController
+    };
+}

@@ -10,6 +10,35 @@ import (
 	"pizzas-ecos/models"
 )
 
+// VentaServiceInterface define los métodos del servicio de ventas
+type VentaServiceInterface interface {
+	CrearVenta(req *models.VentaRequest) (int, error)
+	ActualizarVenta(ventaID int, estado, paymentMethod, tipoEntrega string, productosEliminar []int, productos []map[string]interface{}) error
+	ObtenerEstadisticas() (map[string]interface{}, error)
+	ObtenerTodasVentas() ([]models.VentaStats, error)
+}
+
+// ProductoServiceInterface define los métodos del servicio de productos
+type ProductoServiceInterface interface {
+	ObtenerProductos() ([]models.Producto, error)
+	CrearProducto(req *models.CrearProductoRequest) (int64, error)
+	ActualizarProducto(id int, req *models.ActualizarProductoRequest) error
+	EliminarProducto(id int) error
+}
+
+// VendedorServiceInterface define los métodos del servicio de vendedores
+type VendedorServiceInterface interface {
+	ObtenerVendedores() ([]models.Vendedor, error)
+	CrearVendedor(nombre string) (int64, error)
+	ActualizarVendedor(id int, nombre string) error
+	EliminarVendedor(id int) error
+}
+
+// AuthServiceInterface define los métodos del servicio de autenticación
+type AuthServiceInterface interface {
+	AutenticarUsuario(username, password string) (*models.User, error)
+}
+
 // VentaService contiene lógica de negocio para ventas
 type VentaService struct{}
 
@@ -187,11 +216,44 @@ func (s *VentaService) validarVentaRequest(req *models.VentaRequest) error {
 	if req.Vendedor == "" {
 		return fmt.Errorf("vendedor es requerido")
 	}
+	if len(strings.TrimSpace(req.Vendedor)) < 2 {
+		return fmt.Errorf("nombre de vendedor debe tener al menos 2 caracteres")
+	}
+	if len(req.Vendedor) > 100 {
+		return fmt.Errorf("nombre de vendedor demasiado largo")
+	}
+
+	// Validar que el vendedor existe
+	vendedorID, err := database.GetVendedorID(req.Vendedor)
+	if err != nil {
+		return fmt.Errorf("error al validar vendedor: %w", err)
+	}
+	if vendedorID <= 0 {
+		return fmt.Errorf("vendedor '%s' no encontrado", req.Vendedor)
+	}
+
+	if req.Cliente == "" {
+		return fmt.Errorf("cliente es requerido")
+	}
+	if len(strings.TrimSpace(req.Cliente)) < 2 {
+		return fmt.Errorf("nombre de cliente debe tener al menos 2 caracteres")
+	}
+	if len(req.Cliente) > 100 {
+		return fmt.Errorf("nombre de cliente demasiado largo")
+	}
+
+	if req.TelefonoCliente != 0 && (req.TelefonoCliente < 10000000 || req.TelefonoCliente > 999999999) {
+		return fmt.Errorf("teléfono debe tener entre 8 y 9 dígitos")
+	}
+
 	if len(req.Items) == 0 {
 		return fmt.Errorf("al menos un item es requerido")
 	}
+	if len(req.Items) > 50 {
+		return fmt.Errorf("demasiados items (máximo 50)")
+	}
 
-	// Validar que cada item tenga datos válidos
+	// Validar que cada item tenga datos válidos y producto existe
 	for i, item := range req.Items {
 		if item.ProductID <= 0 {
 			return fmt.Errorf("item %d: product_id inválido", i)
@@ -199,8 +261,69 @@ func (s *VentaService) validarVentaRequest(req *models.VentaRequest) error {
 		if item.Cantidad <= 0 {
 			return fmt.Errorf("item %d: cantidad debe ser mayor a 0", i)
 		}
+		if item.Cantidad > 100 {
+			return fmt.Errorf("item %d: cantidad demasiado grande (máximo 100)", i)
+		}
 		if item.Precio < 0 {
 			return fmt.Errorf("item %d: precio no puede ser negativo", i)
+		}
+		if item.Precio > 10000 {
+			return fmt.Errorf("item %d: precio demasiado alto (máximo $10,000)", i)
+		}
+
+		// Validar que el producto existe
+		exists, err := database.ExistsProducto(context.Background(), item.ProductID)
+		if err != nil {
+			return fmt.Errorf("item %d: error al validar producto: %w", i, err)
+		}
+		if !exists {
+			return fmt.Errorf("item %d: producto con ID %d no existe", i, item.ProductID)
+		}
+	}
+
+	// Validar payment method
+	if req.PaymentMethod == "" {
+		return fmt.Errorf("método de pago es requerido")
+	}
+	validPayments := []string{"efectivo", "tarjeta", "transferencia", "qr"}
+	found := false
+	for _, p := range validPayments {
+		if strings.ToLower(req.PaymentMethod) == p {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return fmt.Errorf("método de pago inválido (debe ser: efectivo, tarjeta, transferencia, qr)")
+	}
+
+	// Validar estado
+	if req.Estado != "" {
+		validEstados := []string{"pendiente", "pagada", "cancelada", "en_proceso"}
+		found := false
+		for _, e := range validEstados {
+			if strings.ToLower(req.Estado) == e {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("estado inválido (debe ser: pendiente, pagada, cancelada, en_proceso)")
+		}
+	}
+
+	// Validar tipo de entrega
+	if req.TipoEntrega != "" {
+		validTipos := []string{"retiro", "envio", "delivery"}
+		found := false
+		for _, t := range validTipos {
+			if strings.ToLower(req.TipoEntrega) == t {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("tipo de entrega inválido (debe ser: retiro, envio, delivery)")
 		}
 	}
 
@@ -258,22 +381,48 @@ func (s *ProductoService) ObtenerProductos() ([]models.Producto, error) {
 
 // Validaciones privadas
 func (s *ProductoService) validarCrearProducto(req *models.CrearProductoRequest) error {
-	if req.TipoPizza == "" {
+	if strings.TrimSpace(req.TipoPizza) == "" {
 		return fmt.Errorf("tipo_pizza es requerido")
 	}
+	if len(strings.TrimSpace(req.TipoPizza)) < 2 {
+		return fmt.Errorf("tipo_pizza debe tener al menos 2 caracteres")
+	}
+	if len(req.TipoPizza) > 50 {
+		return fmt.Errorf("tipo_pizza demasiado largo (máximo 50 caracteres)")
+	}
+
+	if len(strings.TrimSpace(req.Descripcion)) > 200 {
+		return fmt.Errorf("descripcion demasiado larga (máximo 200 caracteres)")
+	}
+
 	if req.Precio <= 0 {
 		return fmt.Errorf("precio debe ser mayor a 0")
 	}
+	if req.Precio > 500 {
+		return fmt.Errorf("precio demasiado alto (máximo $500)")
+	}
+
 	return nil
 }
 
 func (s *ProductoService) validarActualizarProducto(req *models.ActualizarProductoRequest) error {
-	if req.TipoPizza == "" {
+	if strings.TrimSpace(req.TipoPizza) == "" {
 		return fmt.Errorf("tipo_pizza es requerido")
 	}
+	if len(strings.TrimSpace(req.TipoPizza)) < 2 {
+		return fmt.Errorf("tipo_pizza debe tener al menos 2 caracteres")
+	}
+	if len(req.TipoPizza) > 50 {
+		return fmt.Errorf("tipo_pizza demasiado largo (máximo 50 caracteres)")
+	}
+
 	if req.Precio <= 0 {
 		return fmt.Errorf("precio debe ser mayor a 0")
 	}
+	if req.Precio > 500 {
+		return fmt.Errorf("precio demasiado alto (máximo $500)")
+	}
+
 	return nil
 }
 

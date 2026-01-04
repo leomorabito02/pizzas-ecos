@@ -38,6 +38,10 @@ debug.log
 node_modules/
 package-lock.json
 
+# Coverage y test results
+frontend/coverage/
+frontend/junit.xml
+
 # Documentos temporales
 CAMBIOS_*.md
 RESUMEN_*.md

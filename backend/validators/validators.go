@@ -3,6 +3,8 @@ package validators
 import (
 	"fmt"
 	"strings"
+
+	"pizzas-ecos/models"
 )
 
 // ValidationError contiene errores de validación
@@ -125,4 +127,173 @@ func ValidateID(id interface{}) *ValidateRequest {
 	}
 
 	return v
+}
+
+// ValidateVentaRequestCompleto valida una solicitud completa de venta
+func ValidateVentaRequestCompleto(req interface{}) *ValidateRequest {
+	v := &ValidateRequest{}
+
+	// Type assertion para VentaRequest
+	ventaReq, ok := req.(*models.VentaRequest)
+	if !ok {
+		v.Add("request", "Tipo de request inválido")
+		return v
+	}
+
+	// Validar vendedor
+	if strings.TrimSpace(ventaReq.Vendedor) == "" {
+		v.Add("vendedor", "Vendedor es requerido")
+	} else if len(strings.TrimSpace(ventaReq.Vendedor)) < 2 {
+		v.Add("vendedor", "Nombre de vendedor debe tener al menos 2 caracteres")
+	} else if len(ventaReq.Vendedor) > 100 {
+		v.Add("vendedor", "Nombre de vendedor demasiado largo (máximo 100 caracteres)")
+	}
+
+	// Validar cliente
+	if strings.TrimSpace(ventaReq.Cliente) == "" {
+		v.Add("cliente", "Cliente es requerido")
+	} else if len(strings.TrimSpace(ventaReq.Cliente)) < 2 {
+		v.Add("cliente", "Nombre de cliente debe tener al menos 2 caracteres")
+	} else if len(ventaReq.Cliente) > 100 {
+		v.Add("cliente", "Nombre de cliente demasiado largo (máximo 100 caracteres)")
+	}
+
+	// Validar teléfono (opcional)
+	if ventaReq.TelefonoCliente != 0 {
+		if ventaReq.TelefonoCliente < 10000000 || ventaReq.TelefonoCliente > 999999999 {
+			v.Add("telefono_cliente", "Teléfono debe tener entre 8 y 9 dígitos")
+		}
+	}
+
+	// Validar items
+	if len(ventaReq.Items) == 0 {
+		v.Add("items", "Al menos un producto es requerido")
+	} else if len(ventaReq.Items) > 50 {
+		v.Add("items", "Demasiados items (máximo 50)")
+	} else {
+		// Validar cada item
+		for i, item := range ventaReq.Items {
+			if item.ProductID <= 0 {
+				v.Add(fmt.Sprintf("items[%d].product_id", i), "ID de producto inválido")
+			}
+			if item.Cantidad <= 0 {
+				v.Add(fmt.Sprintf("items[%d].cantidad", i), "Cantidad debe ser mayor a 0")
+			} else if item.Cantidad > 100 {
+				v.Add(fmt.Sprintf("items[%d].cantidad", i), "Cantidad demasiado grande (máximo 100)")
+			}
+			if item.Precio < 0 {
+				v.Add(fmt.Sprintf("items[%d].precio", i), "Precio no puede ser negativo")
+			} else if item.Precio > 10000 {
+				v.Add(fmt.Sprintf("items[%d].precio", i), "Precio demasiado alto (máximo $10,000)")
+			}
+		}
+	}
+
+	// Validar payment method
+	if strings.TrimSpace(ventaReq.PaymentMethod) == "" {
+		v.Add("payment_method", "Método de pago es requerido")
+	} else {
+		validPayments := []string{"efectivo", "tarjeta", "transferencia", "qr"}
+		if !contains(validPayments, strings.ToLower(ventaReq.PaymentMethod)) {
+			v.Add("payment_method", "Método de pago inválido (debe ser: efectivo, tarjeta, transferencia, qr)")
+		}
+	}
+
+	// Validar estado
+	if strings.TrimSpace(ventaReq.Estado) == "" {
+		ventaReq.Estado = "pendiente" // Default
+	} else {
+		validEstados := []string{"pendiente", "pagada", "cancelada", "en_proceso"}
+		if !contains(validEstados, strings.ToLower(ventaReq.Estado)) {
+			v.Add("estado", "Estado inválido (debe ser: pendiente, pagada, cancelada, en_proceso)")
+		}
+	}
+
+	// Validar tipo de entrega
+	if strings.TrimSpace(ventaReq.TipoEntrega) == "" {
+		ventaReq.TipoEntrega = "retiro" // Default
+	} else {
+		validTipos := []string{"retiro", "envio", "delivery"}
+		if !contains(validTipos, strings.ToLower(ventaReq.TipoEntrega)) {
+			v.Add("tipo_entrega", "Tipo de entrega inválido (debe ser: retiro, envio, delivery)")
+		}
+	}
+
+	return v
+}
+
+// ValidateProductoRequestCompleto valida una solicitud completa de producto
+func ValidateProductoRequestCompleto(req interface{}) *ValidateRequest {
+	v := &ValidateRequest{}
+
+	// Type assertion para CrearProductoRequest
+	prodReq, ok := req.(*models.CrearProductoRequest)
+	if !ok {
+		v.Add("request", "Tipo de request inválido")
+		return v
+	}
+
+	// Validar tipo de pizza
+	if strings.TrimSpace(prodReq.TipoPizza) == "" {
+		v.Add("tipo_pizza", "Tipo de pizza es requerido")
+	} else if len(strings.TrimSpace(prodReq.TipoPizza)) < 2 {
+		v.Add("tipo_pizza", "Tipo de pizza debe tener al menos 2 caracteres")
+	} else if len(prodReq.TipoPizza) > 50 {
+		v.Add("tipo_pizza", "Tipo de pizza demasiado largo (máximo 50 caracteres)")
+	}
+
+	// Validar descripción
+	if len(strings.TrimSpace(prodReq.Descripcion)) > 200 {
+		v.Add("descripcion", "Descripción demasiado larga (máximo 200 caracteres)")
+	}
+
+	// Validar precio
+	if prodReq.Precio <= 0 {
+		v.Add("precio", "Precio debe ser mayor a 0")
+	} else if prodReq.Precio > 500 {
+		v.Add("precio", "Precio demasiado alto (máximo $500)")
+	}
+
+	return v
+}
+
+// ValidateVendedorRequestCompleto valida una solicitud completa de vendedor
+func ValidateVendedorRequestCompleto(nombre string) *ValidateRequest {
+	v := &ValidateRequest{}
+
+	if strings.TrimSpace(nombre) == "" {
+		v.Add("nombre", "Nombre es requerido")
+	} else if len(strings.TrimSpace(nombre)) < 2 {
+		v.Add("nombre", "Nombre debe tener al menos 2 caracteres")
+	} else if len(nombre) > 100 {
+		v.Add("nombre", "Nombre demasiado largo (máximo 100 caracteres)")
+	} else if !isValidName(nombre) {
+		v.Add("nombre", "Nombre contiene caracteres inválidos")
+	}
+
+	return v
+}
+
+// Helper functions
+func contains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
+}
+
+func isValidName(name string) bool {
+	// Solo permitir letras, espacios, apóstrofes, guiones y caracteres acentuados comunes
+	for _, r := range name {
+		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') ||
+			r == ' ' || r == '\'' || r == '-' ||
+			r == 'á' || r == 'é' || r == 'í' || r == 'ó' || r == 'ú' ||
+			r == 'Á' || r == 'É' || r == 'Í' || r == 'Ó' || r == 'Ú' ||
+			r == 'ñ' || r == 'Ñ') {
+			return false
+		}
+	}
+	return true
 }
