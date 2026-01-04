@@ -130,7 +130,9 @@ func (c *VentaController) ActualizarVenta(w http.ResponseWriter, r *http.Request
 		if telRaw, exists := req["telefono_cliente"]; exists && telRaw != nil {
 			if telFloat, ok2 := telRaw.(float64); ok2 {
 				telInt := int(telFloat)
-				telPtr = &telInt
+				if telInt != 0 { // Solo considerar teléfono si no es 0
+					telPtr = &telInt
+				}
 			}
 		}
 

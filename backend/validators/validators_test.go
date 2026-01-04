@@ -297,7 +297,7 @@ func TestValidateVentaRequestCompleto(t *testing.T) {
 			request: &models.VentaRequest{
 				Vendedor:        "Juan Pérez",
 				Cliente:         "María García",
-				TelefonoCliente: &[]int{123456789}[0],
+				TelefonoCliente: 123456789,
 				Items: []models.ProductoItem{
 					{ProductID: 1, Cantidad: 2, Precio: 10.0},
 				},
@@ -337,7 +337,7 @@ func TestValidateVentaRequestCompleto(t *testing.T) {
 			request: &models.VentaRequest{
 				Vendedor:        "Juan Pérez",
 				Cliente:         "María García",
-				TelefonoCliente: &[]int{1234567}[0], // 7 dígitos - inválido
+				TelefonoCliente: 1234567, // 7 dígitos - inválido
 				Items: []models.ProductoItem{
 					{ProductID: 1, Cantidad: 1, Precio: 10.0},
 				},

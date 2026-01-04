@@ -159,8 +159,8 @@ func ValidateVentaRequestCompleto(req interface{}) *ValidateRequest {
 	}
 
 	// Validar teléfono (opcional)
-	if ventaReq.TelefonoCliente != nil {
-		if *ventaReq.TelefonoCliente < 10000000 || *ventaReq.TelefonoCliente > 999999999 {
+	if ventaReq.TelefonoCliente != 0 {
+		if ventaReq.TelefonoCliente < 10000000 || ventaReq.TelefonoCliente > 999999999 {
 			v.Add("telefono_cliente", "Teléfono debe tener entre 8 y 9 dígitos")
 		}
 	}
@@ -203,8 +203,14 @@ func ValidateVentaRequestCompleto(req interface{}) *ValidateRequest {
 	if strings.TrimSpace(ventaReq.Estado) == "" {
 		ventaReq.Estado = "pendiente" // Default
 	} else {
+		// Normalizar el estado
+		estadoNormalizado := strings.ToLower(strings.TrimSpace(ventaReq.Estado))
+		if estadoNormalizado == "sin pagar" {
+			estadoNormalizado = "pendiente"
+			ventaReq.Estado = "pendiente"
+		}
 		validEstados := []string{"pendiente", "pagada", "cancelada", "en_proceso"}
-		if !contains(validEstados, strings.ToLower(ventaReq.Estado)) {
+		if !contains(validEstados, estadoNormalizado) {
 			v.Add("estado", "Estado inválido (debe ser: pendiente, pagada, cancelada, en_proceso)")
 		}
 	}

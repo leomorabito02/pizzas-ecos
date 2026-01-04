@@ -896,7 +896,7 @@ async function guardarCambios() {
             cliente: cliente,
             telefono_cliente: (function(){
                 const v = document.getElementById('editarTelefono').value || '';
-                return v.trim() === '' ? null : parseInt(v);
+                return v.trim() === '' ? 0 : parseInt(v);
             })(),
             productos: productosActualizados
         };

@@ -82,14 +82,53 @@ func (s *VentaService) CrearVenta(req *models.VentaRequest) (int, error) {
 		// Intentar obtener cliente existente para posiblemente actualizar su teléfono
 		id, tel, exists, err := database.GetClienteByNombre(cliente)
 		if err == nil && exists {
+			logger.Info("CrearVenta: Cliente existente encontrado", map[string]interface{}{
+				"cliente":          cliente,
+				"cliente_id":       id,
+				"telefono_actual":  tel,
+				"telefono_enviado": req.TelefonoCliente,
+			})
 			// Si se envió teléfono y es distinto, actualizarlo
-			if req.TelefonoCliente != nil && *req.TelefonoCliente != tel {
-				_ = database.UpdateClienteTelefono(id, req.TelefonoCliente)
+			if req.TelefonoCliente != 0 && req.TelefonoCliente != tel {
+				telPtr := req.TelefonoCliente
+				if err := database.UpdateClienteTelefono(id, &telPtr); err != nil {
+					logger.Warn("CrearVenta: Error actualizando teléfono de cliente existente", map[string]interface{}{
+						"cliente_id":      id,
+						"cliente":         cliente,
+						"telefono_nuevo":  req.TelefonoCliente,
+						"telefono_actual": tel,
+						"error":           err.Error(),
+					})
+					// Continuar con la creación de la venta aunque falle la actualización del teléfono
+				} else {
+					logger.Info("CrearVenta: Teléfono actualizado para cliente existente", map[string]interface{}{
+						"cliente_id":        id,
+						"cliente":           cliente,
+						"telefono_anterior": tel,
+						"telefono_nuevo":    req.TelefonoCliente,
+					})
+				}
+			} else {
+				razon := "telefono_igual_al_actual"
+				if req.TelefonoCliente == 0 {
+					razon = "telefono_enviado_es_0"
+				}
+				logger.Info("CrearVenta: Teléfono no actualizado", map[string]interface{}{
+					"cliente":          cliente,
+					"telefono_actual":  tel,
+					"telefono_enviado": req.TelefonoCliente,
+					"razon":            razon,
+				})
 			}
 			clienteID = &id
 		} else {
 			// Crear cliente nuevo con teléfono opcional
-			newID, err := database.CreateClienteWithTelefono(req.Cliente, req.TelefonoCliente)
+			var telPtr *int
+			if req.TelefonoCliente != 0 {
+				t := req.TelefonoCliente
+				telPtr = &t
+			}
+			newID, err := database.CreateClienteWithTelefono(req.Cliente, telPtr)
 			if err == nil {
 				clienteID = &newID
 			}
@@ -237,7 +276,7 @@ func (s *VentaService) validarVentaRequest(req *models.VentaRequest) error {
 		return fmt.Errorf("nombre de cliente demasiado largo")
 	}
 
-	if req.TelefonoCliente != nil && (*req.TelefonoCliente < 10000000 || *req.TelefonoCliente > 999999999) {
+	if req.TelefonoCliente != 0 && (req.TelefonoCliente < 10000000 || req.TelefonoCliente > 999999999) {
 		return fmt.Errorf("teléfono debe tener entre 8 y 9 dígitos")
 	}
 
