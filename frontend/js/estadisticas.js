@@ -3,6 +3,9 @@
 
 let API_BASE = null;  // Se inicializa en DOMContentLoaded
 let loadingTimeout = null;  // Para timeout de pantalla de carga
+let datosVentas = { ventas: [], clientesPorVendedor: {} };  // Cache de datos
+let productosCache = [];  // Cache de productos
+let ventaEnEdicion = null;  // Venta en edición en modal
 
 // Loading Spinner Functions
 function showLoadingSpinner(show = true) {
@@ -172,6 +175,12 @@ async function cargarDatos() {
         showLoadingSpinner(true);
         const api = new APIService(); // Usar APIService centralizado
         
+        // 0. Obtener datos iniciales (vendedores, clientes, productos)
+        const dataResp = await api.request('/data');
+        const initialData = (dataResp && dataResp.data) ? dataResp.data : dataResp || {};
+        Logger.log('Datos iniciales cargados:', initialData);
+        datosVentas.clientesPorVendedor = initialData.clientesPorVendedor || {};
+        
         // 1. Obtener productos para cache
         try {
             const prodResp = await api.obtenerProductos();
@@ -185,7 +194,7 @@ async function cargarDatos() {
 
         // 2. Obtener datos de estadísticas
         const statsResp = await api.request('/estadisticas-sheet');
-        datosVentas = (statsResp && statsResp.data) ? statsResp.data : statsResp || {};
+        datosVentas = Object.assign(datosVentas, (statsResp && statsResp.data) ? statsResp.data : statsResp || {});
         Logger.log('estadisticas - statsResp:', statsResp);
         Logger.log('estadisticas - datosVentas.resumen:', datosVentas?.resumen);
         
