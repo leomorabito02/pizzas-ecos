@@ -218,13 +218,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                 UIUtils.showMessage('Agrega al menos un producto', 'error');
                 return;
             }
-            const vend = document.getElementById('vendedor').value;
-            const cliente = document.getElementById('cliente').value;
+            const vend = document.getElementById('vendedor').value.trim();
+            const cliente = document.getElementById('cliente').value.trim();
             const pago = document.getElementById('payment_method').value;
             const est = document.getElementById('estado').value;
             const tip = document.querySelector('input[name="tipo_entrega"]:checked')?.value;
             if (!vend || !cliente || !pago || !est || !tip) {
-                UIUtils.showMessage('Completa todos los campos', 'error');
+                UIUtils.showMessage('Completa todos los campos (vendedor y cliente requeridos)', 'error');
+                return;
+            }
+            if (cliente.length === 0) {
+                UIUtils.showMessage('El cliente no puede estar vacío', 'error');
                 return;
             }
             const combos = productosEnVenta.map(p => ({
