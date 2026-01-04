@@ -211,7 +211,17 @@
                     <!-- Cliente y Teléfono -->
                     <div class="form-group">
                         <label>Cliente:</label>
-                        <input type="text" id="editarCliente" placeholder="Nombre del cliente" />
+                        <div class="cliente-input-container">
+                            <input type="text" id="editarCliente" placeholder="Nombre del cliente" />
+                            <!-- Panel desplegable de clientes del vendedor -->
+                            <div id="clientesDropdownEditar" class="clientes-dropdown hidden">
+                                <div class="clientes-dropdown-header">
+                                    <span class="clientes-dropdown-title">Clientes de este vendedor:</span>
+                                    <button type="button" class="btn-close-dropdown">✕</button>
+                                </div>
+                                <div id="clientesListEditar" class="clientes-list"></div>
+                            </div>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label>Teléfono del cliente:</label>

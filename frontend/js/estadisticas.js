@@ -748,6 +748,9 @@ function abrirModalEditar(id) {
     document.getElementById('editarPago').value = venta.payment_method || 'efectivo';
     document.getElementById('editarEntrega').value = venta.tipo_entrega || 'delivery';
     
+    // Cargar dropdown de clientes del vendedor
+    cargarClientesDropdownEditar(venta.vendedor);
+    
     // Actualizar previsualización del tipo de entrega
     actualizarPreviaEntrega(venta.tipo_entrega || 'delivery');
     
@@ -762,6 +765,41 @@ function abrirModalEditar(id) {
     renderizarProductosEnEdicion(venta);
     
     document.getElementById('modalEditarVenta').classList.remove('hidden');
+}
+
+function cargarClientesDropdownEditar(vendedor) {
+    // Obtener clientes del vendedor desde datosVentas
+    const clientesVendedor = datosVentas.clientesPorVendedor && datosVentas.clientesPorVendedor[vendedor] ? datosVentas.clientesPorVendedor[vendedor] : [];
+    
+    const drop = document.getElementById('clientesDropdownEditar');
+    const lista = document.getElementById('clientesListEditar');
+    
+    if (clientesVendedor.length > 0) {
+        lista.innerHTML = '';
+        clientesVendedor.forEach(c => {
+            const div = document.createElement('div');
+            div.className = 'cliente-item';
+            // c puede ser string (legacy) u objeto {id, nombre, telefono}
+            const nombre = (typeof c === 'string') ? c : c.nombre;
+            const telefono = (typeof c === 'string') ? null : c.telefono;
+            div.textContent = nombre;
+            div.addEventListener('click', () => {
+                document.getElementById('editarCliente').value = nombre;
+                // Si tenemos teléfono, cargarlo en el input (editable)
+                const telInput = document.getElementById('editarTelefono');
+                if (telInput) {
+                    if (telefono) telInput.value = telefono;
+                    else telInput.value = '';
+                }
+                drop.classList.add('hidden');
+            });
+            lista.appendChild(div);
+        });
+        drop.classList.remove('hidden');
+    } else {
+        lista.innerHTML = '';
+        drop.classList.add('hidden');
+    }
 }
 
 function renderizarProductosEnEdicion(venta) {
@@ -995,6 +1033,30 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelector('.btn-close-modal').addEventListener('click', cerrarModal);
     document.querySelector('.btn-cancelar-modal').addEventListener('click', cerrarModal);
     document.querySelector('.btn-guardar-cambios').addEventListener('click', guardarCambios);
+
+    // Dropdown de clientes en modal
+    const editarClienteInput = document.getElementById('editarCliente');
+    if (editarClienteInput) {
+        editarClienteInput.addEventListener('focus', () => {
+            const drop = document.getElementById('clientesDropdownEditar');
+            if (drop && !drop.classList.contains('hidden')) {
+                drop.classList.remove('hidden');
+            }
+        });
+        editarClienteInput.addEventListener('blur', () => {
+            setTimeout(() => {
+                document.getElementById('clientesDropdownEditar').classList.add('hidden');
+            }, 200);
+        });
+    }
+    
+    const btnCloseDropdownEditar = document.querySelector('#clientesDropdownEditar .btn-close-dropdown');
+    if (btnCloseDropdownEditar) {
+        btnCloseDropdownEditar.addEventListener('click', (e) => {
+            e.preventDefault();
+            document.getElementById('clientesDropdownEditar').classList.add('hidden');
+        });
+    }
 
     // Botón agregar producto
     document.getElementById('btnAgregarProducto').addEventListener('click', agregarProductoEnEdicion);
