@@ -160,8 +160,8 @@ func ValidateVentaRequestCompleto(req interface{}) *ValidateRequest {
 
 	// Validar teléfono (opcional)
 	if ventaReq.TelefonoCliente != 0 {
-		if ventaReq.TelefonoCliente < 10000000 || ventaReq.TelefonoCliente > 999999999 {
-			v.Add("telefono_cliente", "Teléfono debe tener entre 8 y 9 dígitos")
+		if ventaReq.TelefonoCliente < 10 || ventaReq.TelefonoCliente > 999999999999999 {
+			v.Add("telefono_cliente", "Teléfono debe tener entre 2 y 15 dígitos")
 		}
 	}
 
@@ -183,8 +183,6 @@ func ValidateVentaRequestCompleto(req interface{}) *ValidateRequest {
 			}
 			if item.Precio < 0 {
 				v.Add(fmt.Sprintf("items[%d].precio", i), "Precio no puede ser negativo")
-			} else if item.Precio > 10000 {
-				v.Add(fmt.Sprintf("items[%d].precio", i), "Precio demasiado alto (máximo $10,000)")
 			}
 		}
 	}

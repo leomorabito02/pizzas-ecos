@@ -276,8 +276,8 @@ func (s *VentaService) validarVentaRequest(req *models.VentaRequest) error {
 		return fmt.Errorf("nombre de cliente demasiado largo")
 	}
 
-	if req.TelefonoCliente != 0 && (req.TelefonoCliente < 10000000 || req.TelefonoCliente > 999999999) {
-		return fmt.Errorf("teléfono debe tener entre 8 y 9 dígitos")
+	if req.TelefonoCliente != 0 && (req.TelefonoCliente < 10 || req.TelefonoCliente > 999999999999999) {
+		return fmt.Errorf("teléfono debe tener entre 2 y 15 dígitos")
 	}
 
 	if len(req.Items) == 0 {
@@ -300,9 +300,6 @@ func (s *VentaService) validarVentaRequest(req *models.VentaRequest) error {
 		}
 		if item.Precio < 0 {
 			return fmt.Errorf("item %d: precio no puede ser negativo", i)
-		}
-		if item.Precio > 10000 {
-			return fmt.Errorf("item %d: precio demasiado alto (máximo $10,000)", i)
 		}
 
 		// Validar que el producto existe

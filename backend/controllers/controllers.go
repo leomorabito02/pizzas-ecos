@@ -44,6 +44,15 @@ func (c *VentaController) CrearVenta(w http.ResponseWriter, r *http.Request) {
 	if !validation.IsValid() {
 		logger.Warn("CrearVenta: Validación fallida", map[string]interface{}{
 			"errors": validation.GetMessage(),
+			"request_data": map[string]interface{}{
+				"vendedor":         req.Vendedor,
+				"cliente":          req.Cliente,
+				"telefono_cliente": req.TelefonoCliente,
+				"payment_method":   req.PaymentMethod,
+				"estado":           req.Estado,
+				"tipo_entrega":     req.TipoEntrega,
+				"items_count":      len(req.Items),
+			},
 		})
 		errors.WriteError(w, errors.ErrBadRequest, validation.GetMessage())
 		return
