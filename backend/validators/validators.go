@@ -159,8 +159,8 @@ func ValidateVentaRequestCompleto(req interface{}) *ValidateRequest {
 	}
 
 	// Validar teléfono (opcional)
-	if ventaReq.TelefonoCliente != 0 {
-		if ventaReq.TelefonoCliente < 10 || ventaReq.TelefonoCliente > 999999999999999 {
+	if ventaReq.TelefonoCliente != nil && *ventaReq.TelefonoCliente != 0 {
+		if *ventaReq.TelefonoCliente < 10 || *ventaReq.TelefonoCliente > 999999999999999 {
 			v.Add("telefono_cliente", "Teléfono debe tener entre 2 y 15 dígitos")
 		}
 	}

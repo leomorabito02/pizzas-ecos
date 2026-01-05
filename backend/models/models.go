@@ -24,7 +24,7 @@ type VentaRequest struct {
 	PaymentMethod   string         `json:"payment_method"`
 	Estado          string         `json:"estado"`
 	TipoEntrega     string         `json:"tipo_entrega"` // retiro o envio
-	TelefonoCliente int            `json:"telefono_cliente"`
+	TelefonoCliente *int           `json:"telefono_cliente,omitempty"`
 }
 
 // DataResponse retorna vendedores, clientes y productos

@@ -149,7 +149,7 @@ func TestVentaController_CrearVenta(t *testing.T) {
 				PaymentMethod:   "efectivo",
 				Estado:          "pagada",
 				TipoEntrega:     "retiro",
-				TelefonoCliente: 12345678,
+				TelefonoCliente: &[]int{12345678}[0],
 			},
 			mockSetup: func(m *TestVentaService) {
 				m.crearVentaFunc = func(req *models.VentaRequest) (int, error) {
