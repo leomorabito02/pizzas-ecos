@@ -243,7 +243,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 cliente: cliente,
                 telefono_cliente: (function(){
                     const v = document.getElementById('telefono_cliente').value || '';
-                    return v.trim() === '' ? 0 : parseInt(v);
+                    const trimmed = v.trim();
+                    if (trimmed === '') return null;
+                    const num = parseInt(trimmed);
+                    return isNaN(num) ? null : num;
                 })(),
                 items: combos,
                 payment_method: pago,
