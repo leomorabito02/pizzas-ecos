@@ -129,10 +129,22 @@ func (s *VentaService) CrearVenta(req *models.VentaRequest) (int, error) {
 				telPtr = &t
 			}
 			newID, err := database.CreateClienteWithTelefono(req.Cliente, telPtr)
-			if err == nil {
-				clienteID = &newID
+			if err != nil {
+				logger.Error("CrearVenta: Error creando cliente", "CLIENT_CREATE_ERROR", map[string]interface{}{
+					"cliente": req.Cliente,
+					"error":   err.Error(),
+				})
+				return 0, fmt.Errorf("error creando cliente: %w", err)
 			}
+			clienteID = &newID
+			logger.Info("CrearVenta: Cliente creado exitosamente", map[string]interface{}{
+				"cliente_id": newID,
+				"cliente":    req.Cliente,
+			})
 		}
+	} else {
+		// Cliente es requerido
+		return 0, fmt.Errorf("cliente es requerido")
 	}
 
 	// Iniciar transacción
@@ -142,6 +154,13 @@ func (s *VentaService) CrearVenta(req *models.VentaRequest) (int, error) {
 			"error": err.Error(),
 		})
 		return 0, fmt.Errorf("error en transacción: %w", err)
+	}
+
+	// Validar que tenemos cliente (requerido para insertar venta)
+	if clienteID == nil {
+		tx.Rollback()
+		logger.Error("CrearVenta: Cliente ID es nil", "CLIENT_ID_NIL", map[string]interface{}{})
+		return 0, fmt.Errorf("cliente es requerido para crear venta")
 	}
 
 	// Calcular total
@@ -190,7 +209,7 @@ func (s *VentaService) CrearVenta(req *models.VentaRequest) (int, error) {
 func (s *VentaService) ActualizarVenta(ventaID int, estado, paymentMethod, tipoEntrega string, productosEliminar []int, productos []map[string]interface{}) error {
 	// Validar estado válido
 	estadosValidos := map[string]bool{
-		"sin pagar": true,
+		"sin_pagar": true,
 		"pagada":    true,
 		"entregada": true,
 		"cancelada": true,
@@ -330,7 +349,7 @@ func (s *VentaService) validarVentaRequest(req *models.VentaRequest) error {
 
 	// Validar estado
 	if req.Estado != "" {
-		validEstados := []string{"pendiente", "pagada", "cancelada", "en_proceso"}
+		validEstados := []string{"sin_pagar", "pagada", "entregada", "cancelada"}
 		found := false
 		for _, e := range validEstados {
 			if strings.ToLower(req.Estado) == e {
@@ -339,7 +358,7 @@ func (s *VentaService) validarVentaRequest(req *models.VentaRequest) error {
 			}
 		}
 		if !found {
-			return fmt.Errorf("estado inválido (debe ser: pendiente, pagada, cancelada, en_proceso)")
+			return fmt.Errorf("estado inválido (debe ser: sin_pagar, pagada, entregada, cancelada)")
 		}
 	}
 

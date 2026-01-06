@@ -199,17 +199,13 @@ func ValidateVentaRequestCompleto(req interface{}) *ValidateRequest {
 
 	// Validar estado
 	if strings.TrimSpace(ventaReq.Estado) == "" {
-		ventaReq.Estado = "pendiente" // Default
+		ventaReq.Estado = "sin_pagar" // Default
 	} else {
 		// Normalizar el estado
 		estadoNormalizado := strings.ToLower(strings.TrimSpace(ventaReq.Estado))
-		if estadoNormalizado == "sin pagar" {
-			estadoNormalizado = "pendiente"
-			ventaReq.Estado = "pendiente"
-		}
-		validEstados := []string{"pendiente", "pagada", "cancelada", "en_proceso"}
+		validEstados := []string{"sin_pagar", "pagada", "entregada", "cancelada"}
 		if !contains(validEstados, estadoNormalizado) {
-			v.Add("estado", "Estado inválido (debe ser: pendiente, pagada, cancelada, en_proceso)")
+			v.Add("estado", "Estado inválido (debe ser: sin_pagar, pagada, entregada, cancelada)")
 		}
 	}
 
