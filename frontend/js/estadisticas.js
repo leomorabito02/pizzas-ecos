@@ -7,6 +7,17 @@ let datosVentas = { ventas: [], clientesPorVendedor: {} };  // Cache de datos
 let productosCache = [];  // Cache de productos
 let ventaEnEdicion = null;  // Venta en edición en modal
 
+// Función helper para formatear estado visualmente
+function formatEstado(estado) {
+    const estadoMap = {
+        'sin_pagar': 'Sin Pagar',
+        'pagada': 'Pagada',
+        'retirada': 'Retirada',
+        'cancelada': 'Cancelada'
+    };
+    return estadoMap[estado] || estado;
+}
+
 // Loading Spinner Functions
 function showLoadingSpinner(show = true) {
     const overlay = document.getElementById('loadingOverlay');
@@ -674,15 +685,15 @@ function renderizarVentas() {
         // Filtro por estado de pago
         if (filtroPago) {
             if (filtroPago === 'sin-pagar') {
-                if (venta.estado !== 'sin pagar' && venta.estado !== undefined) {
+                if (venta.estado !== 'sin_pagar' && venta.estado !== undefined) {
                     return false;
                 }
             } else if (filtroPago === 'pagada') {
                 if (venta.estado !== 'pagada') {
                     return false;
                 }
-            } else if (filtroPago === 'entregada') {
-                if (venta.estado !== 'entregada') {
+            } else if (filtroPago === 'retirada') {
+                if (venta.estado !== 'retirada') {
                     return false;
                 }
             }
@@ -710,7 +721,7 @@ function renderizarVentas() {
             }).join(', ');
         }
 
-        const estadoClass = venta.estado ? venta.estado.replace(' ', '-') : 'sin-pagar';
+        const estadoClass = venta.estado ? venta.estado.replace('_', '-') : 'sin-pagar';
         const totalParseado = parseArgentinoFloat(venta.total);
         
         const tr = document.createElement('tr');
@@ -721,7 +732,7 @@ function renderizarVentas() {
             <td>${venta.telefono_cliente || '-'}</td>
             <td style="font-size: 12px;">${itemsResumen}</td>
             <td><strong>$${totalParseado.toFixed(2)}</strong></td>
-            <td><span class="estado-badge ${estadoClass}">${venta.estado || 'sin pagar'}</span></td>
+            <td><span class="estado-badge ${estadoClass}">${formatEstado(venta.estado) || 'Sin Pagar'}</span></td>
             <td>${venta.payment_method === 'efectivo' ? '💵' : '🏦'}</td>
             <td>${venta.tipo_entrega === 'envio' || venta.tipo_entrega === 'delivery' ? '🚚' : '🏪'}</td>
             <td><button class="btn-editar" data-id="${venta.id}">Editar</button></td>
@@ -753,7 +764,7 @@ function abrirModalEditar(id) {
     if (editarTel) {
         editarTel.value = venta.telefono_cliente || '';
     }
-    document.getElementById('editarEstado').value = venta.estado || 'sin pagar';
+    document.getElementById('editarEstado').value = venta.estado || 'sin_pagar';
     document.getElementById('editarPago').value = venta.payment_method || 'efectivo';
     document.getElementById('editarEntrega').value = venta.tipo_entrega || 'delivery';
     

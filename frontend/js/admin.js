@@ -1,6 +1,17 @@
 // admin.js - Admin Panel Controller
 // Maneja toda la lógica de administración de productos y vendedores
 
+// Función helper para formatear estado visualmente
+function formatEstado(estado) {
+    const estadoMap = {
+        'sin_pagar': 'Sin Pagar',
+        'pagada': 'Pagada',
+        'retirada': 'Retirada',
+        'cancelada': 'Cancelada'
+    };
+    return estadoMap[estado] || estado;
+}
+
 // Loading Spinner Functions
 let loadingTimeout = null;  // Para timeout de pantalla de carga
 
@@ -381,7 +392,7 @@ function displayRecentSales(sales) {
                 <td data-label="Vendedor">${venta.vendedor}</td>
                 <td data-label="Cliente">${venta.cliente}</td>
                 <td data-label="Total">$${totalMonto.toFixed(2)}</td>
-                <td data-label="Estado"><strong>${venta.estado}</strong></td>
+                <td data-label="Estado"><strong>${formatEstado(venta.estado)}</strong></td>
                 <td data-label="Fecha">${new Date(venta.created_at).toLocaleDateString()}</td>
             </tr>
         `;

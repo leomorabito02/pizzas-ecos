@@ -83,7 +83,7 @@ describe('Venta', () => {
     expect(venta.items).toEqual([]);
     expect(venta.payment_method).toBe('efectivo');
     expect(venta.tipo_entrega).toBe('delivery');
-    expect(venta.estado).toBe('pendiente');
+    expect(venta.estado).toBe('sin_pagar');
     expect(venta.total).toBe(0);
   });
 
@@ -139,7 +139,7 @@ describe('Venta', () => {
     expect(json.items).toHaveLength(1);
     expect(json.payment_method).toBe('efectivo');
     expect(json.tipo_entrega).toBe('delivery');
-    expect(json.estado).toBe('pendiente');
+    expect(json.estado).toBe('sin_pagar');
   });
 });
 

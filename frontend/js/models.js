@@ -44,7 +44,7 @@ class Venta {
         this.items = items;
         this.payment_method = paymentMethod;
         this.tipo_entrega = tipoEntrega;
-        this.estado = 'pendiente';
+        this.estado = 'sin_pagar';
         this.total = this.calcularTotal();
     }
 
