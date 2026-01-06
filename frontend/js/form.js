@@ -244,9 +244,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 telefono_cliente: (function(){
                     const v = document.getElementById('telefono_cliente').value || '';
                     const trimmed = v.trim();
-                    if (trimmed === '') return null;
-                    const num = parseInt(trimmed);
-                    return isNaN(num) ? null : num;
+                    if (trimmed === '') return 0;
+                    const num = parseInt(trimmed, 10);
+                    return isNaN(num) ? 0 : num;
                 })(),
                 items: combos,
                 payment_method: pago,

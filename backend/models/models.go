@@ -23,8 +23,8 @@ type VentaRequest struct {
 	Items           []ProductoItem `json:"items"` // array de items con producto_id
 	PaymentMethod   string         `json:"payment_method"`
 	Estado          string         `json:"estado"`
-	TipoEntrega     string         `json:"tipo_entrega"` // retiro o envio
-	TelefonoCliente *int           `json:"telefono_cliente,omitempty"`
+	TipoEntrega     string         `json:"tipo_entrega"`     // retiro o envio
+	TelefonoCliente int            `json:"telefono_cliente"` // 0 = no enviado/vacío
 }
 
 // DataResponse retorna vendedores, clientes y productos

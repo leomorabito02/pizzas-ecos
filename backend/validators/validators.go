@@ -158,9 +158,9 @@ func ValidateVentaRequestCompleto(req interface{}) *ValidateRequest {
 		v.Add("cliente", "Nombre de cliente demasiado largo (máximo 100 caracteres)")
 	}
 
-	// Validar teléfono (opcional)
-	if ventaReq.TelefonoCliente != nil && *ventaReq.TelefonoCliente != 0 {
-		if *ventaReq.TelefonoCliente < 10 || *ventaReq.TelefonoCliente > 999999999999999 {
+	// Validar teléfono (opcional - 0 significa vacío)
+	if ventaReq.TelefonoCliente != 0 {
+		if ventaReq.TelefonoCliente < 10 || ventaReq.TelefonoCliente > 999999999999999 {
 			v.Add("telefono_cliente", "Teléfono debe tener entre 2 y 15 dígitos")
 		}
 	}
