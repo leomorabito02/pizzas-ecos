@@ -3,13 +3,16 @@
 
 // Función helper para formatear estado visualmente
 function formatEstado(estado) {
+    if (!estado) return 'Sin Pagar';
+    // Normalizar: convertir espacio a underscore para consistencia
+    const estadoNormalizado = estado.replace(' ', '_');
     const estadoMap = {
         'sin_pagar': 'Sin Pagar',
         'pagada': 'Pagada',
-        'retirada': 'Retirada',
+        'entregada': 'Entregada',
         'cancelada': 'Cancelada'
     };
-    return estadoMap[estado] || estado;
+    return estadoMap[estadoNormalizado] || 'Sin Pagar';
 }
 
 // Loading Spinner Functions

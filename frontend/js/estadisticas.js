@@ -9,13 +9,16 @@ let ventaEnEdicion = null;  // Venta en edición en modal
 
 // Función helper para formatear estado visualmente
 function formatEstado(estado) {
+    if (!estado) return 'Sin Pagar';
+    // Normalizar: convertir espacio a underscore para consistencia
+    const estadoNormalizado = estado.replace(' ', '_');
     const estadoMap = {
         'sin_pagar': 'Sin Pagar',
         'pagada': 'Pagada',
-        'retirada': 'Retirada',
+        'entregada': 'Entregada',
         'cancelada': 'Cancelada'
     };
-    return estadoMap[estado] || estado;
+    return estadoMap[estadoNormalizado] || 'Sin Pagar';
 }
 
 // Loading Spinner Functions
@@ -505,7 +508,7 @@ function renderizarVendedores() {
     vendedoresFiltrados.forEach(vendedor => {
         // Filtrar ventas sin pagar de este vendedor
         const ventasSinPagar = ventas.filter(v => 
-            v.vendedor === vendedor.nombre && v.estado === 'sin pagar'
+            v.vendedor === vendedor.nombre && (v.estado === 'sin_pagar' || v.estado === 'sin pagar')
         );
 
         // Calcular pizzas vendidas por tipo (Muzza y Muzza y Jamón)
@@ -537,7 +540,7 @@ function renderizarVendedores() {
         // Calcular desgloses por método de pago para DEUDAS (sin pagar)
         let deudaEfectivo = 0, deudaTransferencia = 0;
         ventas.forEach(v => {
-            if (v.vendedor === vendedor.nombre && v.estado === 'sin pagar') {
+            if (v.vendedor === vendedor.nombre && (v.estado === 'sin_pagar' || v.estado === 'sin pagar')) {
                 const monto = parseArgentinoFloat(v.total);
                 if (v.payment_method === 'efectivo') {
                     deudaEfectivo += monto;
@@ -692,8 +695,8 @@ function renderizarVentas() {
                 if (venta.estado !== 'pagada') {
                     return false;
                 }
-            } else if (filtroPago === 'retirada') {
-                if (venta.estado !== 'retirada') {
+            } else if (filtroPago === 'entregada') {
+                if (venta.estado !== 'entregada') {
                     return false;
                 }
             }
@@ -721,7 +724,15 @@ function renderizarVentas() {
             }).join(', ');
         }
 
-        const estadoClass = venta.estado ? venta.estado.replace('_', '-') : 'sin-pagar';
+        // Normalizar estado y crear clase CSS: sin_pagar o 'sin pagar' (con espacio) → sin-pagar
+        let estadoClass = 'sin-pagar';
+        if (venta.estado) {
+            if (venta.estado === 'sin pagar' || venta.estado === 'sin_pagar') {
+                estadoClass = 'sin-pagar';
+            } else {
+                estadoClass = venta.estado.replace('_', '-');
+            }
+        }
         const totalParseado = parseArgentinoFloat(venta.total);
         
         const tr = document.createElement('tr');
