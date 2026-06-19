@@ -27,11 +27,11 @@ func (s *TestVentaService) ActualizarVenta(ventaID int, estado, paymentMethod, t
 	return nil
 }
 
-func (s *TestVentaService) ObtenerEstadisticas() (map[string]interface{}, error) {
+func (s *TestVentaService) ObtenerEstadisticas(limit, offset int) (map[string]interface{}, error) {
 	return map[string]interface{}{}, nil
 }
 
-func (s *TestVentaService) ObtenerTodasVentas() ([]models.VentaStats, error) {
+func (s *TestVentaService) ObtenerTodasVentas(limit, offset int) ([]models.VentaStats, error) {
 	return []models.VentaStats{}, nil
 }
 
