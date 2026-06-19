@@ -14,8 +14,8 @@ import (
 type VentaServiceInterface interface {
 	CrearVenta(req *models.VentaRequest) (int, error)
 	ActualizarVenta(ventaID int, estado, paymentMethod, tipoEntrega string, productosEliminar []int, productos []map[string]interface{}) error
-	ObtenerEstadisticas() (map[string]interface{}, error)
-	ObtenerTodasVentas() ([]models.VentaStats, error)
+	ObtenerEstadisticas(limit, offset int) (map[string]interface{}, error)
+	ObtenerTodasVentas(limit, offset int) ([]models.VentaStats, error)
 }
 
 // ProductoServiceInterface define los métodos del servicio de productos
@@ -88,10 +88,13 @@ func (s *VentaService) CrearVenta(req *models.VentaRequest) (int, error) {
 				"telefono_actual":  tel,
 				"telefono_enviado": req.TelefonoCliente,
 			})
-			// Si se envió teléfono y es distinto, actualizarlo
-			if req.TelefonoCliente != 0 && req.TelefonoCliente != tel {
-				telPtr := req.TelefonoCliente
-				if err := database.UpdateClienteTelefono(id, &telPtr); err != nil {
+			// Si se envió teléfono y es distinto al actual, actualizarlo (0 significa borrarlo)
+			if req.TelefonoCliente != tel {
+				var telPtr *int
+				if req.TelefonoCliente != 0 {
+					telPtr = &req.TelefonoCliente
+				}
+				if err := database.UpdateClienteTelefono(id, telPtr); err != nil {
 					logger.Warn("CrearVenta: Error actualizando teléfono de cliente existente", map[string]interface{}{
 						"cliente_id":      id,
 						"cliente":         cliente,
@@ -110,9 +113,6 @@ func (s *VentaService) CrearVenta(req *models.VentaRequest) (int, error) {
 				}
 			} else {
 				razon := "telefono_igual_al_actual"
-				if req.TelefonoCliente == 0 {
-					razon = "telefono_enviado_es_0"
-				}
 				logger.Info("CrearVenta: Teléfono no actualizado", map[string]interface{}{
 					"cliente":          cliente,
 					"telefono_actual":  tel,
@@ -232,7 +232,7 @@ func (s *VentaService) ActualizarVenta(ventaID int, estado, paymentMethod, tipoE
 }
 
 // ObtenerEstadisticas retorna estadísticas completas
-func (s *VentaService) ObtenerEstadisticas() (map[string]interface{}, error) {
+func (s *VentaService) ObtenerEstadisticas(limit, offset int) (map[string]interface{}, error) {
 	resumen, err := database.GetResumen()
 	if err != nil {
 		return nil, fmt.Errorf("error obteniendo resumen: %w", err)
@@ -243,7 +243,7 @@ func (s *VentaService) ObtenerEstadisticas() (map[string]interface{}, error) {
 		return nil, fmt.Errorf("error obteniendo vendedores: %w", err)
 	}
 
-	ventas, err := database.GetAllVentas(false)
+	ventas, err := database.GetAllVentas(false, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("error obteniendo ventas: %w", err)
 	}
@@ -256,8 +256,8 @@ func (s *VentaService) ObtenerEstadisticas() (map[string]interface{}, error) {
 }
 
 // ObtenerTodasVentas retorna todas las ventas incluyendo canceladas
-func (s *VentaService) ObtenerTodasVentas() ([]models.VentaStats, error) {
-	ventas, err := database.GetAllVentas(true)
+func (s *VentaService) ObtenerTodasVentas(limit, offset int) ([]models.VentaStats, error) {
+	ventas, err := database.GetAllVentas(true, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("error obteniendo ventas: %w", err)
 	}
@@ -448,8 +448,8 @@ func (s *ProductoService) validarCrearProducto(req *models.CrearProductoRequest)
 	if req.Precio <= 0 {
 		return fmt.Errorf("precio debe ser mayor a 0")
 	}
-	if req.Precio > 500 {
-		return fmt.Errorf("precio demasiado alto (máximo $500)")
+	if req.Precio > 50000 {
+		return fmt.Errorf("precio demasiado alto (máximo $50000)")
 	}
 
 	return nil
@@ -469,8 +469,8 @@ func (s *ProductoService) validarActualizarProducto(req *models.ActualizarProduc
 	if req.Precio <= 0 {
 		return fmt.Errorf("precio debe ser mayor a 0")
 	}
-	if req.Precio > 500 {
-		return fmt.Errorf("precio demasiado alto (máximo $500)")
+	if req.Precio > 50000 {
+		return fmt.Errorf("precio demasiado alto (máximo $50000)")
 	}
 
 	return nil

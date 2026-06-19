@@ -409,7 +409,7 @@ func TestValidateProductoRequestCompleto(t *testing.T) {
 			name: "producto con precio demasiado alto debe fallar",
 			request: &models.CrearProductoRequest{
 				TipoPizza: "Margherita",
-				Precio:    600.0,
+				Precio:    60000.0,
 			},
 			expectValid: false,
 		},

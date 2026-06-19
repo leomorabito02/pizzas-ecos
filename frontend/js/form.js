@@ -243,10 +243,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 cliente: cliente,
                 telefono_cliente: (function(){
                     const v = document.getElementById('telefono_cliente').value || '';
-                    const trimmed = v.trim();
+                    const trimmed = v.replace(/\D/g, ''); // Extraer solo dígitos
                     if (trimmed === '') return 0;
-                    const num = parseInt(trimmed, 10);
-                    return isNaN(num) ? 0 : num;
+                    return parseInt(trimmed, 10) || 0;
                 })(),
                 items: combos,
                 payment_method: pago,

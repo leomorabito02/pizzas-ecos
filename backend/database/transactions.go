@@ -142,27 +142,27 @@ func ValidateVendedor(nombre string) *ValidateData {
 // ExistsVendedor verifica si un vendedor existe
 func ExistsVendedor(ctx context.Context, id int) (bool, error) {
 	var count int
-	err := DB.QueryRowContext(ctx, "SELECT COUNT(*) FROM vendedores WHERE id = ?", id).Scan(&count)
+	err := DB.QueryRowContext(ctx, "SELECT COUNT(*) FROM vendedores WHERE id = $1", id).Scan(&count)
 	return count > 0, err
 }
 
 // ExistsCliente verifica si un cliente existe
 func ExistsCliente(ctx context.Context, id int) (bool, error) {
 	var count int
-	err := DB.QueryRowContext(ctx, "SELECT COUNT(*) FROM clientes WHERE id = ?", id).Scan(&count)
+	err := DB.QueryRowContext(ctx, "SELECT COUNT(*) FROM clientes WHERE id = $1", id).Scan(&count)
 	return count > 0, err
 }
 
 // ExistsProducto verifica si un producto existe
 func ExistsProducto(ctx context.Context, id int) (bool, error) {
 	var count int
-	err := DB.QueryRowContext(ctx, "SELECT COUNT(*) FROM productos WHERE id = ?", id).Scan(&count)
+	err := DB.QueryRowContext(ctx, "SELECT COUNT(*) FROM productos WHERE id = $1", id).Scan(&count)
 	return count > 0, err
 }
 
 // ExistsVenta verifica si una venta existe
 func ExistsVenta(ctx context.Context, id int) (bool, error) {
 	var count int
-	err := DB.QueryRowContext(ctx, "SELECT COUNT(*) FROM ventas WHERE id = ?", id).Scan(&count)
+	err := DB.QueryRowContext(ctx, "SELECT COUNT(*) FROM ventas WHERE id = $1", id).Scan(&count)
 	return count > 0, err
 }

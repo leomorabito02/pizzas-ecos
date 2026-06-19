@@ -250,8 +250,8 @@ func ValidateProductoRequestCompleto(req interface{}) *ValidateRequest {
 	// Validar precio
 	if prodReq.Precio <= 0 {
 		v.Add("precio", "Precio debe ser mayor a 0")
-	} else if prodReq.Precio > 500 {
-		v.Add("precio", "Precio demasiado alto (máximo $500)")
+	} else if prodReq.Precio > 50000 {
+		v.Add("precio", "Precio demasiado alto (máximo $50000)")
 	}
 
 	return v

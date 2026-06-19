@@ -134,13 +134,26 @@ func (c *VentaController) ActualizarVenta(w http.ResponseWriter, r *http.Request
 			return
 		}
 
-		// Obtener teléfono si existe
+		// Obtener teléfono si fue enviado en el payload
 		var telPtr *int
+		var telEnviado bool
+		var telInt int
 		if telRaw, exists := req["telefono_cliente"]; exists && telRaw != nil {
+			telEnviado = true
 			if telFloat, ok2 := telRaw.(float64); ok2 {
-				telInt := int(telFloat)
-				if telInt != 0 { // Solo considerar teléfono si no es 0
+				telInt = int(telFloat)
+				if telInt != 0 { // Solo asignar puntero si no es 0
 					telPtr = &telInt
+				}
+			} else if telString, ok3 := telRaw.(string); ok3 {
+				// Fallback por si llega como string en algún caso
+				if telString == "" {
+					telInt = 0
+				} else if num, err := strconv.Atoi(telString); err == nil {
+					telInt = num
+					if telInt != 0 {
+						telPtr = &telInt
+					}
 				}
 			}
 		}
@@ -148,8 +161,8 @@ func (c *VentaController) ActualizarVenta(w http.ResponseWriter, r *http.Request
 		// Obtener o crear cliente
 		id, existingTel, found, err := database.GetClienteByNombre(clienteRaw)
 		if err == nil && found {
-			// Cliente existe: actualizar teléfono si es diferente
-			if telPtr != nil && *telPtr != existingTel {
+			// Cliente existe: actualizar teléfono si fue enviado y es diferente
+			if telEnviado && telInt != existingTel {
 				if err := database.UpdateClienteTelefono(id, telPtr); err != nil {
 					logger.Error("ActualizarVenta: Error actualizando teléfono", "PHONE_UPDATE_ERROR", map[string]interface{}{
 						"cliente_id": id,
@@ -200,9 +213,29 @@ func (c *VentaController) ActualizarVenta(w http.ResponseWriter, r *http.Request
 	errors.WriteSuccess(w, http.StatusOK, map[string]interface{}{"id": ventaID}, "Venta actualizada")
 }
 
+// getPaginationParams extrae y calcula limit y offset de la query
+func getPaginationParams(r *http.Request) (int, int) {
+	limitStr := r.URL.Query().Get("limit")
+	pageStr := r.URL.Query().Get("page")
+
+	limit := 10 // por defecto
+	if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
+		limit = l
+	}
+
+	page := 1
+	if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
+		page = p
+	}
+
+	offset := (page - 1) * limit
+	return limit, offset
+}
+
 // ObtenerEstadisticas retorna estadísticas de ventas
 func (c *VentaController) ObtenerEstadisticas(w http.ResponseWriter, r *http.Request) {
-	stats, err := c.ventaService.ObtenerEstadisticas()
+	limit, offset := getPaginationParams(r)
+	stats, err := c.ventaService.ObtenerEstadisticas(limit, offset)
 	if err != nil {
 		logger.Error("ObtenerEstadisticas: Error", "STATS_ERROR", map[string]interface{}{"error": err.Error()})
 		errors.WriteError(w, errors.ErrServerError, "Error al obtener estadísticas")
@@ -212,9 +245,10 @@ func (c *VentaController) ObtenerEstadisticas(w http.ResponseWriter, r *http.Req
 	errors.WriteSuccess(w, http.StatusOK, stats, "")
 }
 
-// ObtenerTodasVentas retorna todas las ventas
+// ObtenerTodasVentas retorna todas las ventas (paginadas)
 func (c *VentaController) ObtenerTodasVentas(w http.ResponseWriter, r *http.Request) {
-	ventas, err := c.ventaService.ObtenerTodasVentas()
+	limit, offset := getPaginationParams(r)
+	ventas, err := c.ventaService.ObtenerTodasVentas(limit, offset)
 	if err != nil {
 		logger.Error("ObtenerTodasVentas: Error", "VENTAS_LIST_ERROR", map[string]interface{}{"error": err.Error()})
 		errors.WriteError(w, errors.ErrServerError, "Error al obtener ventas")

@@ -6,6 +6,8 @@ let loadingTimeout = null;  // Para timeout de pantalla de carga
 let datosVentas = { ventas: [], clientesPorVendedor: {} };  // Cache de datos
 let productosCache = [];  // Cache de productos
 let ventaEnEdicion = null;  // Venta en edición en modal
+let currentPage = 1;
+let currentLimit = 10;
 
 // Función helper para formatear estado visualmente
 function formatEstado(estado) {
@@ -184,58 +186,48 @@ function inicializarFiltros() {
     Logger.log('Filtros inicializados');
 }
 
-async function cargarDatos() {
+async function cargarDatos(reloadGeneralStats = true) {
     try {
         showLoadingSpinner(true);
         const api = new APIService(); // Usar APIService centralizado
         
         // 0. Obtener datos iniciales (vendedores, clientes, productos)
-        const dataResp = await api.request('/data');
-        const initialData = (dataResp && dataResp.data) ? dataResp.data : dataResp || {};
-        Logger.log('Datos iniciales cargados:', initialData);
-        datosVentas.clientesPorVendedor = initialData.clientesPorVendedor || {};
-        
-        // 1. Obtener productos para cache
-        try {
-            const prodResp = await api.obtenerProductos();
-            // El backend retorna {status, data, message}, extraer el array
-            productosCache = (prodResp && prodResp.data) ? prodResp.data : prodResp || [];
-            Logger.log('Productos cargados:', productosCache);
-        } catch (e) {
-            Logger.log('No se pudieron cargar productos');
-            productosCache = [];
-        }
+        if (reloadGeneralStats) {
+            const dataResp = await api.request('/data');
+            const initialData = (dataResp && dataResp.data) ? dataResp.data : dataResp || {};
+            Logger.log('Datos iniciales cargados:', initialData);
+            datosVentas.clientesPorVendedor = initialData.clientesPorVendedor || {};
+            
+            // 1. Obtener productos para cache
+            try {
+                const prodResp = await api.obtenerProductos();
+                productosCache = (prodResp && prodResp.data) ? prodResp.data : prodResp || [];
+            } catch (e) {
+                productosCache = [];
+            }
 
-        // 2. Obtener datos de estadísticas
-        const statsResp = await api.request('/estadisticas-sheet');
-        datosVentas = Object.assign(datosVentas, (statsResp && statsResp.data) ? statsResp.data : statsResp || {});
-        Logger.log('estadisticas - statsResp:', statsResp);
-        Logger.log('estadisticas - datosVentas.resumen:', datosVentas?.resumen);
-        
-        // 3. Obtener detalle de ventas para la tabla
-        try {
-            const ventasData = await api.obtenerVentas();
-            Logger.log('estadisticas - ventasData:', ventasData);
-            // El backend retorna {status, data, message}, extraer el array de data
+            // 2. Obtener datos de estadísticas resumidas
+            const statsResp = await api.obtenerEstadisticas(currentLimit, currentPage);
+            datosVentas = Object.assign(datosVentas, (statsResp && statsResp.data) ? statsResp.data : statsResp || {});
+        } else {
+            // Si no recargamos estadísticas generales, al menos actualizamos la tabla llamando a obtenerVentas
+            const ventasData = await api.obtenerVentas(currentLimit, currentPage);
             const ventasArray = Array.isArray(ventasData) ? ventasData : (ventasData?.data || []);
-            Logger.log('estadisticas - ventasArray:', ventasArray);
             datosVentas.ventas = Array.isArray(ventasArray) ? ventasArray : [];
-        } catch (e) {
-            Logger.log('No se pudieron cargar ventas');
-            datosVentas.ventas = [];
         }
-
-        Logger.log('Datos de estadísticas:', datosVentas);
         
         // 4. Renderizar tabs
-        renderizarResumen();
-        renderizarVendedores();
+        if (reloadGeneralStats) {
+            renderizarResumen();
+            renderizarVendedores();
+        }
         renderizarVentas();
-        renderizarComboCounters();
-        renderizarProductosPorTipo();
         
         // 5. Inicializar filtros (DESPUÉS de cargar datos)
-        inicializarFiltros();
+        if (reloadGeneralStats) {
+            inicializarFiltros();
+            inicializarPaginacion();
+        }
         
         hideLoadingSpinner();
     } catch (error) {
@@ -245,174 +237,71 @@ async function cargarDatos() {
     }
 }
 
-// Nueva función para renderizar contadores de productos dinámicamente
-// Mapeo de combos a cantidades de pizzas por tipo
-const COMBO_PIZZA_MAP = {
-    'Muzza': { 'Muzza': 1, 'Muzza y Jamón': 0 },
-    'Muzza y Jamón': { 'Muzza': 0, 'Muzza y Jamón': 1 },
-    'La dupla | 1 Muzza + 1 Muzza y Jamón': { 'Muzza': 1, 'Muzza y Jamón': 1 },
-    'Mix Familia grande | 2 Muzza + 1 Muzza y Jamón': { 'Muzza': 2, 'Muzza y Jamón': 1 },
-    'Mix Juntada amigos | 3 Muzza + 2 Muzza y jamón': { 'Muzza': 3, 'Muzza y Jamón': 2 }
-};
-
-function renderizarComboCounters() {
-    if (!datosVentas.ventas || !productosCache) return;
-
-    const container = document.getElementById('productosCounters');
-    container.innerHTML = '';
-
-    // Contar ventas por producto desde detalle_ventas (sin canceladas)
-    const ventasPorProducto = {};
+function inicializarPaginacion() {
+    const btnPrev = document.getElementById('btnPrevPage');
+    const btnNext = document.getElementById('btnNextPage');
+    const selectLimit = document.getElementById('filtroLimitVentas');
     
-    productosCache.forEach(producto => {
-        ventasPorProducto[producto.id] = 0;
-    });
-
-    // Sumar cantidades de cada producto (excluyendo canceladas)
-    if (datosVentas.ventas && Array.isArray(datosVentas.ventas)) {
-        datosVentas.ventas.forEach(venta => {
-            if (venta.estado === 'cancelada') return;
-            // Las ventas llegadas del backend deben tener información de productos
-            // Por ahora contamos desde el array de items si existen
-            // Si no, hacemos un conteo genérico
-        });
-    }
-
-    // Renderizar tarjetas para cada producto
-    productosCache.forEach(producto => {
-        // Calcular total vendido para este producto (excluyendo canceladas)
-        let totalVendido = 0;
-        if (datosVentas.ventas && Array.isArray(datosVentas.ventas)) {
-            datosVentas.ventas.forEach(venta => {
-                // Excluir ventas canceladas
-                if (venta.estado === 'cancelada') return;
-                // Si la venta tiene array de items con product_id
-                if (venta.items && Array.isArray(venta.items)) {
-                    venta.items.forEach(item => {
-                        if (item.product_id === producto.id) {
-                            totalVendido += item.cantidad || 0;
-                        }
-                    });
-                }
-            });
-        }
-
-        const card = document.createElement('div');
-        card.className = 'stat-card';
-        card.innerHTML = `
-            <div class="stat-label">${producto.tipo_pizza}</div>
-            <div class="stat-value">${totalVendido}</div>
-            <div style="font-size: 12px; color: #666; margin-top: 5px;">$${producto.precio.toFixed(2)} c/u</div>
-        `;
-        container.appendChild(card);
-    });
-}
-
-// Nueva función para calcular y renderizar pizzas por tipo (Muzza y Muzza y Jamón)
-function renderizarProductosPorTipo() {
-    if (!datosVentas.ventas) return;
-
-    const container = document.getElementById('productosPorTipoCounters');
-    if (!container) return; // El contenedor debe existir en el HTML
-
-    container.innerHTML = '';
-
-    // Inicializar contadores
-    const pizzasPorTipo = {
-        'Muzza': 0,
-        'Muzza y Jamón': 0
-    };
-
-    // Procesar cada venta
-    if (Array.isArray(datosVentas.ventas)) {
-        datosVentas.ventas.forEach(venta => {
-            // Excluir ventas canceladas
-            if (venta.estado === 'cancelada') return;
-
-            // Procesar items de la venta
-            if (venta.items && Array.isArray(venta.items)) {
-                venta.items.forEach(item => {
-                    const cantidad = parseInt(item.cantidad) || 0;
-                    if (cantidad <= 0) return; // Ignorar items con cantidad 0 o negativa
-                    
-                    const comboNombre = item.tipo || item.tipo_pizza;
-                    
-                    // Primero, verificar si es un combo mapeado
-                    if (COMBO_PIZZA_MAP[comboNombre]) {
-                        const pizzasDelCombo = COMBO_PIZZA_MAP[comboNombre];
-                        
-                        pizzasPorTipo['Muzza'] += (pizzasDelCombo['Muzza'] || 0) * cantidad;
-                        pizzasPorTipo['Muzza y Jamón'] += (pizzasDelCombo['Muzza y Jamón'] || 0) * cantidad;
-                    } else if (pizzasPorTipo.hasOwnProperty(comboNombre)) {
-                        // Si no es un combo, pero es un tipo de pizza directo, contar como producto individual
-                        pizzasPorTipo[comboNombre] = (pizzasPorTipo[comboNombre] || 0) + cantidad;
-                    }
-                });
+    if (btnPrev) {
+        btnPrev.addEventListener('click', () => {
+            if (currentPage > 1) {
+                currentPage--;
+                actualizarPaginacionDisplay();
+                cargarDatos(false);
             }
         });
     }
 
-    // Renderizar tarjetas para cada tipo de pizza
-    Object.entries(pizzasPorTipo).forEach(([tipo, cantidad]) => {
-        const card = document.createElement('div');
-        card.className = 'stat-card';
-        card.innerHTML = `
-            <div class="stat-label">${tipo}</div>
-            <div class="stat-value">${cantidad}</div>
-            <div style="font-size: 12px; color: #666; margin-top: 5px;">pizzas vendidas</div>
-        `;
-        container.appendChild(card);
-    });
-}
-
-function renderizarProductosCounters() {
-    if (!datosVentas.ventas || !productosCache) return;
-
-    const container = document.getElementById('productosCounters');
-    container.innerHTML = '';
-
-    // Contar ventas por producto desde detalle_ventas (sin canceladas)
-    const ventasPorProducto = {};
-    
-    productosCache.forEach(producto => {
-        ventasPorProducto[producto.id] = 0;
-    });
-
-    // Sumar cantidades de cada producto (excluyendo canceladas)
-    if (datosVentas.ventas && Array.isArray(datosVentas.ventas)) {
-        datosVentas.ventas.forEach(venta => {
-            if (venta.estado === 'cancelada') return;
-            // Las ventas llegadas del backend deben tener información de productos
-            // Por ahora contamos desde el array de items si existen
-            // Si no, hacemos un conteo genérico
+    if (btnNext) {
+        btnNext.addEventListener('click', () => {
+            // Asumimos que si vienen limit elementos, puede haber más
+            if (datosVentas.ventas.length === currentLimit) {
+                currentPage++;
+                actualizarPaginacionDisplay();
+                cargarDatos(false);
+            }
         });
     }
 
-    // Renderizar tarjetas para cada producto
-    productosCache.forEach(producto => {
-        // Calcular total vendido para este producto (excluyendo canceladas)
-        let totalVendido = 0;
-        if (datosVentas.ventas && Array.isArray(datosVentas.ventas)) {
-            datosVentas.ventas.forEach(venta => {
-                // Excluir ventas canceladas
-                if (venta.estado === 'cancelada') return;
-                // Si la venta tiene array de items con product_id
-                if (venta.items && Array.isArray(venta.items)) {
-                    venta.items.forEach(item => {
-                        if (item.product_id === producto.id) {
-                            totalVendido += item.cantidad || 0;
-                        }
-                    });
-                }
-            });
-        }
+    if (selectLimit) {
+        selectLimit.addEventListener('change', (e) => {
+            currentLimit = parseInt(e.target.value) || 10;
+            currentPage = 1;
+            actualizarPaginacionDisplay();
+            cargarDatos(false);
+        });
+    }
+    
+    actualizarPaginacionDisplay();
+}
 
+function actualizarPaginacionDisplay() {
+    const display = document.getElementById('currentPageDisplay');
+    const btnPrev = document.getElementById('btnPrevPage');
+    const btnNext = document.getElementById('btnNextPage');
+    
+    if (display) display.textContent = `Página ${currentPage}`;
+    if (btnPrev) btnPrev.disabled = currentPage === 1;
+    if (btnNext) btnNext.disabled = datosVentas.ventas.length < currentLimit;
+}
+
+// Función unificada para renderizar los productos agrupados desde el backend
+function renderizarProductosCounters() {
+    const container = document.getElementById('productosCounters');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    const resumen = datosVentas.resumen;
+    if (!resumen || !resumen.productos_vendidos) return;
+
+    resumen.productos_vendidos.forEach(producto => {
         const card = document.createElement('div');
         card.className = 'stat-card';
         card.innerHTML = `
-            <div class="stat-label">${producto.tipo_pizza}</div>
-            <div class="stat-value">${totalVendido}</div>
-            <div style="font-size: 12px; color: #666; margin-top: 5px;">$${producto.precio.toFixed(2)} c/u</div>
+            <div class="stat-label">${producto.nombre}</div>
+            <div class="stat-value">${producto.cantidad}</div>
+            <div style="font-size: 12px; color: #666; margin-top: 5px;">$${(producto.precio || 0).toFixed(2)} c/u</div>
         `;
         container.appendChild(card);
     });
@@ -457,7 +346,7 @@ function renderizarVendedores() {
 
     // Mensaje si no hay vendedores
     if (!vendedores || vendedores.length === 0) {
-        container.innerHTML = '<div style="padding: 20px; text-align: center; color: #999;">❌ No se encontraron vendedores</div>';
+        container.innerHTML = '<div style="padding: 20px; text-align: center; color: #999;">No se encontraron vendedores</div>';
         return;
     }
 
@@ -465,17 +354,15 @@ function renderizarVendedores() {
     const filtroEstado = document.getElementById('filtroEstadoVendedores')?.value || '';
     const filtroVendedor = document.getElementById('filtroVendedorEspecifico')?.value || '';
 
-    // Contar ventas por vendedor
+    // Contar ventas por vendedor (ahora usando el valor ya calculado)
     const ventasPorVendedor = {};
-    ventas.forEach(v => {
-        if (v.vendedor) {
-            ventasPorVendedor[v.vendedor] = (ventasPorVendedor[v.vendedor] || 0) + 1;
-        }
+    vendedores.forEach(v => {
+        ventasPorVendedor[v.nombre] = v.cantidad || 0;
     });
 
     // Aplicar Filtro 1: Estado de Ventas
     let vendedoresFiltrados = vendedores.filter(v => {
-        const tieneVentas = (ventasPorVendedor[v.nombre] || 0) > 0;
+        const tieneVentas = (v.cantidad || 0) > 0;
         
         if (filtroEstado === 'con-ventas') {
             return tieneVentas;
@@ -493,110 +380,72 @@ function renderizarVendedores() {
 
     // Mensaje si no hay resultados
     if (vendedoresFiltrados.length === 0) {
-        let mensaje = '❌ No hay vendedores';
+        let mensaje = 'No hay vendedores';
         if (filtroEstado === 'con-ventas') {
-            mensaje = '❌ No hay vendedores con ventas';
+            mensaje = 'No hay vendedores con ventas';
         } else if (filtroEstado === 'sin-ventas') {
-            mensaje = '❌ No hay vendedores sin ventas';
+            mensaje = 'No hay vendedores sin ventas';
         } else if (filtroVendedor) {
-            mensaje = `❌ No se encontró el vendedor "${filtroVendedor}"`;
+            mensaje = `No se encontró el vendedor "${filtroVendedor}"`;
         }
         container.innerHTML = `<div style="padding: 20px; text-align: center; color: #999;">${mensaje}</div>`;
         return;
     }
 
     vendedoresFiltrados.forEach(vendedor => {
-        // Filtrar ventas sin pagar de este vendedor
-        const ventasSinPagar = ventas.filter(v => 
-            v.vendedor === vendedor.nombre && (v.estado === 'sin_pagar' || v.estado === 'sin pagar')
-        );
+        // Extraer estadísticas precálculadas por backend
+        const cantidadVentas = Math.round(vendedor.cantidad || 0);
+        const deudaEfectivo = vendedor.deuda_efectivo || 0;
+        const deudaTransferencia = vendedor.deuda_transferencia || 0;
+        const pagadoEfectivo = vendedor.pagado_efectivo || 0;
+        const pagadoTransferencia = vendedor.pagado_transferencia || 0;
+        const ventasSinPagar = vendedor.deudores || [];
+        const productosVendidos = vendedor.productos_vendidos || [];
 
-        // Calcular pizzas vendidas por tipo (Muzza y Muzza y Jamón)
-        let pizzasMuzza = 0;
-        let pizzasMuzzaJamon = 0;
-        
-        ventas.forEach(v => {
-            if (v.vendedor === vendedor.nombre && v.estado !== 'cancelada') {
-                if (v.items && Array.isArray(v.items)) {
-                    v.items.forEach(item => {
-                        const comboNombre = item.tipo || item.tipo_pizza;
-                        const cantidad = parseInt(item.cantidad) || 0;
-                        
-                        // Buscar en COMBO_PIZZA_MAP
-                        if (COMBO_PIZZA_MAP[comboNombre]) {
-                            const pizzasDelCombo = COMBO_PIZZA_MAP[comboNombre];
-                            pizzasMuzza += (pizzasDelCombo['Muzza'] || 0) * cantidad;
-                            pizzasMuzzaJamon += (pizzasDelCombo['Muzza y Jamón'] || 0) * cantidad;
-                        } else if (comboNombre === 'Muzza') {
-                            pizzasMuzza += cantidad;
-                        } else if (comboNombre === 'Muzza y Jamón') {
-                            pizzasMuzzaJamon += cantidad;
-                        }
-                    });
-                }
-            }
-        });
-
-        // Calcular desgloses por método de pago para DEUDAS (sin pagar)
-        let deudaEfectivo = 0, deudaTransferencia = 0;
-        ventas.forEach(v => {
-            if (v.vendedor === vendedor.nombre && (v.estado === 'sin_pagar' || v.estado === 'sin pagar')) {
-                const monto = parseArgentinoFloat(v.total);
-                if (v.payment_method === 'efectivo') {
-                    deudaEfectivo += monto;
-                } else if (v.payment_method === 'transferencia') {
-                    deudaTransferencia += monto;
-                }
-            }
-        });
-
-        // Calcular desgloses por método de pago para PAGOS (pagada o entregada)
-        let pagadoEfectivo = 0, pagadoTransferencia = 0;
-        ventas.forEach(v => {
-            if (v.vendedor === vendedor.nombre && (v.estado === 'pagada' || v.estado === 'entregada')) {
-                const monto = parseArgentinoFloat(v.total);
-                if (v.payment_method === 'efectivo') {
-                    pagadoEfectivo += monto;
-                } else if (v.payment_method === 'transferencia') {
-                    pagadoTransferencia += monto;
-                }
-            }
-        });
+        // Generar HTML de productos dinámicos para este vendedor
+        let productosHTML = '';
+        if (productosVendidos.length > 0) {
+            productosHTML = productosVendidos.map(p => `
+                <div class="vendedor-stat">
+                    <span class="vendedor-stat-label"><span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle; margin-right: 4px;">local_pizza</span> ${p.nombre}:</span>
+                    <span class="vendedor-stat-value">${p.cantidad}</span>
+                </div>
+            `).join('');
+        } else {
+            productosHTML = `
+                <div class="vendedor-stat" style="grid-column: span 3; text-align: center; color: #999;">
+                    Sin productos vendidos
+                </div>
+            `;
+        }
 
         const card = document.createElement('div');
         card.className = 'vendedor-card';
         card.innerHTML = `
-            <h3 style="margin: 0 0 12px 0; font-size: 18px;">👤 ${vendedor.nombre}</h3>
+            <h3 style="margin: 0 0 12px 0; font-size: 18px; display: flex; align-items: center; gap: 8px;"><span class="material-symbols-outlined">person</span> ${vendedor.nombre}</h3>
             
             <!-- ESTADÍSTICAS PRINCIPALES -->
-            <div class="vendedor-stats-grid">
+            <div class="vendedor-stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));">
                 <div class="vendedor-stat">
-                    <span class="vendedor-stat-label">📊 Ventas:</span>
-                    <span class="vendedor-stat-value">${Math.round(vendedor.cantidad || 0)}</span>
+                    <span class="vendedor-stat-label"><span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle; margin-right: 4px;">analytics</span> Ventas:</span>
+                    <span class="vendedor-stat-value">${cantidadVentas}</span>
                 </div>
-                <div class="vendedor-stat">
-                    <span class="vendedor-stat-label">🍕 Muzzas:</span>
-                    <span class="vendedor-stat-value">${pizzasMuzza}</span>
-                </div>
-                <div class="vendedor-stat">
-                    <span class="vendedor-stat-label">🍕 Muzza y Jamón:</span>
-                    <span class="vendedor-stat-value">${pizzasMuzzaJamon}</span>
-                </div>
+                ${productosHTML}
             </div>
             
             <!-- DESGLOSE DE DEUDAS -->
             <div class="vendedor-desglose vendedor-desglose-deuda">
                 <div class="desglose-header">
-                    <span class="desglose-title">⏳ Monto sin pagar</span>
+                    <span class="desglose-title"><span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle; margin-right: 4px;">schedule</span> Monto sin pagar</span>
                     <span class="desglose-total">$${(vendedor.deuda || 0).toFixed(2)}</span>
                 </div>
                 <div class="desglose-items">
                     <div class="desglose-item">
-                        <span>💵 Efectivo:</span>
+                        <span><span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle; margin-right: 4px;">payments</span> Efectivo:</span>
                         <strong>$${deudaEfectivo.toFixed(2)}</strong>
                     </div>
                     <div class="desglose-item">
-                        <span>🏦 Transferencia:</span>
+                        <span><span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle; margin-right: 4px;">account_balance</span> Transferencia:</span>
                         <strong>$${deudaTransferencia.toFixed(2)}</strong>
                     </div>
                 </div>
@@ -605,16 +454,16 @@ function renderizarVendedores() {
             <!-- DESGLOSE DE PAGOS -->
             <div class="vendedor-desglose vendedor-desglose-pago">
                 <div class="desglose-header">
-                    <span class="desglose-title">✓ Monto pagado</span>
+                    <span class="desglose-title"><span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle; margin-right: 4px;">check_circle</span> Monto pagado</span>
                     <span class="desglose-total">$${(vendedor.pagado || 0).toFixed(2)}</span>
                 </div>
                 <div class="desglose-items">
                     <div class="desglose-item">
-                        <span>💵 Efectivo:</span>
+                        <span><span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle; margin-right: 4px;">payments</span> Efectivo:</span>
                         <strong>$${pagadoEfectivo.toFixed(2)}</strong>
                     </div>
                     <div class="desglose-item">
-                        <span>🏦 Transferencia:</span>
+                        <span><span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle; margin-right: 4px;">account_balance</span> Transferencia:</span>
                         <strong>$${pagadoTransferencia.toFixed(2)}</strong>
                     </div>
                 </div>
@@ -622,33 +471,33 @@ function renderizarVendedores() {
 
             <!-- TOTAL VENDEDOR -->
             <div class="vendedor-total">
-                <span class="vendedor-stat-label">💰 Total vendedor:</span>
+                <span class="vendedor-stat-label"><span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle; margin-right: 4px;">monetization_on</span> Total vendedor:</span>
                 <span class="vendedor-stat-value">$${(vendedor.total || 0).toFixed(2)}</span>
             </div>
             
             <!-- DEUDORES -->
             ${ventasSinPagar.length > 0 ? `
                 <div class="vendedor-deudores">
-                    <h4 style="margin: 0 0 8px 0; font-size: 14px;">⚠️ Clientes que no pagaron (${ventasSinPagar.length})</h4>
+                    <h4 style="margin: 0 0 8px 0; font-size: 14px; display: flex; align-items: center; gap: 4px;"><span class="material-symbols-outlined" style="color: var(--md-sys-color-error);">warning</span> Clientes que no pagaron (${ventasSinPagar.length})</h4>
                     <div class="deudores-list">
                         ${ventasSinPagar.map(venta => {
-                            const metodo = venta.payment_method === 'efectivo' ? '💵' : 
-                                          venta.payment_method === 'transferencia' ? '🏦' : 
-                                          '❓';
+                            const metodoIcon = venta.payment_method === 'efectivo' ? 'payments' : 
+                                              venta.payment_method === 'transferencia' ? 'account_balance' : 
+                                              'help_outline';
                             const metodoText = venta.payment_method === 'efectivo' ? 'Efectivo' : 
                                              venta.payment_method === 'transferencia' ? 'Transferencia' : 
                                              'Otro';
                             return `<div class="deuda-item-mobile">
                                 <div class="deuda-info">
                                     <strong>${venta.cliente}</strong>
-                                    <span class="deuda-metodo">${metodo} ${metodoText}</span>
+                                    <span class="deuda-metodo" style="display: flex; align-items: center; gap: 4px;"><span class="material-symbols-outlined" style="font-size: 16px;">${metodoIcon}</span> ${metodoText}</span>
                                 </div>
                                 <div class="deuda-monto">$${parseArgentinoFloat(venta.total).toFixed(2)}</div>
                             </div>`;
                         }).join('')}
                     </div>
                 </div>
-            ` : '<div class="vendedor-pagado-completo">✓ Todos los clientes pagaron</div>'}
+            ` : '<div class="vendedor-pagado-completo" style="display: flex; align-items: center; gap: 4px;"><span class="material-symbols-outlined" style="color: #4CAF50;">check_circle</span> Todos los clientes pagaron</div>'}
         `;
         container.appendChild(card);
     });
@@ -708,7 +557,7 @@ function renderizarVentas() {
     // Mensaje si no hay ventas después de filtrar
     if (ventasFiltradas.length === 0) {
         const tr = document.createElement('tr');
-        tr.innerHTML = '<td colspan="10" style="text-align: center; padding: 20px; color: #999;">❌ No se encontraron ventas</td>';
+        tr.innerHTML = '<td colspan="10" style="text-align: center; padding: 20px; color: #999;">No se encontraron ventas</td>';
         tbody.appendChild(tr);
         return;
     }
@@ -744,8 +593,8 @@ function renderizarVentas() {
             <td style="font-size: 12px;">${itemsResumen}</td>
             <td><strong>$${totalParseado.toFixed(2)}</strong></td>
             <td><span class="estado-badge ${estadoClass}">${formatEstado(venta.estado) || 'Sin Pagar'}</span></td>
-            <td>${venta.payment_method === 'efectivo' ? '💵' : '🏦'}</td>
-            <td>${venta.tipo_entrega === 'envio' || venta.tipo_entrega === 'delivery' ? '🚚' : '🏪'}</td>
+            <td>${venta.payment_method === 'efectivo' ? '<span class="material-symbols-outlined" title="Efectivo">payments</span>' : '<span class="material-symbols-outlined" title="Transferencia">account_balance</span>'}</td>
+            <td>${venta.tipo_entrega === 'envio' || venta.tipo_entrega === 'delivery' ? '<span class="material-symbols-outlined" title="Delivery">local_shipping</span>' : '<span class="material-symbols-outlined" title="Retiro">storefront</span>'}</td>
             <td><button class="btn-editar" data-id="${venta.id}">Editar</button></td>
         `;
         tbody.appendChild(tr);
@@ -918,7 +767,9 @@ async function guardarCambios() {
             cliente: cliente,
             telefono_cliente: (function(){
                 const v = document.getElementById('editarTelefono').value || '';
-                return v.trim() === '' ? 0 : parseInt(v);
+                const trimmed = v.replace(/\D/g, ''); // Extraer solo dígitos
+                if (trimmed === '') return 0;
+                return parseInt(trimmed, 10) || 0;
             })(),
             productos: productosActualizados
         };
@@ -937,7 +788,7 @@ async function guardarCambios() {
         Logger.log('guardarCambios - payload enviado:', payload);
 
         if (response.ok) {
-            showMessage('✓ Venta actualizada correctamente', 'success');
+            showMessage('Venta actualizada correctamente', 'success');
             cerrarModal();
             await cargarDatos();
         } else {
@@ -1007,13 +858,13 @@ function agregarProductoEnEdicion() {
 
 function actualizarPreviaEntrega(tipo) {
     const textos = {
-        'delivery': '🚗 Delivery',
-        'envio': '🚗 Delivery',
-        'retiro': '🏪 Retiro'
+        'delivery': 'Delivery',
+        'envio': 'Delivery',
+        'retiro': 'Retiro'
     };
     const span = document.getElementById('entregaActual');
     if (span) {
-        span.textContent = textos[tipo] || '🏪 Retiro';
+        span.textContent = textos[tipo] || 'Retiro';
     }
 }
 

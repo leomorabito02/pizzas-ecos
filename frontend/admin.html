@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel Admin - ECOS</title>
     <link rel="icon" type="image/jpeg" href="images/ecoslogo.jpeg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/admin.css">
     <script src="js/backend-config.js"></script>
     <script src="js/env.js"></script>
@@ -25,22 +28,22 @@
         <!-- Sidebar -->
         <div class="sidebar">
             <div class="sidebar-header">
-                <h1>🔐 ECOS</h1>
+                <h1>ECOS</h1>
                 <div class="user-info">
                     Usuario: <strong id="currentUser">-</strong>
                 </div>
             </div>
 
             <ul class="sidebar-menu">
-                <li><a class="menu-link active" data-section="dashboard">📊 Dashboard</a></li>
-                <li><a class="menu-link" data-section="productos">🍕 Productos</a></li>
-                <li><a class="menu-link" data-section="vendedores">👔 Vendedores</a></li>
-                <li><a class="menu-link" data-section="usuarios">👥 Usuarios</a></li>
-                <li style="margin-top: 30px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 20px;">
-                    <a href="index.html" style="color: rgba(255,255,255,0.8);">📝 Ir al Formulario</a>
+                <li><a class="menu-link active" data-section="dashboard"><span class="material-symbols-outlined">dashboard</span> Dashboard</a></li>
+                <li><a class="menu-link" data-section="productos"><span class="material-symbols-outlined">local_pizza</span> Productos</a></li>
+                <li><a class="menu-link" data-section="vendedores"><span class="material-symbols-outlined">badge</span> Vendedores</a></li>
+                <li><a class="menu-link" data-section="usuarios"><span class="material-symbols-outlined">group</span> Usuarios</a></li>
+                <li style="margin-top: 30px; border-top: 1px solid var(--md-sys-color-outline-variant); padding-top: 20px;">
+                    <a href="index.html"><span class="material-symbols-outlined">edit_note</span> Ir al Formulario</a>
                 </li>
                 <li>
-                    <button class="logout-btn" style="width: 100%; margin-top: 10px;" id="logoutBtn">🚪 Cerrar Sesión</button>
+                    <button class="logout-btn" style="width: 100%; margin-top: 10px;" id="logoutBtn"><span class="material-symbols-outlined">logout</span> Cerrar Sesión</button>
                 </li>
             </ul>
         </div>
@@ -50,7 +53,7 @@
             <!-- Header -->
             <div class="header">
                 <div class="header-left">
-                    <button class="hamburger" id="hamburgerBtn">☰</button>
+                    <button class="hamburger" id="hamburgerBtn"><span class="material-symbols-outlined">menu</span></button>
                 </div>
                 <h2 id="sectionTitle">Dashboard</h2>
                 <div class="header-right">
@@ -87,9 +90,9 @@
                 </div>
 
                 <div class="card danger-zone">
-                    <h3>⚠️ Zona de Peligro</h3>
+                    <h3><span class="material-symbols-outlined" style="vertical-align: middle; color: #F44336; margin-right: 8px;">warning</span>Zona de Peligro</h3>
                     <p style="margin-bottom: 15px; color: #666;">Esta acción eliminará todos los datos de la aplicación (ventas, productos, vendedores, clientes) pero mantendrá los usuarios.</p>
-                    <button id="clearDatabaseBtn" class="btn-danger">🗑️ Limpiar Base de Datos</button>
+                    <button id="clearDatabaseBtn" class="btn-danger"><span class="material-symbols-outlined">delete_forever</span> Limpiar Base de Datos</button>
                 </div>
             </div>
 
@@ -207,7 +210,7 @@
 
             <div id="usuarios" class="content-section">
                 <div class="card">
-                    <h3>➕ Crear Nuevo Usuario</h3>
+                    <h3>Crear Nuevo Usuario</h3>
                     <form id="usuarioForm">
                         <div class="form-row">
                             <div class="form-group">
@@ -222,12 +225,12 @@
                             </div>
                         </div>
                         <div id="usuarioFormError" class="error-message"></div>
-                        <button type="submit" class="btn-submit">➕ Crear Admin</button>
+                        <button type="submit" class="btn-submit">Crear Admin</button>
                     </form>
                 </div>
 
                 <div class="card">
-                    <h3>👥 Usuarios Existentes</h3>
+                    <h3>Usuarios Existentes</h3>
                     <div id="usuariosTableContainer">
                         <p class="no-data">Cargando usuarios...</p>
                     </div>
@@ -261,7 +264,7 @@
                     
                     <div class="modal-footer">
                         <button type="button" class="btn-cancel" id="cancelEditUsuario">Cancelar</button>
-                        <button type="submit" class="btn-submit">💾 Guardar Cambios</button>
+                        <button type="submit" class="btn-submit">Guardar Cambios</button>
                     </div>
                 </form>
             </div>
@@ -375,7 +378,7 @@
         <div class="footer-content">
             <!-- Usuario Section -->
             <div class="footer-section">
-                <div class="footer-section-title">👤 Usuario</div>
+                <div class="footer-section-title"><span class="material-symbols-outlined">person</span> Usuario</div>
                 <div class="footer-section-item">
                     <span id="userStatusFooter" class="user-badge registered">Administrador</span>
                 </div>
@@ -383,21 +386,21 @@
 
             <!-- Acerca de Section -->
             <div class="footer-section">
-                <div class="footer-section-title">ℹ️ Acerca de</div>
-                <div class="footer-section-item">Sistema de gestión de ventas de <strong>ECOS de Esperanza ❤️</strong></div>
+                <div class="footer-section-title"><span class="material-symbols-outlined">info</span> Acerca de</div>
+                <div class="footer-section-item">Sistema de gestión de ventas de <strong>ECOS de Esperanza</strong></div>
             </div>
 
             <!-- Contacto Section -->
             <div class="footer-section">
-                <div class="footer-section-title">📱 Contacto</div>
+                <div class="footer-section-title"><span class="material-symbols-outlined">contact_support</span> Contacto</div>
                 <div class="footer-section-item">
                     <a href="https://www.instagram.com/ecos.jovenesfybp/" target="_blank" rel="noopener noreferrer">
-                        📸 ECOS
+                        ECOS
                     </a>
                 </div>
                 <div class="footer-section-item">
                     <a href="https://www.instagram.com/leomorabito2002/" target="_blank" rel="noopener noreferrer">
-                        📸 Leo Morabito
+                        Leo Morabito
                     </a>
                 </div>
             </div>
@@ -407,7 +410,7 @@
 
         <div class="footer-bottom">
             <div class="footer-credit">
-                Hecho con <strong>❤️</strong> por <strong>Leo Morabito</strong> | 
+                Hecho por <strong>Leo Morabito</strong> | 
                 <a href="https://github.com/leomorabito02" target="_blank" rel="noopener noreferrer" style="color: inherit;">GitHub</a>
             </div>
             

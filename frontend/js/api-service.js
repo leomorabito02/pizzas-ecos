@@ -161,8 +161,8 @@ class APIService {
     /**
      * GET /estadisticas - Obtener todas las ventas
      */
-    async obtenerVentas() {
-        return this.request('/estadisticas');
+    async obtenerVentas(limit = 10, page = 1) {
+        return this.request(`/estadisticas?limit=${limit}&page=${page}`);
     }
 
     /**
@@ -185,8 +185,8 @@ class APIService {
     /**
      * GET /estadisticas-sheet - Obtener estadísticas resumidas
      */
-    async obtenerEstadisticas() {
-        return this.request('/estadisticas-sheet');
+    async obtenerEstadisticas(limit = 10, page = 1) {
+        return this.request(`/estadisticas-sheet?limit=${limit}&page=${page}`);
     }
 
     // ============= PRODUCTOS =============

@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Estadísticas - Pizzas ECOS</title>
     <link rel="icon" type="image/jpeg" href="images/ecoslogo.jpeg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/estadisticas.css">
 </head>
@@ -19,11 +22,11 @@
 
     <div class="container">
         <div class="header">
-            <h1>📊 Estadísticas de Ventas</h1>
+            <h1>Estadísticas de Ventas</h1>
             <p class="subtitle">Análisis y resumen de operaciones</p>
             <div class="header-buttons">
-                <button id="btnVolver" class="btn-volver">← Volver</button>
-                <button id="btnAdminPanel" class="btn-admin-panel">🔐 Panel Admin</button>
+                <button id="btnVolver" class="btn-volver"><span class="material-symbols-outlined">arrow_back</span> Volver</button>
+                <button id="btnAdminPanel" class="btn-admin-panel"><span class="material-symbols-outlined">lock</span> Panel Admin</button>
             </div>
         </div>
 
@@ -31,9 +34,9 @@
         <div class="nav-buttons">
             
             <div class="tab-buttons">
-                <button class="tab-btn active" data-tab="resumen">📈 Resumen</button>
-                <button class="tab-btn" data-tab="vendedores">👥 Vendedores</button>
-                <button class="tab-btn" data-tab="ventas">📋 Todas las Ventas</button>
+                <button class="tab-btn active" data-tab="resumen"><span class="material-symbols-outlined">trending_up</span> Resumen</button>
+                <button class="tab-btn" data-tab="vendedores"><span class="material-symbols-outlined">group</span> Vendedores</button>
+                <button class="tab-btn" data-tab="ventas"><span class="material-symbols-outlined">list_alt</span> Todas las Ventas</button>
             </div>
         </div>
 
@@ -42,30 +45,22 @@
             
             <!-- Sección: Ventas por Producto (Dinámico) -->
             <div class="resumen-section">
-                <h2 style="margin-bottom: 15px; color: #333;">📦 Ventas por Combos</h2>
+                <h2 style="margin-bottom: 15px; color: #333; display: flex; align-items: center; gap: 8px;"><span class="material-symbols-outlined">inventory_2</span> Ventas por Productos</h2>
                 <div class="stats-grid" id="productosCounters">
                     <!-- Los contadores de productos se generarán dinámicamente aquí -->
                 </div>
             </div>
 
-            <!-- Sección: Ventas por Tipo de Producto -->
-            <div class="resumen-section">
-                <h2 style="margin-bottom: 15px; color: #333;">📦 Ventas por Productos</h2>
-                <div class="stats-grid" id="productosPorTipoCounters">
-                    <!-- Los contadores de productos por tipo se generarán dinámicamente aquí -->
-                </div>
-            </div>
-
             <!-- Sección: Ventas -->
             <div class="resumen-section" style="margin-top: 30px;">
-                <h2 style="margin-bottom: 15px; color: #333;">📃 Ventas</h2>
+                <h2 style="margin-bottom: 15px; color: #333; display: flex; align-items: center; gap: 8px;"><span class="material-symbols-outlined">description</span> Ventas</h2>
                 <div class="stats-grid">
                     <div class="stat-card">
-                        <div class="stat-label">🚚 Para Delivery</div>
+                        <div class="stat-label" style="display: flex; align-items: center; gap: 4px; justify-content: center;"><span class="material-symbols-outlined" style="font-size: 18px;">local_shipping</span> Para Delivery</div>
                         <div class="stat-value" id="totalDelivery">0</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-label">🏪 Para Retiro</div>
+                        <div class="stat-label" style="display: flex; align-items: center; gap: 4px; justify-content: center;"><span class="material-symbols-outlined" style="font-size: 18px;">storefront</span> Para Retiro</div>
                         <div class="stat-value" id="totalRetiro">0</div>
                     </div>
                 </div>
@@ -73,22 +68,22 @@
 
             <!-- Sección: Dinero y Pagos -->
             <div class="resumen-section" style="margin-top: 30px;">
-                <h2 style="margin-bottom: 15px; color: #333;">💰 Dinero y Pagos</h2>
+                <h2 style="margin-bottom: 15px; color: #333; display: flex; align-items: center; gap: 8px;"><span class="material-symbols-outlined">payments</span> Dinero y Pagos</h2>
                 <div class="stats-grid">
                     <div class="stat-card">
-                        <div class="stat-label">⏳ Monto Pendiente de Cobro</div>
+                        <div class="stat-label" style="display: flex; align-items: center; gap: 4px; justify-content: center;"><span class="material-symbols-outlined" style="font-size: 18px;">schedule</span> Monto Pendiente de Cobro</div>
                         <div class="stat-value" id="pendienteCobro">$0.00</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-label">💵 Monto Cobrado en Efectivo</div>
+                        <div class="stat-label" style="display: flex; align-items: center; gap: 4px; justify-content: center;"><span class="material-symbols-outlined" style="font-size: 18px;">payments</span> Monto Cobrado en Efectivo</div>
                         <div class="stat-value" id="efectivoCobrado">$0.00</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-label">🏦 Monto Cobrado por Transferencia</div>
+                        <div class="stat-label" style="display: flex; align-items: center; gap: 4px; justify-content: center;"><span class="material-symbols-outlined" style="font-size: 18px;">account_balance</span> Monto Cobrado por Transferencia</div>
                         <div class="stat-value" id="transferenciaCobrada">$0.00</div>
                     </div>
                     <div class="stat-card highlight">
-                        <div class="stat-label">💰 Monto Total Cobrado</div>
+                        <div class="stat-label" style="display: flex; align-items: center; gap: 4px; justify-content: center;"><span class="material-symbols-outlined" style="font-size: 18px;">monetization_on</span> Monto Total Cobrado</div>
                         <div class="stat-value" id="totalCobrado">$0.00</div>
                     </div>
                 </div>
@@ -96,22 +91,22 @@
 
             <!-- Sección: Estados de Ventas -->
             <div class="resumen-section" style="margin-top: 30px;">
-                <h2 style="margin-bottom: 15px; color: #333;">📊 Estados de Ventas</h2>
+                <h2 style="margin-bottom: 15px; color: #333; display: flex; align-items: center; gap: 8px;"><span class="material-symbols-outlined">analytics</span> Estados de Ventas</h2>
                 <div class="stats-grid">
                     <div class="stat-card">
-                        <div class="stat-label">⏳ Ventas Sin Pagar</div>
+                        <div class="stat-label" style="display: flex; align-items: center; gap: 4px; justify-content: center;"><span class="material-symbols-outlined" style="font-size: 18px;">hourglass_empty</span> Ventas Sin Pagar</div>
                         <div class="stat-value" id="ventasSinPagar">0</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-label">✓ Ventas Pagadas</div>
+                        <div class="stat-label" style="display: flex; align-items: center; gap: 4px; justify-content: center;"><span class="material-symbols-outlined" style="font-size: 18px;">check_circle</span> Ventas Pagadas</div>
                         <div class="stat-value" id="ventasPagadas">0</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-label">🚚 Ventas Entregadas</div>
+                        <div class="stat-label" style="display: flex; align-items: center; gap: 4px; justify-content: center;"><span class="material-symbols-outlined" style="font-size: 18px;">local_shipping</span> Ventas Entregadas</div>
                         <div class="stat-value" id="ventasEntregadas">0</div>
                     </div>
                     <div class="stat-card highlight">
-                        <div class="stat-label">📊 Total de Ventas</div>
+                        <div class="stat-label" style="display: flex; align-items: center; gap: 4px; justify-content: center;"><span class="material-symbols-outlined" style="font-size: 18px;">equalizer</span> Total de Ventas</div>
                         <div class="stat-value" id="totalVentas">0</div>
                     </div>
                 </div>
@@ -124,7 +119,7 @@
             <div class="filters-container" style="margin-bottom: 20px;">
                 <!-- Filtro 1: Estado de Ventas -->
                 <div class="filter-item">
-                    <label for="filtroEstadoVendedores">📊 Estado:</label>
+                    <label for="filtroEstadoVendedores" style="display: flex; align-items: center; gap: 4px;"><span class="material-symbols-outlined" style="font-size: 18px;">analytics</span> Estado:</label>
                     <select id="filtroEstadoVendedores">
                         <option value="">Ver todos</option>
                         <option value="con-ventas">Con ventas</option>
@@ -134,7 +129,7 @@
 
                 <!-- Filtro 2: Vendedor Específico -->
                 <div class="filter-item">
-                    <label for="filtroVendedorEspecifico">👤 Vendedor:</label>
+                    <label for="filtroVendedorEspecifico" style="display: flex; align-items: center; gap: 4px;"><span class="material-symbols-outlined" style="font-size: 18px;">person</span> Vendedor:</label>
                     <select id="filtroVendedorEspecifico">
                         <option value="">Ver todos</option>
                         <optgroup label="Vendedores" id="optgroupVendedores">
@@ -151,7 +146,7 @@
             <div class="filters-container">
                 <!-- Filtro de Vendedor -->
                 <div class="filter-item">
-                    <label for="filtroVendedor">👤 Vendedor:</label>
+                    <label for="filtroVendedor" style="display: flex; align-items: center; gap: 4px;"><span class="material-symbols-outlined" style="font-size: 18px;">person</span> Vendedor:</label>
                     <select id="filtroVendedor">
                         <option value="">Ver todos</option>
                     </select>
@@ -159,22 +154,32 @@
 
                 <!-- Filtro de Entrega (editado) -->
                 <div class="filter-item">
-                    <label for="filtroEntrega">🚚 Entrega:</label>
+                    <label for="filtroEntrega" style="display: flex; align-items: center; gap: 4px;"><span class="material-symbols-outlined" style="font-size: 18px;">local_shipping</span> Entrega:</label>
                     <select id="filtroEntrega">
                         <option value="">Ver todos</option>
-                        <option value="delivery">🚗 Delivery</option>
-                        <option value="retiro">🏪 Retiro en Parroquia</option>
+                        <option value="delivery">Delivery</option>
+                        <option value="retiro">Retiro en Parroquia</option>
                     </select>
                 </div>
 
                 <!-- Filtro de Estado de Pago (nuevo) -->
                 <div class="filter-item">
-                    <label for="filtroPago">💳 Estado de Pago:</label>
+                    <label for="filtroPago" style="display: flex; align-items: center; gap: 4px;"><span class="material-symbols-outlined" style="font-size: 18px;">payments</span> Estado de Pago:</label>
                     <select id="filtroPago">
                         <option value="">Ver todos</option>
-                        <option value="sin-pagar">❌ Sin pagar</option>
-                        <option value="pagada">✓ Pagado</option>
-                        <option value="entregada">🚚 Entregado</option>
+                        <option value="sin-pagar">Sin pagar</option>
+                        <option value="pagada">Pagado</option>
+                        <option value="entregada">Entregado</option>
+                    </select>
+                </div>
+                
+                <!-- Paginación: Elementos por página -->
+                <div class="filter-item">
+                    <label for="filtroLimitVentas">Mostrar:</label>
+                    <select id="filtroLimitVentas">
+                        <option value="10" selected>10 ventas</option>
+                        <option value="20">20 ventas</option>
+                        <option value="30">30 ventas</option>
                     </select>
                 </div>
             </div>
@@ -197,6 +202,12 @@
                     <tbody id="ventasTableBody">
                     </tbody>
                 </table>
+            </div>
+            <!-- Controles de paginación -->
+            <div class="pagination-controls" style="display: flex; justify-content: center; align-items: center; gap: 15px; margin-top: 20px;">
+                <button id="btnPrevPage" class="btn-volver" style="padding: 8px 15px;">&laquo; Anterior</button>
+                <span id="currentPageDisplay" style="font-weight: bold; color: #333;">Página 1</span>
+                <button id="btnNextPage" class="btn-volver" style="padding: 8px 15px;">Siguiente &raquo;</button>
             </div>
         </div>
 
@@ -232,27 +243,27 @@
                     <div class="form-group">
                         <label>Estado:</label>
                         <select id="editarEstado">
-                            <option value="sin_pagar">⏳ Sin Pagar</option>
-                            <option value="pagada">✓ Pagada</option>
-                            <option value="entregada">🚗 Entregada</option>
-                            <option value="cancelada">✕ Cancelada</option>
+                            <option value="sin_pagar">Sin Pagar</option>
+                            <option value="pagada">Pagada</option>
+                            <option value="entregada">Entregada</option>
+                            <option value="cancelada">Cancelada</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label>Método de Pago:</label>
                         <select id="editarPago">
-                            <option value="efectivo">💵 Efectivo</option>
-                            <option value="transferencia">🏦 Transferencia</option>
+                            <option value="efectivo">Efectivo</option>
+                            <option value="transferencia">Transferencia</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label>Tipo de Entrega:</label>
                         <div class="entrega-preview">
                             <select id="editarEntrega">
-                                <option value="delivery">🚗 Delivery</option>
-                                <option value="retiro">🏪 Retiro</option>
+                                <option value="delivery">Delivery</option>
+                                <option value="retiro">Retiro</option>
                             </select>
-                            <span class="entrega-actual" id="entregaActual">🏪 Retiro</span>
+                            <span class="entrega-actual" id="entregaActual">Retiro</span>
                         </div>
                     </div>
 
@@ -283,8 +294,8 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn-guardar-cambios">✓ Guardar Cambios</button>
-                    <button class="btn-cancelar-modal">✕ Cancelar</button>
+                    <button class="btn-guardar-cambios">Guardar Cambios</button>
+                    <button class="btn-cancelar-modal">Cancelar</button>
                 </div>
             </div>
         </div>
@@ -297,7 +308,7 @@
         <div class="footer-content">
             <!-- Usuario Section -->
             <div class="footer-section">
-                <div class="footer-section-title">👤 Usuario</div>
+                <div class="footer-section-title"><span class="material-symbols-outlined">person</span> Usuario</div>
                 <div class="footer-section-item">
                     <span id="userStatusFooter" class="user-badge">sin registrar</span>
                 </div>
@@ -305,21 +316,21 @@
 
             <!-- Acerca de Section -->
             <div class="footer-section">
-                <div class="footer-section-title">ℹ️ Acerca de</div>
-                <div class="footer-section-item">Sistema de gestión de ventas de <strong>ECOS de Esperanza ❤️</strong></div>
+                <div class="footer-section-title"><span class="material-symbols-outlined">info</span> Acerca de</div>
+                <div class="footer-section-item">Sistema de gestión de ventas de <strong>ECOS de Esperanza</strong></div>
             </div>
 
             <!-- Contacto Section -->
             <div class="footer-section">
-                <div class="footer-section-title">📱 Contacto</div>
+                <div class="footer-section-title"><span class="material-symbols-outlined">contact_support</span> Contacto</div>
                 <div class="footer-section-item">
                     <a href="https://www.instagram.com/ecos.jovenesfybp/" target="_blank" rel="noopener noreferrer">
-                        📸 ECOS
+                        ECOS
                     </a>
                 </div>
                 <div class="footer-section-item">
                     <a href="https://www.instagram.com/leomorabito2002/" target="_blank" rel="noopener noreferrer">
-                        📸 Leo Morabito
+                        Leo Morabito
                     </a>
                 </div>
             </div>
@@ -329,7 +340,7 @@
 
         <div class="footer-bottom">
             <div class="footer-credit">
-                Hecho con <strong>❤️</strong> por <strong>Leo Morabito</strong> | 
+                Hecho por <strong>Leo Morabito</strong> | 
                 <a href="https://github.com/leomorabito02" target="_blank" rel="noopener noreferrer" style="color: inherit;">GitHub</a>
             </div>
         </div>

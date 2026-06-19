@@ -212,7 +212,7 @@ describe('APIService', () => {
 
       // Assert
       expect(global.fetch).toHaveBeenCalledWith(
-        'http://localhost:8080/api/v1/estadisticas',
+        'http://localhost:8080/api/v1/estadisticas?limit=10&page=1',
         expect.objectContaining({
           headers: expect.objectContaining({
             'Content-Type': 'application/json'
