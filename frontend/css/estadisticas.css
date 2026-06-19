@@ -4,10 +4,10 @@
     --md-sys-color-on-primary: HSL(0, 0%, 100%);
     --md-sys-color-primary-container: HSL(203, 86%, 92%);
     --md-sys-color-on-primary-container: HSL(203, 95%, 15%);
-    --md-sys-color-secondary: HSL(16, 79%, 53%);
+    --md-sys-color-secondary: HSL(120, 60%, 25%);
     --md-sys-color-on-secondary: HSL(0, 0%, 100%);
-    --md-sys-color-secondary-container: HSL(16, 80%, 92%);
-    --md-sys-color-on-secondary-container: HSL(16, 95%, 20%);
+    --md-sys-color-secondary-container: HSL(120, 40%, 90%);
+    --md-sys-color-on-secondary-container: HSL(120, 60%, 25%);
     --md-sys-color-error: HSL(0, 75%, 40%);
     --md-sys-color-on-error: HSL(0, 0%, 100%);
     --md-sys-color-error-container: HSL(0, 85%, 95%);
@@ -105,12 +105,12 @@ body {
 }
 
 .btn-volver {
-    background-color: var(--md-sys-color-secondary-container);
-    color: var(--md-sys-color-on-secondary-container);
+    background-color: HSL(120, 40%, 90%);
+    color: HSL(120, 60%, 25%);
 }
 
 .btn-volver:hover {
-    background-color: HSL(24, 15%, 85%);
+    background-color: HSL(120, 40%, 82%);
 }
 
 .btn-admin-panel {
@@ -119,7 +119,7 @@ body {
 }
 
 .btn-admin-panel:hover {
-    background-color: HSL(12, 75%, 40%);
+    background-color: HSL(203, 86%, 15%);
 }
 
 /* M3 Segmented Buttons for tabs */
@@ -362,7 +362,7 @@ body {
 }
 
 .btn-editar:hover {
-    background-color: HSL(12, 90%, 85%);
+    background-color: HSL(203, 86%, 85%);
 }
 
 /* Pagination */
@@ -633,6 +633,24 @@ body {
     border-radius: 8px;
 }
 
+.producto-editable-row .nombre {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.producto-editable-row .cantidad {
+    margin: 0 12px;
+}
+
+.producto-editable-row .cantidad input[type="number"] {
+    width: 60px;
+    text-align: center;
+    padding: 6px;
+    font-size: 14px;
+    border-radius: 6px;
+}
+
 .btn-eliminar-item-modal {
     background: none;
     border: none;
@@ -856,7 +874,7 @@ body {
 }
 
 .footer-section-item a:hover {
-    color: HSL(12, 75%, 35%);
+    color: HSL(120, 60%, 25%);
     text-decoration: underline;
 }
 

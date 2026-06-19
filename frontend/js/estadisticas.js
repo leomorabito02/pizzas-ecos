@@ -613,7 +613,7 @@ function abrirModalEditar(id) {
     const venta = datosVentas.ventas.find(v => v.id === id);
     if (!venta) return;
 
-    ventaEnEdicion = venta;
+    ventaEnEdicion = JSON.parse(JSON.stringify(venta));
     
     // Actualizar título con el nombre del vendedor
     const modalTitle = document.getElementById('modalEditarTitle');
@@ -705,7 +705,7 @@ function renderizarProductosEnEdicion(venta) {
         const nombreProducto = item.tipo || item.tipo_pizza || 'Producto';
         
         html += `
-            <div class="producto-editable">
+            <div class="producto-editable-row">
                 <div class="nombre">${nombreProducto}</div>
                 <div class="cantidad">
                     <input type="number" 
@@ -713,7 +713,7 @@ function renderizarProductosEnEdicion(venta) {
                            min="1" 
                            value="${item.cantidad}">
                 </div>
-                <button type="button" class="btn-eliminar" onclick="eliminarProductoEnEdicion(${index})">✕ Quitar</button>
+                <button type="button" class="btn-eliminar-item-modal" onclick="eliminarProductoEnEdicion(${index})">✕ Quitar</button>
             </div>
         `;
     });
@@ -887,11 +887,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Botones de tab
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            const tab = e.target.dataset.tab;
+            const button = e.currentTarget;
+            const tab = button.dataset.tab;
             
             // Actualizar botones
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            e.target.classList.add('active');
+            button.classList.add('active');
 
             // Actualizar contenido
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));

@@ -4,10 +4,10 @@
     --md-sys-color-on-primary: HSL(0, 0%, 100%);
     --md-sys-color-primary-container: HSL(203, 86%, 92%);
     --md-sys-color-on-primary-container: HSL(203, 95%, 15%);
-    --md-sys-color-secondary: HSL(16, 79%, 53%);
+    --md-sys-color-secondary: HSL(120, 60%, 25%);
     --md-sys-color-on-secondary: HSL(0, 0%, 100%);
-    --md-sys-color-secondary-container: HSL(16, 80%, 92%);
-    --md-sys-color-on-secondary-container: HSL(16, 95%, 20%);
+    --md-sys-color-secondary-container: HSL(120, 40%, 90%);
+    --md-sys-color-on-secondary-container: HSL(120, 60%, 25%);
     --md-sys-color-error: HSL(0, 75%, 40%);
     --md-sys-color-on-error: HSL(0, 0%, 100%);
     --md-sys-color-error-container: HSL(0, 85%, 95%);
@@ -46,7 +46,14 @@ body {
     display: flex;
     min-height: 100vh;
 }
-
+.header-logo {
+    display: block;
+    margin: 12px auto 0 auto;
+    max-width: 150px;
+    height: auto;
+    border-radius: 30%;
+    /*box-shadow: var(--md-elevation-1);*/
+}
 /* Sidebar Navigation Drawer (M3) */
 .sidebar {
     width: 280px; /* Standard M3 Drawer Width */
@@ -225,7 +232,7 @@ body {
 }
 
 .btn-submit:hover {
-    background-color: HSL(12, 75%, 40%);
+    background-color: HSL(203, 86%, 15%);
 }
 
 .btn-danger {
