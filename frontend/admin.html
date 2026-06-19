@@ -330,7 +330,7 @@
     <!-- Script para footer interactividad -->
     <script>
     document.addEventListener('DOMContentLoaded', () => {
-        const token = sessionStorage.getItem('authToken');
+        const token = getCookie('authToken');
         
         // Update user info in sidebar
         const userInfo = document.getElementById('userInfo');
@@ -353,7 +353,9 @@
                     logout();
                 } else {
                     // Fallback if logout function not available
-                    sessionStorage.removeItem('authToken');
+                    eraseCookie('authToken');
+                    eraseCookie('userId');
+                    eraseCookie('username');
                     window.location.href = 'login.html';
                 }
             });

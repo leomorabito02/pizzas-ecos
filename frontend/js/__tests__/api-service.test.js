@@ -13,8 +13,8 @@ describe('APIService', () => {
     // Arrange: Resetear mocks y crear instancia fresca
     resetAllMocks();
     apiService = new APIService();
-    // Limpiar cualquier token persistente
-    sessionStorage.getItem.mockReturnValue(null);
+    // Limpiar cookies
+    document.cookie = "authToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
     // Spy on setToken method
     jest.spyOn(apiService, 'setToken');
   });
@@ -42,7 +42,7 @@ describe('APIService', () => {
   });
 
   describe('Gestión de Tokens', () => {
-    test('debe guardar token en sessionStorage', () => {
+    test('debe guardar token en cookies', () => {
       // Arrange
       const token = 'test-jwt-token';
 
@@ -50,25 +50,24 @@ describe('APIService', () => {
       apiService.setToken(token);
 
       // Assert
-      expect(sessionStorage.setItem).toHaveBeenCalledWith('authToken', token);
+      expect(document.cookie).toContain('authToken=test-jwt-token');
     });
 
-    test('debe obtener token de sessionStorage', () => {
+    test('debe obtener token de cookies', () => {
       // Arrange
       const token = 'test-jwt-token';
-      sessionStorage.getItem.mockReturnValue(token);
+      document.cookie = `authToken=${token}; path=/`;
 
       // Act
       const result = apiService.getStoredToken();
 
       // Assert
       expect(result).toBe(token);
-      expect(sessionStorage.getItem).toHaveBeenCalledWith('authToken');
     });
 
     test('debe retornar null si no hay token', () => {
       // Arrange
-      sessionStorage.getItem.mockReturnValue(null);
+      // (cookies ya limpiadas en beforeEach)
 
       // Act
       const result = apiService.getStoredToken();
@@ -81,7 +80,7 @@ describe('APIService', () => {
   describe('Método request', () => {
     test('debe hacer request GET exitosamente', async () => {
       // Arrange
-      sessionStorage.getItem.mockReturnValue(null); // Asegurar no hay token
+      document.cookie = "authToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT"; // Asegurar no hay token
       const testData = { success: true };
       const mockResponse = {
         ok: true,
@@ -152,7 +151,7 @@ describe('APIService', () => {
           body: JSON.stringify(credentials)
         })
       );
-      expect(sessionStorage.setItem).toHaveBeenCalledWith('authToken', 'jwt-token');
+      expect(document.cookie).toContain('authToken=jwt-token');
       expect(result).toEqual(mockResponse);
     });
 
@@ -168,7 +167,7 @@ describe('APIService', () => {
   describe('Operaciones de Datos', () => {
     test('obtenerProductos debe hacer request correcto', async () => {
       // Arrange
-      sessionStorage.getItem.mockReturnValue(null); // Asegurar no hay token
+      document.cookie = "authToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT"; // Asegurar no hay token
       const mockProductos = [
         { id: 1, tipo_pizza: 'Margarita' },
         { id: 2, tipo_pizza: 'Pepperoni' }
@@ -196,7 +195,7 @@ describe('APIService', () => {
 
     test('obtenerVentas debe hacer request correcto', async () => {
       // Arrange
-      sessionStorage.getItem.mockReturnValue(null); // Asegurar no hay token
+      document.cookie = "authToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT"; // Asegurar no hay token
       const mockVentas = [
         { id: 1, total: 1000 },
         { id: 2, total: 2000 }

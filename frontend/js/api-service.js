@@ -3,6 +3,31 @@
  * Centraliza todos los endpoints de API v1
  */
 
+/**
+ * Helpers para el manejo de Cookies
+ */
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
+}
+
+function setCookie(name, value, days = 7) {
+    let expires = "";
+    if (days) {
+        const date = new Date();
+        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+        expires = `; expires=${date.toUTCString()}`;
+    }
+    const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+    document.cookie = `${name}=${value || ""}${expires}; path=/; SameSite=Strict${secure}`;
+}
+
+function eraseCookie(name) {
+    document.cookie = `${name}=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Strict`;
+}
+
 class APIService {
     constructor(baseURL) {
         this._baseURL = baseURL;
@@ -46,22 +71,21 @@ class APIService {
     }
 
     /**
-     * Obtiene token JWT del sessionStorage (más seguro que localStorage)
+     * Obtiene token JWT de las cookies
      */
     getStoredToken() {
-        return sessionStorage.getItem('authToken');
+        return getCookie('authToken');
     }
 
     /**
-     * Guarda token JWT en sessionStorage
-     * Nota: sessionStorage se limpia automáticamente al cerrar la pestaña
+     * Guarda token JWT en las cookies
      */
     setToken(token) {
         this.token = token;
         if (token) {
-            sessionStorage.setItem('authToken', token);
+            setCookie('authToken', token, 7);
         } else {
-            sessionStorage.removeItem('authToken');
+            eraseCookie('authToken');
         }
     }
 
@@ -273,6 +297,9 @@ const api = new APIService();
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         APIService,
-        api
+        api,
+        getCookie,
+        setCookie,
+        eraseCookie
     };
 }

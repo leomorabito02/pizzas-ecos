@@ -55,9 +55,9 @@ let usuariosCache = [];
 // Check authentication on load
 window.addEventListener('load', () => {
     showLoadingSpinner(true);
-    const token = sessionStorage.getItem('authToken');
-    const userId = sessionStorage.getItem('userId');
-    const username = sessionStorage.getItem('username');
+    const token = getCookie('authToken');
+    const userId = getCookie('userId');
+    const username = getCookie('username');
 
     if (!token || !userId) {
         window.location.href = 'login.html';
@@ -207,8 +207,9 @@ if (cancelLogout) {
 
 if (confirmLogout) {
     confirmLogout.addEventListener('click', () => {
-        sessionStorage.removeItem('authToken');
-        sessionStorage.removeItem('userId');
+        eraseCookie('authToken');
+        eraseCookie('userId');
+        eraseCookie('username');
         window.location.href = 'login.html';
     });
 }
@@ -809,7 +810,7 @@ function setupUsuarioForm() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${sessionStorage.getItem('authToken')}`
+                    'Authorization': `Bearer ${getCookie('authToken')}`
                 },
                 body: JSON.stringify({ username, password })
             });
@@ -851,7 +852,7 @@ async function loadUsuarios() {
         showLoadingSpinner(true);
         const response = await fetch(`${API_BASE}/usuarios`, {
             headers: {
-                'Authorization': `Bearer ${sessionStorage.getItem('authToken')}`
+                'Authorization': `Bearer ${getCookie('authToken')}`
             }
         });
 
@@ -971,7 +972,7 @@ function setupEditUsuarioForm() {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${sessionStorage.getItem('authToken')}`
+                    'Authorization': `Bearer ${getCookie('authToken')}`
                 },
                 body: JSON.stringify(body)
             });
@@ -1006,7 +1007,7 @@ async function eliminarUsuario(id) {
         const response = await fetch(`${API_BASE}/eliminar-usuario/${id}`, {
             method: 'DELETE',
             headers: {
-                'Authorization': `Bearer ${sessionStorage.getItem('authToken')}`
+                'Authorization': `Bearer ${getCookie('authToken')}`
             }
         });
 
@@ -1044,7 +1045,7 @@ function setupClearDatabaseBtn() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${sessionStorage.getItem('authToken')}`
+                    'Authorization': `Bearer ${getCookie('authToken')}`
                 }
             });
 

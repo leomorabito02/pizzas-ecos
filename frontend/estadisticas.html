@@ -349,7 +349,7 @@
     <script>
         // Update footer with user status
         document.addEventListener('DOMContentLoaded', () => {
-            const token = sessionStorage.getItem('authToken');
+            const token = getCookie('authToken');
             const userStatusFooter = document.getElementById('userStatusFooter');
             
             if (token && userStatusFooter) {

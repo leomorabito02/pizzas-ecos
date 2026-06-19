@@ -20,7 +20,7 @@
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     // Mostrar usuario actual
-    const token = sessionStorage.getItem('authToken');
+    const token = getCookie('authToken');
     const userInfo = document.getElementById('userInfo');
     if (token) {
         try {
@@ -35,7 +35,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) {
         logoutBtn.addEventListener('click', () => {
-            sessionStorage.removeItem('authToken');
+            eraseCookie('authToken');
+            eraseCookie('userId');
+            eraseCookie('username');
             window.location.href = 'login.html';
         });
     }
