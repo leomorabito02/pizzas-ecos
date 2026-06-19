@@ -686,12 +686,22 @@ body {
 }
 
 .cantidad-controls-modal input {
-    width: 32px;
+    width: 40px;
     text-align: center;
     border: none;
     background: none;
     font-weight: bold;
     outline: none;
+}
+
+.cantidad-controls-modal input::-webkit-outer-spin-button,
+.cantidad-controls-modal input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.cantidad-controls-modal input[type=number] {
+    -moz-appearance: textfield;
 }
 
 #btnAgregarProducto {
@@ -970,5 +980,19 @@ body {
         flex-direction: column;
         gap: 8px;
         text-align: center;
+    }
+
+    .agregar-producto-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    
+    .cantidad-controls-modal {
+        justify-content: center;
+        width: 100%;
+    }
+    
+    #btnAgregarProducto {
+        width: 100%;
     }
 }

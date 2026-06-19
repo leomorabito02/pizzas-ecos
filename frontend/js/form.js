@@ -93,12 +93,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         actualizarSelectVendedores();
         actualizarSelectProductos();
         Logger.log('✅ Selects actualizados');
-        
-        clearTimeout(spinnerTimeout);
-        UIUtils.showSpinner(false);
     } catch (error) {
         console.error('❌ Error inicializando:', error);
         UIUtils.showMessage('Error cargando datos iniciales: ' + error.message, 'error');
+    } finally {
         clearTimeout(spinnerTimeout);
         UIUtils.showSpinner(false);
     }
@@ -270,12 +268,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (!resp.ok) {
                     const err = await resp.json();
                     UIUtils.showMessage(err.message || 'Error al guardar', 'error');
-                    UIUtils.showSpinner(false);
-                    if (btn && btnSpinner) {
-                        btn.disabled = false;
-                        btnText.style.display = 'inline';
-                        btnSpinner.style.display = 'none';
-                    }
                     return;
                 }
                 UIUtils.showMessage('✅ Venta registrada', 'success');
@@ -283,13 +275,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 productosEnVenta = [];
                 document.getElementById('pedidoItems').innerHTML = '<div class="pedido-vacio">📋 Agrega productos a tu pedido</div>';
                 actualizarResumen();
-                UIUtils.showSpinner(false);
                 setTimeout(() => window.location.reload(), 1000);
             } catch (err) {
                 console.error('Error:', err);
-                UIUtils.showSpinner(false);
                 UIUtils.showMessage('Error al guardar', 'error');
             } finally {
+                UIUtils.showSpinner(false);
                 if (btn && btnSpinner) {
                     btn.disabled = false;
                     btnText.style.display = 'inline';

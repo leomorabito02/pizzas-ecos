@@ -229,10 +229,10 @@ async function cargarDatos(reloadGeneralStats = true) {
             inicializarPaginacion();
         }
         
-        hideLoadingSpinner();
     } catch (error) {
         console.error('Error:', error);
         showMessage('Error al cargar estadísticas: ' + error.message, 'error');
+    } finally {
         hideLoadingSpinner();
     }
 }
@@ -614,6 +614,13 @@ function abrirModalEditar(id) {
     if (!venta) return;
 
     ventaEnEdicion = venta;
+    
+    // Actualizar título con el nombre del vendedor
+    const modalTitle = document.getElementById('modalEditarTitle');
+    if (modalTitle) {
+        modalTitle.textContent = `Editar venta de ${venta.vendedor || 'Vendedor'}`;
+    }
+
     // Cargar cliente
     const editarCliente = document.getElementById('editarCliente');
     if (editarCliente) {
@@ -626,13 +633,14 @@ function abrirModalEditar(id) {
     }
     document.getElementById('editarEstado').value = venta.estado || 'sin_pagar';
     document.getElementById('editarPago').value = venta.payment_method || 'efectivo';
-    document.getElementById('editarEntrega').value = venta.tipo_entrega || 'delivery';
+    let entregaVal = venta.tipo_entrega || 'envio';
+    if (entregaVal === 'delivery') {
+        entregaVal = 'envio';
+    }
+    document.getElementById('editarEntrega').value = entregaVal;
     
     // Cargar dropdown de clientes del vendedor
     cargarClientesDropdownEditar(venta.vendedor);
-    
-    // Actualizar previsualización del tipo de entrega
-    actualizarPreviaEntrega(venta.tipo_entrega || 'delivery');
     
     // Llenar selector de productos nuevos
     const selectNuevo = document.getElementById('nuevoProductoSelect');
@@ -856,18 +864,6 @@ function agregarProductoEnEdicion() {
     renderizarProductosEnEdicion(ventaEnEdicion);
 }
 
-function actualizarPreviaEntrega(tipo) {
-    const textos = {
-        'delivery': 'Delivery',
-        'envio': 'Delivery',
-        'retiro': 'Retiro'
-    };
-    const span = document.getElementById('entregaActual');
-    if (span) {
-        span.textContent = textos[tipo] || 'Retiro';
-    }
-}
-
 function incrementarCantidadProducto() {
     const input = document.getElementById('nuevoProductoCantidad');
     input.value = parseInt(input.value) + 1;
@@ -965,13 +961,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Select de tipo de entrega
-    const selectEntrega = document.getElementById('editarEntrega');
-    if (selectEntrega) {
-        selectEntrega.addEventListener('change', (e) => {
-            actualizarPreviaEntrega(e.target.value);
-        });
-    }
+
 
     document.getElementById('modalEditarVenta').addEventListener('click', (e) => {
         if (e.target === document.getElementById('modalEditarVenta')) {

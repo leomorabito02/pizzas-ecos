@@ -53,7 +53,7 @@ const API_BASE = api.baseURL;
 let usuariosCache = [];
 
 // Check authentication on load
-window.addEventListener('load', () => {
+window.addEventListener('load', async () => {
     showLoadingSpinner(true);
     const token = getCookie('authToken');
     const userId = getCookie('userId');
@@ -74,8 +74,7 @@ window.addEventListener('load', () => {
     setupEditVendedorForm();
     setupClearDatabaseBtn();
 
-    loadDashboard();
-    hideLoadingSpinner();
+    await loadDashboard();
 
     // Header scroll animation for visual feedback
     const header = document.querySelector('.header');
@@ -451,6 +450,7 @@ async function loadProductos() {
 
         if (!productos || productos.length === 0) {
             container.innerHTML = '<p class="no-data">No hay productos registrados</p>';
+            hideLoadingSpinner();
             return;
         }
 
@@ -861,13 +861,17 @@ async function loadUsuarios() {
 
         if (!Array.isArray(usuarios)) {
             console.error('Expected array of usuarios:', usuarios);
+            hideLoadingSpinner();
             return;
         }
 
         usuariosCache = usuarios;
 
         const container = document.getElementById('usuariosTableContainer');
-        if (!container) return;
+        if (!container) {
+            hideLoadingSpinner();
+            return;
+        }
 
         if (usuarios.length === 0) {
             container.innerHTML = '<p class="no-data">No hay usuarios registrados</p>';
