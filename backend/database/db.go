@@ -164,7 +164,7 @@ func GetProductos() ([]models.Producto, error) {
 	var productos []models.Producto
 
 	rows, err := DB.Query(`
-		SELECT id, tipo_pizza, descripcion, precio, activo, created_at
+		SELECT id, tipo_pizza, descripcion, precio, activo, es_combo, created_at
 		FROM productos
 		WHERE activo = TRUE
 		ORDER BY tipo_pizza
@@ -174,12 +174,47 @@ func GetProductos() ([]models.Producto, error) {
 	}
 	defer rows.Close()
 
+	var comboIDs []int
+	prodMap := make(map[int]*models.Producto)
+
 	for rows.Next() {
 		var p models.Producto
-		if err := rows.Scan(&p.ID, &p.TipoPizza, &p.Descripcion, &p.Precio, &p.Activo, &p.CreatedAt); err != nil {
+		if err := rows.Scan(&p.ID, &p.TipoPizza, &p.Descripcion, &p.Precio, &p.Activo, &p.EsCombo, &p.CreatedAt); err != nil {
 			return nil, err
 		}
 		productos = append(productos, p)
+	}
+	rows.Close()
+
+	for i := range productos {
+		prodMap[productos[i].ID] = &productos[i]
+		if productos[i].EsCombo {
+			comboIDs = append(comboIDs, productos[i].ID)
+		}
+	}
+
+	if len(comboIDs) > 0 {
+		placeholders := ""
+		args := make([]interface{}, len(comboIDs))
+		for i, id := range comboIDs {
+			if i > 0 {
+				placeholders += ","
+			}
+			placeholders += fmt.Sprintf("$%d", i+1)
+			args[i] = id
+		}
+		compRows, err := DB.Query(`SELECT combo_id, producto_id, cantidad FROM combo_productos WHERE combo_id IN (`+placeholders+`)`, args...)
+		if err == nil {
+			for compRows.Next() {
+				var comp models.ComboProducto
+				if err := compRows.Scan(&comp.ComboID, &comp.ProductoID, &comp.Cantidad); err == nil {
+					if p, ok := prodMap[comp.ComboID]; ok {
+						p.Componentes = append(p.Componentes, comp)
+					}
+				}
+			}
+			compRows.Close()
+		}
 	}
 
 	return productos, nil
@@ -360,14 +395,14 @@ func GetResumen() (map[string]interface{}, error) {
 		delivery, retiro = 0, 0
 	}
 
-	// Calcular productos vendidos dinámicamente
+	// Calcular productos vendidos (tal cual se vendieron, incluyendo Combos)
 	productosQuery := `
-		SELECT p.tipo_pizza as nombre, COALESCE(SUM(dv.cantidad), 0) as cantidad, p.precio
+		SELECT p.tipo_pizza as nombre, COALESCE(SUM(dv.cantidad), 0) as cantidad, p.precio, p.es_combo
 		FROM detalle_ventas dv
 		JOIN ventas v ON dv.venta_id = v.id
 		JOIN productos p ON dv.producto_id = p.id
 		WHERE v.estado != 'cancelada'
-		GROUP BY p.id, p.tipo_pizza, p.precio
+		GROUP BY p.id, p.tipo_pizza, p.precio, p.es_combo
 		ORDER BY cantidad DESC
 	`
 	rows, err := DB.Query(productosQuery)
@@ -377,15 +412,55 @@ func GetResumen() (map[string]interface{}, error) {
 			var nombre string
 			var cantidad int
 			var precio float64
-			if err := rows.Scan(&nombre, &cantidad, &precio); err == nil {
+			var esCombo bool
+			if err := rows.Scan(&nombre, &cantidad, &precio, &esCombo); err == nil {
 				productosVendidos = append(productosVendidos, map[string]interface{}{
 					"nombre":   nombre,
 					"cantidad": cantidad,
 					"precio":   precio,
+					"es_combo": esCombo,
 				})
 			}
 		}
 		rows.Close()
+	}
+
+	// Calcular desglose de componentes individuales de los combos
+	desgloseQuery := `
+		SELECT nombre, SUM(cantidad) as cantidad FROM (
+			SELECT p.tipo_pizza as nombre, SUM(dv.cantidad) as cantidad
+			FROM detalle_ventas dv
+			JOIN productos p ON dv.producto_id = p.id
+			JOIN ventas v ON dv.venta_id = v.id
+			WHERE v.estado != 'cancelada' AND p.es_combo = FALSE
+			GROUP BY p.id, p.tipo_pizza
+			UNION ALL
+			SELECT pc.tipo_pizza as nombre, SUM(dv.cantidad * cp.cantidad) as cantidad
+			FROM detalle_ventas dv
+			JOIN productos p ON dv.producto_id = p.id
+			JOIN ventas v ON dv.venta_id = v.id
+			JOIN combo_productos cp ON p.id = cp.combo_id
+			JOIN productos pc ON cp.producto_id = pc.id
+			WHERE v.estado != 'cancelada' AND p.es_combo = TRUE
+			GROUP BY pc.id, pc.tipo_pizza
+		) desglose
+		GROUP BY nombre
+		ORDER BY cantidad DESC
+	`
+	rowsDesglose, err := DB.Query(desgloseQuery)
+	productosDesglosados := []map[string]interface{}{}
+	if err == nil {
+		for rowsDesglose.Next() {
+			var nombre string
+			var cantidad int
+			if err := rowsDesglose.Scan(&nombre, &cantidad); err == nil {
+				productosDesglosados = append(productosDesglosados, map[string]interface{}{
+					"nombre":   nombre,
+					"cantidad": cantidad,
+				})
+			}
+		}
+		rowsDesglose.Close()
 	}
 
 	return map[string]interface{}{
@@ -400,6 +475,7 @@ func GetResumen() (map[string]interface{}, error) {
 		"ventas_entregadas":     entregadas,
 		"ventas_totales":        totalVentas,
 		"productos_vendidos":    productosVendidos,
+		"productos_desglosados": productosDesglosados,
 	}, nil
 }
 
@@ -637,13 +713,27 @@ func UpdateVenta(ventaID int, estado, paymentMethod, tipoEntrega string, product
 func GetProductoByID(id int) (*models.Producto, error) {
 	var p models.Producto
 	err := DB.QueryRow(`
-		SELECT id, tipo_pizza, descripcion, precio, activo, created_at
+		SELECT id, tipo_pizza, descripcion, precio, activo, es_combo, created_at
 		FROM productos WHERE id = $1
-	`, id).Scan(&p.ID, &p.TipoPizza, &p.Descripcion, &p.Precio, &p.Activo, &p.CreatedAt)
+	`, id).Scan(&p.ID, &p.TipoPizza, &p.Descripcion, &p.Precio, &p.Activo, &p.EsCombo, &p.CreatedAt)
 
 	if err != nil {
 		return nil, err
 	}
+
+	if p.EsCombo {
+		compRows, err := DB.Query(`SELECT combo_id, producto_id, cantidad FROM combo_productos WHERE combo_id = $1`, p.ID)
+		if err == nil {
+			for compRows.Next() {
+				var comp models.ComboProducto
+				if err := compRows.Scan(&comp.ComboID, &comp.ProductoID, &comp.Cantidad); err == nil {
+					p.Componentes = append(p.Componentes, comp)
+				}
+			}
+			compRows.Close()
+		}
+	}
+
 	return &p, nil
 }
 
@@ -668,25 +758,94 @@ func GetUserByCredentials(username, plainPassword string) (*models.User, error) 
 }
 
 // CreateProducto crea un nuevo producto
-func CreateProducto(tipoPizza, descripcion string, precio float64) (int64, error) {
+func CreateProducto(req *models.CrearProductoRequest) (int64, error) {
+	tx, err := DB.Begin()
+	if err != nil {
+		return 0, fmt.Errorf("error iniciando transacción: %w", err)
+	}
+
+	defer func() {
+		if p := recover(); p != nil {
+			tx.Rollback()
+			panic(p)
+		} else if err != nil {
+			tx.Rollback()
+		}
+	}()
+
 	var id int64
-	err := DB.QueryRow(
-		"INSERT INTO productos (tipo_pizza, descripcion, precio, activo) VALUES ($1, $2, $3, TRUE) RETURNING id",
-		tipoPizza, descripcion, precio,
+	err = tx.QueryRow(
+		"INSERT INTO productos (tipo_pizza, descripcion, precio, activo, es_combo) VALUES ($1, $2, $3, TRUE, $4) RETURNING id",
+		req.TipoPizza, req.Descripcion, req.Precio, req.EsCombo,
 	).Scan(&id)
 	if err != nil {
 		return 0, err
 	}
+
+	if req.EsCombo && len(req.Componentes) > 0 {
+		stmt, err := tx.Prepare("INSERT INTO combo_productos (combo_id, producto_id, cantidad) VALUES ($1, $2, $3)")
+		if err != nil {
+			return 0, err
+		}
+		defer stmt.Close()
+		for _, comp := range req.Componentes {
+			if _, err = stmt.Exec(id, comp.ProductoID, comp.Cantidad); err != nil {
+				return 0, err
+			}
+		}
+	}
+
+	if err = tx.Commit(); err != nil {
+		return 0, err
+	}
+
 	return id, nil
 }
 
 // UpdateProducto actualiza un producto
-func UpdateProducto(id int, tipoPizza, descripcion string, precio float64, activo bool) error {
-	_, err := DB.Exec(
-		"UPDATE productos SET tipo_pizza = $1, precio = $2, descripcion = $3, activo = $4 WHERE id = $5",
-		tipoPizza, precio, descripcion, activo, id,
+func UpdateProducto(id int, req *models.ActualizarProductoRequest) error {
+	tx, err := DB.Begin()
+	if err != nil {
+		return fmt.Errorf("error iniciando transacción: %w", err)
+	}
+
+	defer func() {
+		if p := recover(); p != nil {
+			tx.Rollback()
+			panic(p)
+		} else if err != nil {
+			tx.Rollback()
+		}
+	}()
+
+	_, err = tx.Exec(
+		"UPDATE productos SET tipo_pizza = $1, precio = $2, descripcion = $3, activo = $4, es_combo = $5 WHERE id = $6",
+		req.TipoPizza, req.Precio, req.Descripcion, req.Activo, req.EsCombo, id,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+
+	if req.EsCombo {
+		_, err = tx.Exec("DELETE FROM combo_productos WHERE combo_id = $1", id)
+		if err != nil {
+			return err
+		}
+		if len(req.Componentes) > 0 {
+			stmt, err := tx.Prepare("INSERT INTO combo_productos (combo_id, producto_id, cantidad) VALUES ($1, $2, $3)")
+			if err != nil {
+				return err
+			}
+			defer stmt.Close()
+			for _, comp := range req.Componentes {
+				if _, err = stmt.Exec(id, comp.ProductoID, comp.Cantidad); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	return tx.Commit()
 }
 
 // DeleteProducto desactiva un producto

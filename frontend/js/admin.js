@@ -51,6 +51,7 @@ const API_BASE = api.baseURL;
 
 // Caches for data
 let usuariosCache = [];
+let adminProductosCache = []; // Cache de productos para usar en los selects de combos
 
 // Check authentication on load
 window.addEventListener('load', async () => {
@@ -422,11 +423,32 @@ function setupProductForm() {
             return;
         }
 
+        const esCombo = document.getElementById('newProductEsCombo')?.checked || false;
+        let componentes = [];
+
+        if (esCombo) {
+            const selects = document.querySelectorAll('.new-comp-select');
+            const qtys = document.querySelectorAll('.new-comp-qty');
+            for(let i=0; i<selects.length; i++) {
+                const prodId = parseInt(selects[i].value);
+                const qty = parseInt(qtys[i].value);
+                if(prodId && qty > 0) {
+                    componentes.push({ producto_id: prodId, cantidad: qty });
+                }
+            }
+            if (componentes.length === 0) {
+                showError('Un combo debe tener al menos un producto');
+                return;
+            }
+        }
+
         try {
             await api.crearProducto({
                 tipo_pizza: nombre,
                 descripcion: descripcion,
-                precio: precio
+                precio: precio,
+                es_combo: esCombo,
+                componentes: componentes
             });
 
             showSuccess('Producto creado exitosamente');
@@ -446,6 +468,7 @@ async function loadProductos() {
         const response = await api.obtenerProductos();
         // Handle both response formats: {status, data, message} or direct array
         const productos = Array.isArray(response) ? response : (response?.data || []);
+        adminProductosCache = productos;
         const container = document.getElementById('productosTableContainer');
 
         if (!productos || productos.length === 0) {
@@ -492,11 +515,33 @@ async function loadProductos() {
     }
 }
 
-function abrirModalProducto(productoId, nombre, descripcion, precio) {
+function abrirModalProducto(productoId) {
+    const producto = adminProductosCache.find(p => p.id === parseInt(productoId));
+    if (!producto) return;
+
     document.getElementById('editProductId').value = productoId;
-    document.getElementById('editProductName').value = nombre;
-    document.getElementById('editProductDesc').value = descripcion || '';
-    document.getElementById('editProductPrice').value = precio;
+    document.getElementById('editProductName').value = producto.tipo_pizza;
+    document.getElementById('editProductDesc').value = producto.descripcion || '';
+    document.getElementById('editProductPrice').value = producto.precio;
+    
+    const esComboCheck = document.getElementById('editProductEsCombo');
+    if (esComboCheck) {
+        esComboCheck.checked = producto.es_combo || false;
+        // Trigger change to show/hide container
+        esComboCheck.dispatchEvent(new Event('change'));
+    }
+
+    // Populate components if it is a combo
+    const containerList = document.getElementById('editProductComponentesList');
+    if (containerList) {
+        containerList.innerHTML = '';
+        if (producto.es_combo && producto.componentes) {
+            producto.componentes.forEach(comp => {
+                addComponenteRow('edit', comp.producto_id, comp.cantidad);
+            });
+        }
+    }
+
     document.getElementById('modalEditarProducto').classList.remove('hidden');
 }
 
@@ -526,12 +571,33 @@ function setupEditProductForm() {
             return;
         }
 
+        const esCombo = document.getElementById('editProductEsCombo')?.checked || false;
+        let componentes = [];
+
+        if (esCombo) {
+            const selects = document.querySelectorAll('.edit-comp-select');
+            const qtys = document.querySelectorAll('.edit-comp-qty');
+            for(let i=0; i<selects.length; i++) {
+                const prodId = parseInt(selects[i].value);
+                const qty = parseInt(qtys[i].value);
+                if(prodId && qty > 0) {
+                    componentes.push({ producto_id: prodId, cantidad: qty });
+                }
+            }
+            if (componentes.length === 0) {
+                showError('Un combo debe tener al menos un producto');
+                return;
+            }
+        }
+
         try {
             await api.actualizarProducto(productoId, { 
                 tipo_pizza: nombre,
                 descripcion: descripcion,
                 precio: precio, 
-                activo: true 
+                activo: true,
+                es_combo: esCombo,
+                componentes: componentes
             });
 
             showSuccess('Producto actualizado exitosamente');
@@ -728,7 +794,7 @@ document.addEventListener('click', (e) => {
         const price = btn.getAttribute('data-price');
 
         if (btn.closest('#productosTableContainer')) {
-            abrirModalProducto(id, name, desc, price);
+            abrirModalProducto(id);
         } else if (btn.closest('#vendedoresTableContainer')) {
             abrirModalVendedor(id, name);
         } else if (btn.closest('#usuariosTableContainer')) {
@@ -1071,3 +1137,76 @@ function setupClearDatabaseBtn() {
         }
     });
 }
+
+// Funciones para Componentes de Combo
+function addComponenteRow(formType, productoId = '', cantidad = 1) {
+    const listId = formType === 'new' ? 'newProductComponentesList' : 'editProductComponentesList';
+    const list = document.getElementById(listId);
+    if (!list) return;
+
+    const row = document.createElement('div');
+    row.className = 'componente-row';
+    row.style = 'display: flex; gap: 10px; margin-bottom: 10px; align-items: center;';
+
+    let optionsHTML = '<option value="">Seleccione producto...</option>';
+    adminProductosCache.forEach(p => {
+        if (!p.es_combo) { // No permitir combos anidados
+            const selected = (p.id === parseInt(productoId)) ? 'selected' : '';
+            optionsHTML += `<option value="${p.id}" ${selected}>${p.tipo_pizza}</option>`;
+        }
+    });
+
+    row.innerHTML = `
+        <select class="${formType}-comp-select" required style="flex: 1; padding: 8px;">
+            ${optionsHTML}
+        </select>
+        <input type="number" class="${formType}-comp-qty" value="${cantidad}" min="1" required style="width: 80px; padding: 8px;">
+        <button type="button" class="btn-small btn-delete" onclick="this.parentElement.remove()" style="padding: 8px;">✕</button>
+    `;
+    list.appendChild(row);
+}
+
+// Event Listeners for Combos
+document.addEventListener('DOMContentLoaded', () => {
+    // New Form
+    const newEsCombo = document.getElementById('newProductEsCombo');
+    if (newEsCombo) {
+        newEsCombo.addEventListener('change', (e) => {
+            const container = document.getElementById('newProductComponentesContainer');
+            if (e.target.checked) {
+                container.classList.remove('hidden');
+                if(document.getElementById('newProductComponentesList').children.length === 0) {
+                    addComponenteRow('new');
+                }
+            } else {
+                container.classList.add('hidden');
+            }
+        });
+    }
+
+    const btnAddNew = document.getElementById('btnAddComponenteNew');
+    if (btnAddNew) {
+        btnAddNew.addEventListener('click', () => addComponenteRow('new'));
+    }
+
+    // Edit Form
+    const editEsCombo = document.getElementById('editProductEsCombo');
+    if (editEsCombo) {
+        editEsCombo.addEventListener('change', (e) => {
+            const container = document.getElementById('editProductComponentesContainer');
+            if (e.target.checked) {
+                container.classList.remove('hidden');
+                if(document.getElementById('editProductComponentesList').children.length === 0) {
+                    addComponenteRow('edit');
+                }
+            } else {
+                container.classList.add('hidden');
+            }
+        });
+    }
+
+    const btnAddEdit = document.getElementById('btnAddComponenteEdit');
+    if (btnAddEdit) {
+        btnAddEdit.addEventListener('click', () => addComponenteRow('edit'));
+    }
+});

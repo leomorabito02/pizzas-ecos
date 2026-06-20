@@ -398,7 +398,7 @@ func (s *ProductoService) CrearProducto(req *models.CrearProductoRequest) (int64
 		return 0, err
 	}
 
-	id, err := database.CreateProducto(req.TipoPizza, req.Descripcion, req.Precio)
+	id, err := database.CreateProducto(req)
 	if err != nil {
 		return 0, fmt.Errorf("error creando producto: %w", err)
 	}
@@ -412,7 +412,7 @@ func (s *ProductoService) ActualizarProducto(id int, req *models.ActualizarProdu
 		return err
 	}
 
-	return database.UpdateProducto(id, req.TipoPizza, req.Descripcion, req.Precio, req.Activo)
+	return database.UpdateProducto(id, req)
 }
 
 // EliminarProducto elimina un producto (soft delete)

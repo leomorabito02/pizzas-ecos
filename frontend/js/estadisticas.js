@@ -285,26 +285,41 @@ function actualizarPaginacionDisplay() {
     if (btnNext) btnNext.disabled = datosVentas.ventas.length < currentLimit;
 }
 
-// Función unificada para renderizar los productos agrupados desde el backend
 function renderizarProductosCounters() {
     const container = document.getElementById('productosCounters');
-    if (!container) return;
+    const containerDesglose = document.getElementById('productosDesglosadosCounters');
     
-    container.innerHTML = '';
+    if (container) container.innerHTML = '';
+    if (containerDesglose) containerDesglose.innerHTML = '';
     
     const resumen = datosVentas.resumen;
-    if (!resumen || !resumen.productos_vendidos) return;
+    if (!resumen) return;
 
-    resumen.productos_vendidos.forEach(producto => {
-        const card = document.createElement('div');
-        card.className = 'stat-card';
-        card.innerHTML = `
-            <div class="stat-label">${producto.nombre}</div>
-            <div class="stat-value">${producto.cantidad}</div>
-            <div style="font-size: 12px; color: #666; margin-top: 5px;">$${(producto.precio || 0).toFixed(2)} c/u</div>
-        `;
-        container.appendChild(card);
-    });
+    if (container && resumen.productos_vendidos) {
+        resumen.productos_vendidos.forEach(producto => {
+            const card = document.createElement('div');
+            card.className = 'stat-card';
+            card.innerHTML = `
+                <div class="stat-label">${producto.nombre}</div>
+                <div class="stat-value">${producto.cantidad}</div>
+                <div style="font-size: 12px; color: #666; margin-top: 5px;">$${(producto.precio || 0).toFixed(2)} c/u</div>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    if (containerDesglose && resumen.productos_desglosados) {
+        resumen.productos_desglosados.forEach(producto => {
+            const card = document.createElement('div');
+            card.className = 'stat-card';
+            card.innerHTML = `
+                <div class="stat-label">${producto.nombre}</div>
+                <div class="stat-value">${producto.cantidad}</div>
+                <div style="font-size: 12px; color: #666; margin-top: 5px;">Unidades individuales</div>
+            `;
+            containerDesglose.appendChild(card);
+        });
+    }
 }
 
 function renderizarResumen() {

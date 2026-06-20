@@ -99,14 +99,23 @@ type UpdateUsuarioRequest struct {
 	Rol      string `json:"rol"`
 }
 
+// ComboProducto representa un componente de un combo
+type ComboProducto struct {
+	ComboID    int `json:"combo_id"`
+	ProductoID int `json:"producto_id"`
+	Cantidad   int `json:"cantidad"`
+}
+
 // Producto estructura para productos
 type Producto struct {
-	ID          int       `json:"id"`
-	TipoPizza   string    `json:"tipo_pizza"`
-	Descripcion string    `json:"descripcion"`
-	Precio      float64   `json:"precio"`
-	Activo      bool      `json:"activo"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID          int             `json:"id"`
+	TipoPizza   string          `json:"tipo_pizza"`
+	Descripcion string          `json:"descripcion"`
+	Precio      float64         `json:"precio"`
+	Activo      bool            `json:"activo"`
+	EsCombo     bool            `json:"es_combo"`
+	Componentes []ComboProducto `json:"componentes,omitempty"`
+	CreatedAt   time.Time       `json:"created_at"`
 }
 
 // Vendedor estructura para vendedores
@@ -117,15 +126,19 @@ type Vendedor struct {
 
 // CrearProductoRequest estructura para crear producto
 type CrearProductoRequest struct {
-	TipoPizza   string  `json:"tipo_pizza"`
-	Descripcion string  `json:"descripcion"`
-	Precio      float64 `json:"precio"`
+	TipoPizza   string          `json:"tipo_pizza"`
+	Descripcion string          `json:"descripcion"`
+	Precio      float64         `json:"precio"`
+	EsCombo     bool            `json:"es_combo"`
+	Componentes []ComboProducto `json:"componentes"`
 }
 
 // ActualizarProductoRequest estructura para actualizar producto
 type ActualizarProductoRequest struct {
-	TipoPizza   string  `json:"tipo_pizza"`
-	Precio      float64 `json:"precio"`
-	Descripcion string  `json:"descripcion"`
-	Activo      bool    `json:"activo"`
+	TipoPizza   string          `json:"tipo_pizza"`
+	Precio      float64         `json:"precio"`
+	Descripcion string          `json:"descripcion"`
+	Activo      bool            `json:"activo"`
+	EsCombo     bool            `json:"es_combo"`
+	Componentes []ComboProducto `json:"componentes"`
 }
