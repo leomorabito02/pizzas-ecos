@@ -406,17 +406,17 @@ select:focus {
 /* Floating Submit Bar */
 .floating-submit-bar {
     position: fixed;
-    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
-    left: 0;
-    right: 0;
+    bottom: calc(90px + env(safe-area-inset-bottom, 0px));
+    left: 16px;
+    width: calc(100% - 32px);
     background-color: var(--md-sys-color-surface);
-    border-top: 1px solid var(--md-sys-color-outline-variant);
-    padding: 16px;
+    border-radius: 24px;
+    padding: 16px 24px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    box-shadow: 0 -4px 12px rgba(0,0,0,0.05);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
     z-index: 1000;
 }
 
@@ -877,6 +877,16 @@ body {
         border-radius: 20px;
     }
 
+    .floating-submit-bar {
+        left: 8px;
+        width: calc(100% - 16px);
+        bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+        border-radius: 20px;
+        border: none;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        padding: 12px 16px;
+    }
+
     .nav-btn {
         padding: 6px 4px;
         font-size: 10px;
@@ -986,6 +996,12 @@ body {
     
     .floating-submit-bar {
         bottom: 0;
+        left: 0;
+        width: 100%;
+        border-radius: 0;
+        box-shadow: 0 -4px 12px rgba(0,0,0,0.05);
+        border-top: 1px solid var(--md-sys-color-outline-variant);
+        padding: 16px 40px;
     }
 
     .btn-submit {
