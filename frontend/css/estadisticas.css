@@ -35,15 +35,22 @@
     box-sizing: border-box;
 }
 
+html, body {
+    overflow-x: hidden;
+    width: 100%;
+    position: relative;
+}
+
 body {
     font-family: var(--md-sys-typescale-font);
     background-color: var(--md-sys-color-background);
     color: var(--md-sys-color-on-background);
     min-height: 100vh;
-    padding: 20px;
+    padding: 20px 20px 70px 20px;
     display: flex;
     flex-direction: column;
     align-items: center;
+    overflow-x: hidden;
 }
 
 .container {
@@ -916,8 +923,9 @@ body {
 /* RESPONSIVE LAYOUTS */
 @media (max-width: 480px) {
     body {
-        padding: 0;
+        padding: 0 0 70px 0;
         background-color: var(--md-sys-color-surface);
+        overflow-x: hidden;
     }
 
     .container {

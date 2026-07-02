@@ -899,14 +899,33 @@ document.addEventListener('DOMContentLoaded', () => {
     
     cargarDatos();
 
-    // Botones de tab
-    document.querySelectorAll('.tab-btn').forEach(btn => {
+    // Leer tab desde la URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const initialTab = urlParams.get('tab');
+    if (initialTab) {
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        const tabEl = document.getElementById(`tab-${initialTab}`);
+        if (tabEl) tabEl.classList.add('active');
+        
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        const activeNavBtn = document.querySelector(`.nav-btn[data-tab="${initialTab}"]`);
+        if (activeNavBtn) activeNavBtn.classList.add('active');
+    }
+
+    // Botones de tab de la navbar
+    document.querySelectorAll('.nav-btn[data-tab]').forEach(btn => {
         btn.addEventListener('click', (e) => {
+            e.preventDefault();
             const button = e.currentTarget;
             const tab = button.dataset.tab;
             
+            // Actualizar URL sin recargar
+            const newUrl = new URL(window.location);
+            newUrl.searchParams.set('tab', tab);
+            window.history.pushState({}, '', newUrl);
+            
             // Actualizar botones
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
             button.classList.add('active');
 
             // Actualizar contenido
@@ -914,19 +933,6 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById(`tab-${tab}`).classList.add('active');
         });
     });
-
-    // Volver al home
-    document.getElementById('btnVolver').addEventListener('click', () => {
-        window.location.href = 'index.html';
-    });
-
-    // Panel Admin
-    const btnAdminPanel = document.getElementById('btnAdminPanel');
-    if (btnAdminPanel) {
-        btnAdminPanel.addEventListener('click', () => {
-            window.location.href = 'login.html';
-        });
-    }
 
     // Modal
     document.querySelector('.btn-close-modal').addEventListener('click', cerrarModal);

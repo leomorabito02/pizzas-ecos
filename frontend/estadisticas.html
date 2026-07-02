@@ -24,21 +24,11 @@
         <div class="header">
             <h1>Estadísticas de Ventas</h1>
             <p class="subtitle">Análisis y resumen de operaciones</p>
-            <div class="header-buttons">
-                <button id="btnVolver" class="btn-volver"><span class="material-symbols-outlined">arrow_back</span> Nueva Venta</button>
-                <button id="btnAdminPanel" class="btn-admin-panel"><span class="material-symbols-outlined">lock</span> Panel Admin</button>
+            <div class="header-buttons" style="display: none;">
             </div>
         </div>
 
-        <!-- Botones de navegación -->
-        <div class="nav-buttons">
-            
-            <div class="tab-buttons">
-                <button class="tab-btn active" data-tab="resumen"><span class="material-symbols-outlined">trending_up</span> Resumen</button>
-                <button class="tab-btn" data-tab="vendedores"><span class="material-symbols-outlined">group</span> Vendedores</button>
-                <button class="tab-btn" data-tab="ventas"><span class="material-symbols-outlined">list_alt</span> Todas las Ventas</button>
-            </div>
-        </div>
+        <!-- Botones de navegación (removidos, ahora en bottom navbar) -->
 
         <!-- TAB 1: RESUMEN GENERAL -->
         <div id="tab-resumen" class="tab-content active">
@@ -371,5 +361,28 @@
     <script src="js/env.js"></script>
     <script src="js/api-service.js"></script>
     <script src="js/estadisticas.js"></script>
+    <!-- Bottom Navbar -->
+    <nav class="bottom-navbar">
+        <a href="index.html" class="nav-btn">
+            <span class="material-symbols-outlined">add_circle</span>
+            <span>Nueva Venta</span>
+        </a>
+        <a href="estadisticas.html?tab=resumen" class="nav-btn active" data-tab="resumen">
+            <span class="material-symbols-outlined">trending_up</span>
+            <span>Resumen</span>
+        </a>
+        <a href="estadisticas.html?tab=vendedores" class="nav-btn" data-tab="vendedores">
+            <span class="material-symbols-outlined">group</span>
+            <span>Vendedores</span>
+        </a>
+        <a href="estadisticas.html?tab=ventas" class="nav-btn" data-tab="ventas">
+            <span class="material-symbols-outlined">list_alt</span>
+            <span>Todas las Ventas</span>
+        </a>
+        <a href="login.html" class="nav-btn">
+            <span class="material-symbols-outlined">admin_panel_settings</span>
+            <span>Admin</span>
+        </a>
+    </nav>
 </body>
 </html>

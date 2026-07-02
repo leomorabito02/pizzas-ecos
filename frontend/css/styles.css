@@ -35,6 +35,12 @@
     box-sizing: border-box;
 }
 
+html, body {
+    overflow-x: hidden;
+    width: 100%;
+    position: relative;
+}
+
 body {
     font-family: var(--md-sys-typescale-font);
     background-color: var(--md-sys-color-background);
@@ -44,7 +50,8 @@ body {
     flex-direction: column;
     align-items: center;
     padding: 20px;
-    padding-bottom: 0;
+    padding-bottom: 70px;
+    overflow-x: hidden;
 }
 
 .container {
@@ -731,11 +738,50 @@ select:focus {
     text-decoration: none;
 }
 
+/* Bottom Navbar */
+.bottom-navbar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: white;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 10px 0 calc(10px + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+    z-index: 1000;
+}
+
+.nav-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-decoration: none;
+    color: var(--md-sys-color-on-surface-variant);
+    font-size: 12px;
+    gap: 4px;
+}
+
+.nav-btn.active {
+    color: var(--md-sys-color-primary);
+}
+
+.nav-btn .material-symbols-outlined {
+    font-size: 24px;
+}
+
+/* Adjust body padding for navbar */
+body {
+    padding-bottom: 70px;
+}
+
 /* Responsiveness and Card design removal on Mobile */
 @media (max-width: 480px) {
     body {
-        padding: 0;
+        padding: 0 0 70px 0;
         background-color: var(--md-sys-color-surface); /* Page background acts as surface */
+        overflow-x: hidden;
     }
 
     .container {
