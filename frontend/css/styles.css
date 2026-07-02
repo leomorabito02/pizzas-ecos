@@ -384,22 +384,29 @@ select:focus {
     color: var(--md-sys-color-primary);
 }
 
-.btn-remove-pedido {
-    background-color: HSL(120, 40%, 90%);
-    color: HSL(120, 60%, 25%);
-    padding: 6px 12px;
-    border-radius: 100px;
-    font-size: 12px;
+.btn-remove-pedido-text {
+    background: none;
+    border: none;
+    color: var(--md-sys-color-error);
+    font-size: 14px;
+    font-family: var(--md-sys-typescale-font);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
 }
 
-.btn-remove-pedido:hover {
-    background-color: HSL(120, 40%, 82%);
+.btn-remove-pedido-text:hover {
+    background-color: var(--md-sys-color-error-container);
 }
 
 /* Floating Submit Bar */
 .floating-submit-bar {
     position: fixed;
-    bottom: 0;
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
     left: 0;
     right: 0;
     background-color: var(--md-sys-color-surface);
@@ -857,7 +864,7 @@ body {
 /* Responsiveness and Card design removal on Mobile */
 @media (max-width: 480px) {
     body {
-        padding: 0 0 100px 0;
+        padding: 0 0 160px 0; /* Space for both floating submit bar and bottom navbar */
         background-color: var(--md-sys-color-surface); /* Page background acts as surface */
         overflow-x: hidden;
     }
@@ -977,6 +984,10 @@ body {
     .form-section:nth-of-type(4) { grid-column: 1; grid-row: 2; } /* Pago */
     .form-section:nth-of-type(5) { grid-column: 1; grid-row: 3; } /* Entrega */
     
+    .floating-submit-bar {
+        bottom: 0;
+    }
+
     .btn-submit {
         grid-column: 1 / -1;
         width: 300px;

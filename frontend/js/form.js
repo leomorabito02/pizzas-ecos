@@ -240,6 +240,27 @@ document.addEventListener('DOMContentLoaded', async () => {
                 document.getElementById('clientes-dropdown').classList.remove('hidden');
             }
         });
+        cliente.addEventListener('click', () => {
+            if (document.getElementById('vendedor').value) {
+                document.getElementById('clientes-dropdown').classList.remove('hidden');
+            }
+        });
+        cliente.addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            const items = document.querySelectorAll('.cliente-item');
+            let hasVisible = false;
+            items.forEach(item => {
+                if (item.textContent.toLowerCase().includes(term)) {
+                    item.style.display = 'block';
+                    hasVisible = true;
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+            if (document.getElementById('vendedor').value && hasVisible) {
+                document.getElementById('clientes-dropdown').classList.remove('hidden');
+            }
+        });
         cliente.addEventListener('blur', () => {
             setTimeout(() => document.getElementById('clientes-dropdown').classList.add('hidden'), 200);
         });
@@ -373,7 +394,7 @@ function renderizarPedido() {
             </div>
             <div class="item-total">
                 <strong>${UIUtils.formatCurrency(p.total)}</strong>
-                <button type="button" class="btn-remove" onclick="removerProducto(${i})">✕</button>
+                <button type="button" class="btn-remove-pedido-text" onclick="removerProducto(${i})">✕ Quitar</button>
             </div>
         </div>
     `).join('');
