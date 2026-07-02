@@ -350,11 +350,30 @@ document.addEventListener('DOMContentLoaded', async () => {
                     return;
                 }
                 UIUtils.showMessage('✅ Venta registrada', 'success');
+                const lastVend = localStorage.getItem('ultimoVendedor');
                 form.reset();
+                if (lastVend) {
+                    const vendSelect = document.getElementById('vendedor');
+                    if (vendSelect) {
+                        vendSelect.value = lastVend;
+                        vendSelect.dispatchEvent(new Event('change'));
+                    }
+                }
                 productosEnVenta = [];
                 document.getElementById('pedidoItems').innerHTML = '<div class="pedido-vacio">📋 Agrega productos a tu pedido</div>';
                 actualizarResumen();
-                setTimeout(() => window.location.reload(), 1000);
+                
+                document.querySelectorAll('.pos-product-qty').forEach(el => el.textContent = '0');
+                document.querySelectorAll('.chip-btn').forEach(btn => btn.classList.remove('selected'));
+                
+                // Limpiar caché stale e inmediatamente repoblarla en background
+                setTimeout(() => {
+                    if (typeof api !== 'undefined') {
+                        api.clearCache();
+                        Logger.log('📡 Actualizando estadísticas en background post-venta...');
+                        api.obtenerEstadisticas(10, 1).catch(e => Logger.log('Error precarga stats:', e));
+                    }
+                }, 1000);
             } catch (err) {
                 console.error('Error:', err);
                 UIUtils.showMessage('Error al guardar', 'error');
