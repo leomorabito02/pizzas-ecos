@@ -301,11 +301,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             const est = document.getElementById('estado').value;
             const tip = document.querySelector('input[name="tipo_entrega"]:checked')?.value;
             if (!vend || !cliente || !pago || !est || !tip) {
-                UIUtils.showMessage('Completa todos los campos (vendedor y cliente requeridos)', 'error');
+                UIUtils.showMessage('Debes completar todos los campos obligatorios: Datos del vendedor, cliente, método de pago, estado y tipo de entrega.', 'warning');
                 return;
             }
             if (cliente.length === 0) {
-                UIUtils.showMessage('El cliente no puede estar vacío', 'error');
+                UIUtils.showMessage('El cliente no puede estar vacío.', 'warning');
                 return;
             }
             const combos = productosEnVenta.map(p => ({

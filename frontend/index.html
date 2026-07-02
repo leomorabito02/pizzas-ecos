@@ -36,7 +36,7 @@
                 <div class="form-group">
                     <label for="vendedor">Vendedor:</label>
                     <div class="vendedor-container">
-                        <select id="vendedor" name="vendedor" required>
+                        <select id="vendedor" name="vendedor">
                             <option value="">Cargando vendedores...</option>
                         </select>
                         <span id="vendedor-loader" class="loader"></span>
@@ -51,7 +51,6 @@
                             id="cliente" 
                             name="cliente" 
                             placeholder="Ingresa un cliente" 
-                            required
                         >
                         <!-- Panel desplegable de clientes del vendedor -->
                         <div id="clientes-dropdown" class="clientes-dropdown hidden">
@@ -102,7 +101,7 @@
                 
                 <div class="form-group">
                     <label>Método de Pago:</label>
-                    <input type="hidden" id="payment_method" name="payment_method" required>
+                    <input type="hidden" id="payment_method" name="payment_method">
                     <div class="chips-container" id="chips-pago">
                         <button type="button" class="chip-btn" data-value="efectivo">Efectivo</button>
                         <button type="button" class="chip-btn" data-value="transferencia">Transferencia</button>
@@ -111,7 +110,7 @@
                 
                 <div class="form-group">
                     <label>Estado:</label>
-                    <input type="hidden" id="estado" name="estado" required>
+                    <input type="hidden" id="estado" name="estado">
                     <div class="chips-container" id="chips-estado">
                         <button type="button" class="chip-btn" data-value="sin_pagar">Sin Pagar</button>
                         <button type="button" class="chip-btn" data-value="pagada">Pagada</button>
@@ -126,7 +125,7 @@
                 
                 <div class="delivery-selector">
                     <div class="delivery-option">
-                        <input type="radio" id="tipo-retiro" name="tipo_entrega" value="retiro" required>
+                        <input type="radio" id="tipo-retiro" name="tipo_entrega" value="retiro">
                         <label for="tipo-retiro" class="delivery-label">
                             <span class="material-symbols-outlined delivery-icon">storefront</span>
                             <span class="delivery-text">Retiro en la parroquia</span>
@@ -134,7 +133,7 @@
                     </div>
                     
                     <div class="delivery-option">
-                        <input type="radio" id="tipo-envio" name="tipo_entrega" value="envio" required>
+                        <input type="radio" id="tipo-envio" name="tipo_entrega" value="delivery">
                         <label for="tipo-envio" class="delivery-label">
                             <span class="material-symbols-outlined delivery-icon">local_shipping</span>
                             <span class="delivery-text">Envío a domicilio / con un joven</span>

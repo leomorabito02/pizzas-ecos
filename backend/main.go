@@ -42,7 +42,7 @@ func main() {
 	ddosDetector := security.NewDDoSDetector(500, 10*time.Second)
 
 	// 4. CORS origins - TEMPORARILY ALLOWING ALL FOR DEBUGGING
-	corsOrigins := []string{"*"}
+	corsOrigins := []string{os.Getenv("CORS_ALLOWED_ORIGINS")}
 
 	if env := os.Getenv("CORS_ALLOWED_ORIGINS"); env != "" {
 		corsOrigins = strings.Split(env, ",")
