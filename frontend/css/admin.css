@@ -40,6 +40,52 @@ body {
     background-color: var(--md-sys-color-background);
     color: var(--md-sys-color-on-background);
     min-height: 100vh;
+    padding-bottom: 90px;
+}
+
+html, body {
+    overflow-x: hidden;
+    width: 100%;
+    position: relative;
+}
+
+/* Bottom Navbar */
+.bottom-navbar {
+    position: fixed;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    left: 16px;
+    width: calc(100% - 32px);
+    background: white;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 12px 8px;
+    border-radius: 24px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    z-index: 1000;
+}
+
+.nav-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-decoration: none;
+    color: var(--md-sys-color-on-surface-variant);
+    font-size: 12px;
+    gap: 4px;
+    padding: 8px 16px;
+    border-radius: 16px;
+    transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.nav-btn.active {
+    color: var(--md-sys-color-primary);
+    background-color: var(--md-sys-color-primary-container);
+    font-weight: 600;
+}
+
+.nav-btn .material-symbols-outlined {
+    font-size: 24px;
 }
 
 .admin-container {
@@ -601,6 +647,7 @@ tr.cancelada {
     margin-top: auto;
     width: 100%;
     border-top: 1px solid var(--md-sys-color-outline-variant);
+    margin-bottom: 90px;
 }
 
 .footer-content {
@@ -722,6 +769,27 @@ tr.cancelada {
 
 /* Card Design Removal on Mobile Viewports */
 @media (max-width: 480px) {
+    body {
+        padding-bottom: 100px;
+    }
+
+    .bottom-navbar {
+        padding: 8px 4px;
+        bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+        left: 8px;
+        width: calc(100% - 16px);
+        border-radius: 20px;
+    }
+
+    .nav-btn {
+        padding: 6px 4px;
+        font-size: 10px;
+    }
+
+    .nav-btn .material-symbols-outlined {
+        font-size: 20px;
+    }
+
     .sidebar {
         position: fixed;
         left: -280px;
