@@ -50,7 +50,7 @@ body {
     flex-direction: column;
     align-items: center;
     padding: 20px;
-    padding-bottom: 70px;
+    padding-bottom: 90px; /* Space for bottom navbar or floating submit */
     overflow-x: hidden;
 }
 
@@ -213,49 +213,107 @@ select:focus {
     color: var(--md-sys-color-on-surface-variant);
 }
 
-/* Combo Selector Section */
-.combo-selector {
+/* POS Products Grid Section */
+.pos-products-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.pos-product-card {
+    background: var(--md-sys-color-surface);
+    border: 1px solid var(--md-sys-color-outline-variant);
+    border-radius: 12px;
+    padding: 12px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
-}
-
-.cantidad-controls-inline {
-    display: flex;
     align-items: center;
+    text-align: center;
     gap: 8px;
+    box-shadow: var(--md-elevation-1);
+    transition: transform 0.1s, box-shadow 0.1s;
 }
 
-.btn-cantidad-mas-menos {
-    width: 40px;
-    height: 40px;
-    padding: 0;
-    border-radius: 50%;
-    background-color: var(--md-sys-color-surface);
-    border: 1px solid var(--md-sys-color-outline);
-    color: var(--md-sys-color-on-surface);
-    font-size: 18px;
+.pos-product-card:active {
+    transform: scale(0.98);
 }
 
-.btn-cantidad-mas-menos:hover {
-    background-color: var(--md-sys-color-surface-variant);
-    border-color: var(--md-sys-color-primary);
-}
-
-.combo-preview {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 12px;
-    padding-top: 16px;
-    border-top: 1px solid var(--md-sys-color-outline-variant);
-    gap: 16px;
-}
-
-.combo-price {
-    font-size: 24px;
+.pos-product-name {
+    font-size: 14px;
     font-weight: 500;
+    color: var(--md-sys-color-on-surface);
+    line-height: 1.2;
+}
+
+.pos-product-price {
+    font-size: 14px;
+    font-weight: 700;
     color: var(--md-sys-color-primary);
+}
+
+.pos-product-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: auto;
+}
+
+.pos-btn-control {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background-color: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-on-primary-container);
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: var(--md-elevation-1);
+}
+
+.pos-btn-control:active {
+    background-color: var(--md-sys-color-primary);
+    color: var(--md-sys-color-on-primary);
+}
+
+.pos-product-qty {
+    font-size: 16px;
+    font-weight: 600;
+    min-width: 20px;
+}
+
+/* Chips Selectors (Payment and Status) */
+.chips-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.chip-btn {
+    padding: 8px 16px;
+    border-radius: 100px;
+    border: 1px solid var(--md-sys-color-outline);
+    background-color: var(--md-sys-color-surface);
+    color: var(--md-sys-color-on-surface-variant);
+    font-family: var(--md-sys-typescale-font);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.chip-btn:hover {
+    background-color: var(--md-sys-color-surface-variant);
+}
+
+.chip-btn.selected {
+    background-color: var(--md-sys-color-primary);
+    color: var(--md-sys-color-on-primary);
+    border-color: var(--md-sys-color-primary);
 }
 
 .btn-add-to-pedido {
@@ -338,29 +396,43 @@ select:focus {
     background-color: HSL(120, 40%, 82%);
 }
 
-.venta-summary {
-    margin-top: 16px;
-}
-
-.total-venta {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background-color: var(--md-sys-color-primary-container);
-    color: var(--md-sys-color-on-primary-container);
+/* Floating Submit Bar */
+.floating-submit-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: var(--md-sys-color-surface);
+    border-top: 1px solid var(--md-sys-color-outline-variant);
     padding: 16px;
-    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    box-shadow: 0 -4px 12px rgba(0,0,0,0.05);
+    z-index: 1000;
 }
 
-.total-venta label {
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--md-sys-color-on-primary-container);
+.floating-total {
+    display: flex;
+    flex-direction: column;
 }
 
-.total-venta span {
-    font-size: 20px;
+.floating-total span {
+    font-size: 12px;
+    color: var(--md-sys-color-on-surface-variant);
+}
+
+.floating-total strong {
+    font-size: 24px;
     font-weight: 700;
+    color: var(--md-sys-color-primary);
+}
+
+.floating-submit-bar .btn-submit {
+    margin: 0;
+    flex: 1;
+    max-width: 250px;
 }
 
 /* Delivery radio buttons */
@@ -882,7 +954,7 @@ body {
 
     body {
         padding-top: 88px; /* 64px navbar + 24px spacing */
-        padding-bottom: 0;
+        padding-bottom: 90px;
     }
 
     /* Desktop Form Layout */

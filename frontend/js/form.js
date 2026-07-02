@@ -31,24 +31,98 @@ function actualizarSelectVendedores() {
         select.appendChild(opt);
     });
     
+    // Autoseleccionar vendedor guardado
+    const ultimoVendedor = localStorage.getItem('ultimoVendedor');
+    if (ultimoVendedor) {
+        select.value = ultimoVendedor;
+        // Disparar change para cargar clientes de ese vendedor
+        setTimeout(() => select.dispatchEvent(new Event('change')), 100);
+    }
+    
     // Ocultar spinner cuando se cargan los vendedores
     const loader = document.getElementById('vendedor-loader');
     if (loader) loader.classList.add('hidden');
 }
 
 function actualizarSelectProductos() {
-    const select = document.getElementById('comboTipo');
-    if (!select) return;
+    const grid = document.getElementById('posProductsGrid');
+    if (!grid) return;
     
-    select.innerHTML = '<option value="">Selecciona un producto</option>';
+    grid.innerHTML = '';
     const prods = datosNegocio.productos || [];
     
+    if (prods.length === 0) {
+        grid.innerHTML = '<div class="loader-pos">No hay productos disponibles</div>';
+        return;
+    }
+    
     prods.forEach(p => {
-        const opt = document.createElement('option');
-        opt.value = p.id;
-        opt.textContent = `${p.tipo_pizza} - $${p.precio}`;
-        select.appendChild(opt);
+        const card = document.createElement('div');
+        card.className = 'pos-product-card';
+        
+        const itemEnCarrito = productosEnVenta.find(item => item.producto_id === p.id);
+        const qty = itemEnCarrito ? itemEnCarrito.cantidad : 0;
+        
+        card.innerHTML = `
+            <div class="pos-product-name">${p.tipo_pizza}</div>
+            <div class="pos-product-price">$${p.precio}</div>
+            <div class="pos-product-controls">
+                <button type="button" class="pos-btn-control btn-minus" data-id="${p.id}">-</button>
+                <span class="pos-product-qty" id="qty-${p.id}">${qty}</span>
+                <button type="button" class="pos-btn-control btn-plus" data-id="${p.id}">+</button>
+            </div>
+        `;
+        
+        grid.appendChild(card);
     });
+
+    document.querySelectorAll('.btn-plus').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            modificarCantidadPOS(parseInt(btn.getAttribute('data-id')), 1);
+        });
+    });
+
+    document.querySelectorAll('.btn-minus').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            modificarCantidadPOS(parseInt(btn.getAttribute('data-id')), -1);
+        });
+    });
+}
+
+function modificarCantidadPOS(producto_id, delta) {
+    const prods = datosNegocio.productos || [];
+    const prod = prods.find(p => p.id === producto_id);
+    if (!prod) return;
+
+    let itemIndex = productosEnVenta.findIndex(item => item.producto_id === producto_id);
+    
+    if (itemIndex > -1) {
+        productosEnVenta[itemIndex].cantidad += delta;
+        if (productosEnVenta[itemIndex].cantidad <= 0) {
+            productosEnVenta.splice(itemIndex, 1);
+        } else {
+            productosEnVenta[itemIndex].total = productosEnVenta[itemIndex].cantidad * prod.precio;
+        }
+    } else if (delta > 0) {
+        productosEnVenta.push({
+            producto_id: prod.id,
+            nombre: prod.tipo_pizza, // Fijado
+            cantidad: delta,
+            precio: prod.precio,
+            total: delta * prod.precio
+        });
+    }
+
+    const qtyElement = document.getElementById(`qty-${producto_id}`);
+    if (qtyElement) {
+        const itemActual = productosEnVenta.find(item => item.producto_id === producto_id);
+        qtyElement.textContent = itemActual ? itemActual.cantidad : 0;
+    }
+
+    actualizarResumen();
+    renderizarPedido();
 }
 
 // ============= EVENT LISTENERS PRINCIPAL =============
@@ -121,7 +195,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const vend = document.getElementById('vendedor');
     if (vend) {
         vend.addEventListener('change', (e) => {
-                const clientes = (datosNegocio.clientesPorVendedor && datosNegocio.clientesPorVendedor[e.target.value]) || [];
+            if (e.target.value) localStorage.setItem('ultimoVendedor', e.target.value);
+            const clientes = (datosNegocio.clientesPorVendedor && datosNegocio.clientesPorVendedor[e.target.value]) || [];
             const drop = document.getElementById('clientes-dropdown');
             const lista = document.getElementById('clientes-list');
             if (e.target.value && clientes.length > 0) {
@@ -170,45 +245,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
     
-    const comboTipo = document.getElementById('comboTipo');
-    if (comboTipo) {
-        comboTipo.addEventListener('change', () => {
-            actualizarPrecio();
-            verificarBtnAgregarAlPedido();
-        });
-    }
+    // Los listeners de los viejos botones de cantidad han sido reemplazados por la cuadrícula POS
     
-    const comboCant = document.getElementById('comboCantidad');
-    if (comboCant) comboCant.addEventListener('change', actualizarPrecio);
+    // Configurar Chips Selectors
+    const setupChips = (containerId, inputId) => {
+        const container = document.getElementById(containerId);
+        const input = document.getElementById(inputId);
+        if (container && input) {
+            const btns = container.querySelectorAll('.chip-btn');
+            btns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    btns.forEach(b => b.classList.remove('selected'));
+                    btn.classList.add('selected');
+                    input.value = btn.getAttribute('data-value');
+                });
+            });
+        }
+    };
     
-    const btnMas = document.getElementById('btnCantidadMas');
-    if (btnMas) {
-        btnMas.addEventListener('click', (e) => {
-            e.preventDefault();
-            comboCant.value = parseInt(comboCant.value) + 1;
-            actualizarPrecio();
-        });
-    }
-    
-    const btnMenos = document.getElementById('btnCantidadMenos');
-    if (btnMenos) {
-        btnMenos.addEventListener('click', (e) => {
-            e.preventDefault();
-            if (parseInt(comboCant.value) > 1) {
-                comboCant.value = parseInt(comboCant.value) - 1;
-                actualizarPrecio();
-            }
-        });
-    }
-    
-    const btnAdd = document.getElementById('btnAddToPedido');
-    if (btnAdd) {
-        btnAdd.addEventListener('click', (e) => {
-            e.preventDefault();
-            agregarProductoAlPedido();
-        });
-        verificarBtnAgregarAlPedido();
-    }
+    setupChips('chips-pago', 'payment_method');
+    setupChips('chips-estado', 'estado');
     
     const form = document.getElementById('ventaForm');
     if (form) {
@@ -294,70 +350,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // ============= FUNCIONES AUXILIARES =============
-function agregarProductoAlPedido() {
-    const tipo = document.getElementById('comboTipo').value;
-    const cantidad = parseInt(document.getElementById('comboCantidad').value) || 1;
-    
-    if (!tipo || !cantidad) {
-        UIUtils.showMessage('Completa los datos del producto', 'error');
-        return;
-    }
-    
-    const producto = datosNegocio.productos?.find(p => p.id == tipo);
-    if (!producto) return;
-    
-    productosEnVenta.push({
-        producto_id: producto.id,
-        nombre: producto.tipo_pizza,
-        cantidad: cantidad,
-        precio: producto.precio,
-        total: producto.precio * cantidad
-    });
-    
-    // Reset del formulario - limpiar ambos campos
-    document.getElementById('comboTipo').value = '';
-    document.getElementById('comboCantidad').value = '1';
-    document.getElementById('comboPrice').textContent = '$0.00';
-    
-    actualizarResumen();
-    renderizarPedido();
-    verificarBtnAgregarAlPedido();
-    UIUtils.showMessage('Producto agregado al pedido', 'success');
-}
-
 function actualizarResumen() {
     const total = productosEnVenta.reduce((sum, p) => sum + p.total, 0);
     const el = document.getElementById('totalVenta');
     if (el) el.textContent = UIUtils.formatCurrency(total);
-}
-
-function actualizarPrecio() {
-    const tipo = document.getElementById('comboTipo').value;
-    const cantidad = parseInt(document.getElementById('comboCantidad').value) || 1;
-    
-    if (!tipo) {
-        document.getElementById('comboPrice').textContent = '$0.00';
-        return;
-    }
-    
-    const producto = datosNegocio.productos?.find(p => String(p.id) === String(tipo));
-    if (!producto) {
-        Logger.log('Producto no encontrado:', tipo);
-        document.getElementById('comboPrice').textContent = '$0.00';
-        return;
-    }
-    
-    const total = producto.precio * cantidad;
-    document.getElementById('comboPrice').textContent = UIUtils.formatCurrency(total);
-    verificarBtnAgregarAlPedido();
-}
-
-function verificarBtnAgregarAlPedido() {
-    const btn = document.getElementById('btnAddToPedido');
-    if (!btn) return;
-    
-    const tipo = document.getElementById('comboTipo').value;
-    btn.disabled = !tipo;
 }
 
 function renderizarPedido() {

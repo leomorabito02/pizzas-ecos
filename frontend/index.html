@@ -80,29 +80,9 @@
             <fieldset class="form-section">
                 <legend><span class="material-symbols-outlined">local_pizza</span> Seleccionar Producto</legend>
                 
-                <div class="combo-selector">
-                    <div class="form-group">
-                        <label for="comboTipo">Producto:</label>
-                        <select id="comboTipo" name="comboTipo">
-                            <option value="">Selecciona un producto...</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="comboCantidad">Cantidad:</label>
-                        <div class="cantidad-controls-inline">
-                            <button type="button" id="btnCantidadMenos" class="btn-cantidad-mas-menos">−</button>
-                            <input type="number" id="comboCantidad" name="comboCantidad" value="1" min="1" readonly>
-                            <button type="button" id="btnCantidadMas" class="btn-cantidad-mas-menos">+</button>
-                        </div>
-                    </div>
-
-                    <div class="combo-preview">
-                        <div class="combo-price" id="comboPrice">$0.00</div>
-                        <button type="button" class="btn-add-to-pedido" id="btnAddToPedido">
-                            <span class="material-symbols-outlined">add_shopping_cart</span> Agregar al Pedido
-                        </button>
-                    </div>
+                <div class="pos-products-grid" id="posProductsGrid">
+                    <!-- Las tarjetas de productos se renderizarán aquí desde form.js -->
+                    <div class="loader-pos">Cargando productos...</div>
                 </div>
             </fieldset>
 
@@ -114,12 +94,6 @@
                     <div class="pedido-vacio">Agrega productos a tu pedido</div>
                 </div>
 
-                <div class="venta-summary">
-                    <div class="total-venta">
-                        <label>Total Venta:</label>
-                        <span id="totalVenta">$0.00</span>
-                    </div>
-                </div>
             </fieldset>
 
             <!-- Sección 3: Método de Pago y Estado -->
@@ -127,23 +101,23 @@
                 <legend><span class="material-symbols-outlined">payments</span> Detalles de Pago</legend>
                 
                 <div class="form-group">
-                    <label for="payment_method">Método de Pago:</label>
-                    <select id="payment_method" name="payment_method" required>
-                        <option value="">Selecciona un método</option>
-                        <option value="efectivo">Efectivo</option>
-                        <option value="transferencia">Transferencia</option>
-                    </select>
+                    <label>Método de Pago:</label>
+                    <input type="hidden" id="payment_method" name="payment_method" required>
+                    <div class="chips-container" id="chips-pago">
+                        <button type="button" class="chip-btn" data-value="efectivo">Efectivo</button>
+                        <button type="button" class="chip-btn" data-value="transferencia">Transferencia</button>
+                    </div>
                 </div>
                 
                 <div class="form-group">
-                    <label for="estado">Estado:</label>
-                    <select id="estado" name="estado" required>
-                        <option value="">Selecciona un estado</option>
-                        <option value="sin_pagar">Sin Pagar</option>
-                        <option value="pagada">Pagada</option>
-                        <option value="entregada">Entregada</option>
-                        <option value="cancelada">Cancelada</option>
-                    </select>
+                    <label>Estado:</label>
+                    <input type="hidden" id="estado" name="estado" required>
+                    <div class="chips-container" id="chips-estado">
+                        <button type="button" class="chip-btn" data-value="sin_pagar">Sin Pagar</button>
+                        <button type="button" class="chip-btn" data-value="pagada">Pagada</button>
+                        <button type="button" class="chip-btn" data-value="entregada">Entregada</button>
+                        <button type="button" class="chip-btn" data-value="cancelada">Cancelada</button>
+                    </div>
                 </div>
             </fieldset>
 
@@ -170,11 +144,17 @@
                 </div>
             </fieldset>
 
-            <!-- Botón Enviar -->
-            <button type="submit" class="btn-submit">
-                <span class="btn-text">Guardar Venta</span>
-                <span class="btn-spinner hidden"><span class="material-symbols-outlined spinner-icon">progress_activity</span></span>
-            </button>
+            <!-- Barra Flotante de Submit -->
+            <div class="floating-submit-bar">
+                <div class="floating-total">
+                    <span>Total:</span>
+                    <strong id="totalVenta">$0.00</strong>
+                </div>
+                <button type="submit" class="btn-submit">
+                    <span class="btn-text">Guardar Venta</span>
+                    <span class="btn-spinner hidden"><span class="material-symbols-outlined spinner-icon">progress_activity</span></span>
+                </button>
+            </div>
         </form>
 
         <!-- Mensaje de Resultado -->
