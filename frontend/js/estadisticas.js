@@ -437,14 +437,18 @@ function renderizarVendedores() {
         const card = document.createElement('div');
         card.className = 'vendedor-card';
         card.innerHTML = `
-            <h3 style="margin: 0 0 12px 0; font-size: 18px; display: flex; align-items: center; gap: 8px;"><span class="material-symbols-outlined">person</span> ${vendedor.nombre}</h3>
-            
-            <!-- ESTADÍSTICAS PRINCIPALES -->
-            <div class="vendedor-stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));">
-                <div class="vendedor-stat">
-                    <span class="vendedor-stat-label"><span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle; margin-right: 4px;">analytics</span> Ventas:</span>
-                    <span class="vendedor-stat-value">${cantidadVentas}</span>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--md-sys-color-outline-variant); padding-bottom: 12px;">
+                <h3 style="margin: 0; font-size: 18px; display: flex; align-items: center; gap: 8px;">
+                    <span class="material-symbols-outlined">person</span> ${vendedor.nombre}
+                </h3>
+                <div style="background: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container); padding: 4px 12px; border-radius: 16px; font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 6px;">
+                    <span class="material-symbols-outlined" style="font-size: 18px;">receipt_long</span>
+                    ${cantidadVentas} ${cantidadVentas === 1 ? 'Venta' : 'Ventas'}
                 </div>
+            </div>
+            
+            <!-- PRODUCTOS VENDIDOS -->
+            <div class="vendedor-stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));">
                 ${productosHTML}
             </div>
             
