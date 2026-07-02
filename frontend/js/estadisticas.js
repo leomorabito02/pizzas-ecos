@@ -901,6 +901,12 @@ document.addEventListener('DOMContentLoaded', () => {
     
     cargarDatos();
 
+    // Precargar datos principales en background
+    setTimeout(() => {
+        Logger.log('📡 Precargando datos principales en background...');
+        api.getData().catch(e => Logger.log('Error precarga index:', e));
+    }, 500);
+
     // Leer tab desde la URL
     const urlParams = new URLSearchParams(window.location.search);
     const initialTab = urlParams.get('tab');

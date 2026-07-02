@@ -89,6 +89,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         actualizarSelectVendedores();
         actualizarSelectProductos();
         Logger.log('✅ Selects actualizados');
+
+        // Precargar estadísticas en background
+        setTimeout(() => {
+            Logger.log('📡 Precargando estadísticas en background...');
+            api.obtenerEstadisticas(10, 1).catch(e => Logger.log('Error precarga stats:', e));
+        }, 500);
     } catch (error) {
         console.error('❌ Error inicializando:', error);
         UIUtils.showMessage('Error cargando datos iniciales: ' + error.message, 'error');
