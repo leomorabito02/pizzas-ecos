@@ -173,3 +173,15 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+
+// Prevenir que hacer clic en la pestaña activa recargue la página
+document.addEventListener('DOMContentLoaded', () => {
+    const navBtns = document.querySelectorAll('.nav-btn');
+    navBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            if (btn.classList.contains('active')) {
+                e.preventDefault();
+            }
+        });
+    });
+});

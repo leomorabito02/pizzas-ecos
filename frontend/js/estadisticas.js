@@ -801,23 +801,21 @@ async function guardarCambios() {
             payload.productos_eliminar = productosAEliminar;
         }
 
-        const response = await fetch(`${API_BASE}/actualizar-venta/${ventaEnEdicion.id}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
+        try {
+            const response = await api.request(`/actualizar-venta/${ventaEnEdicion.id}`, {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            });
 
-        Logger.log('guardarCambios - response status:', response.status);
-        Logger.log('guardarCambios - payload enviado:', payload);
-
-        if (response.ok) {
+            Logger.log('guardarCambios - payload enviado:', payload);
             showMessage('Venta actualizada correctamente', 'success');
             cerrarModal();
             await cargarDatos();
-        } else {
-            const err = await response.text();
-            showMessage('✗ Error al actualizar: ' + err, 'error');
+        } catch (error) {
+            showMessage('✗ Error al actualizar: ' + error.message, 'error');
         }
+
+
     } catch (error) {
         showMessage('Error: ' + error.message, 'error');
     } finally {

@@ -32,6 +32,31 @@ class APIService {
     constructor(baseURL) {
         this._baseURL = baseURL;
         this.token = this.getStoredToken();
+        
+        // Limpiar caché si la página fue recargada manualmente (F5)
+        try {
+            const navEntries = performance.getEntriesByType("navigation");
+            if (navEntries.length > 0 && navEntries[0].type === "reload") {
+                this.clearCache();
+            }
+        } catch (e) {
+            console.warn("Performance API no soportada");
+        }
+    }
+
+    /**
+     * Limpia la caché almacenada en sessionStorage
+     */
+    clearCache() {
+        console.log('🧹 Limpiando caché de la API...');
+        const keysToRemove = [];
+        for (let i = 0; i < sessionStorage.length; i++) {
+            const key = sessionStorage.key(i);
+            if (key && key.startsWith('api_cache_')) {
+                keysToRemove.push(key);
+            }
+        }
+        keysToRemove.forEach(key => sessionStorage.removeItem(key));
     }
 
     // Getter para baseURL que siempre usa la URL actualizada
@@ -103,10 +128,29 @@ class APIService {
     }
 
     /**
-     * Wrapper para fetch con manejo de errores
+     * Wrapper para fetch con manejo de errores y caché
      */
     async request(endpoint, options = {}) {
         const url = `${this.baseURL}${endpoint}`;
+        const method = (options.method || 'GET').toUpperCase();
+        
+        // Lógica de caché para peticiones GET
+        const cacheKey = `api_cache_${endpoint}`;
+        if (method === 'GET') {
+            const cached = sessionStorage.getItem(cacheKey);
+            if (cached) {
+                try {
+                    console.log(`🚀 [Cache Hit] ${endpoint}`);
+                    return JSON.parse(cached);
+                } catch (e) {
+                    console.warn('Error procesando caché', e);
+                }
+            }
+        } else if (['POST', 'PUT', 'DELETE'].includes(method)) {
+            // Invalidar caché cuando se modifican datos
+            this.clearCache();
+        }
+
         const config = {
             ...options,
             headers: {
@@ -129,6 +173,11 @@ class APIService {
 
             if (!response.ok) {
                 throw new Error(data.error || `HTTP Error: ${response.status}`);
+            }
+
+            // Guardar en caché si fue exitoso
+            if (method === 'GET') {
+                sessionStorage.setItem(cacheKey, JSON.stringify(data));
             }
 
             return data;

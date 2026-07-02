@@ -79,12 +79,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // Cargar datos iniciales
         UIUtils.showSpinner(true);
-        const url = `${API_BASE}/data`;
-        Logger.log('📡 Fetching from:', url);
-        const resp = await fetch(url);
-        
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const jsonResp = await resp.json();
+        Logger.log('📡 Fetching data via APIService...');
+        const jsonResp = await api.getData();
         // El backend retorna {status, data, message}, extraer data
         datosNegocio = (jsonResp && jsonResp.data) ? jsonResp.data : jsonResp;
         Logger.log('✅ Datos cargados:', datosNegocio);
