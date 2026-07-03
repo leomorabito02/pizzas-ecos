@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"log"
 	"pizzas-ecos/models"
+	"pizzas-ecos/security"
 	"strings"
 )
 
 var DB *sql.DB
 
-// GetVendedores retorna lista de vendedores
+// GetVendedores retorna lista de vendedores (nombres desencriptados)
 func GetVendedores() ([]models.Vendedor, error) {
 	rows, err := DB.Query("SELECT id, nombre FROM vendedores ORDER BY nombre")
 	if err != nil {
@@ -21,33 +22,39 @@ func GetVendedores() ([]models.Vendedor, error) {
 	var vendedores []models.Vendedor
 	for rows.Next() {
 		var vendedor models.Vendedor
-		if err := rows.Scan(&vendedor.ID, &vendedor.Nombre); err != nil {
+		var encNombre string
+		if err := rows.Scan(&vendedor.ID, &encNombre); err != nil {
 			return nil, err
 		}
+		nombre, err := security.Decrypt(encNombre)
+		if err != nil {
+			return nil, fmt.Errorf("error desencriptando vendedor %d: %w", vendedor.ID, err)
+		}
+		vendedor.Nombre = nombre
 		vendedores = append(vendedores, vendedor)
 	}
 
 	return vendedores, nil
 }
 
-// GetVendedorID obtiene el ID de un vendedor por nombre
+// GetVendedorID obtiene el ID de un vendedor buscando por HMAC del nombre
 func GetVendedorID(nombre string) (int, error) {
 	var id int
-	err := DB.QueryRow("SELECT id FROM vendedores WHERE nombre = $1", nombre).Scan(&id)
+	hash := security.HMACField(nombre)
+	err := DB.QueryRow("SELECT id FROM vendedores WHERE nombre_hash = $1", hash).Scan(&id)
 	return id, err
 }
 
-// GetClientesPorVendedor obtiene clientes agrupados por vendedor (solo clientes que han tenido ventas con ese vendedor)
+// GetClientesPorVendedor obtiene clientes agrupados por vendedor (nombres desencriptados)
 func GetClientesPorVendedor() (map[string][]models.Cliente, error) {
 	result := make(map[string][]models.Cliente)
 
-	// Query para obtener clientes por vendedor basándose en ventas
 	query := `
 		SELECT DISTINCT
 			v.nombre as vendedor,
 			c.id,
 			c.nombre,
-			COALESCE(c.telefono, 0) as telefono
+			COALESCE(c.telefono, '') as telefono
 		FROM ventas vt
 		JOIN vendedores v ON vt.vendedor_id = v.id
 		JOIN clientes c ON vt.cliente_id = c.id
@@ -60,42 +67,59 @@ func GetClientesPorVendedor() (map[string][]models.Cliente, error) {
 	}
 	defer rows.Close()
 
-	// Procesar resultados y agrupar por vendedor
 	for rows.Next() {
-		var vendedor string
+		var encVendedor, encNombre, encTelefono string
 		var cliente models.Cliente
-		if err := rows.Scan(&vendedor, &cliente.ID, &cliente.Nombre, &cliente.Telefono); err != nil {
+		if err := rows.Scan(&encVendedor, &cliente.ID, &encNombre, &encTelefono); err != nil {
 			return nil, err
 		}
-		cliente.Nombre = strings.TrimSpace(cliente.Nombre)
+		vendedor, err := security.Decrypt(encVendedor)
+		if err != nil {
+			return nil, fmt.Errorf("error desencriptando vendedor en clientes: %w", err)
+		}
+		nombre, err := security.Decrypt(encNombre)
+		if err != nil {
+			return nil, fmt.Errorf("error desencriptando cliente %d: %w", cliente.ID, err)
+		}
+		cliente.Nombre = strings.TrimSpace(nombre)
+		if encTelefono != "" {
+			decTel, err := security.Decrypt(encTelefono)
+			if err == nil {
+				var tel int
+				fmt.Sscanf(decTel, "%d", &tel)
+				cliente.Telefono = tel
+			}
+		}
 		result[vendedor] = append(result[vendedor], cliente)
 	}
 
 	return result, nil
 }
 
-// GetOrCreateCliente obtiene o crea un cliente
+// GetOrCreateCliente obtiene o crea un cliente usando HMAC para búsqueda
 func GetOrCreateCliente(nombre string) (int, error) {
-	// Limpieza básica
 	nombre = strings.TrimSpace(nombre)
 
-	// Usamos transacción para asegurar lectura consistente o escritura
 	tx, err := DB.Begin()
 	if err != nil {
 		return 0, err
 	}
-	defer tx.Rollback() // Rollback seguro si no hay commit
+	defer tx.Rollback()
 
 	var id int
-	// Intentamos buscar primero
-	err = tx.QueryRow("SELECT id FROM clientes WHERE nombre = $1", nombre).Scan(&id)
+	hash := security.HMACField(nombre)
+	err = tx.QueryRow("SELECT id FROM clientes WHERE nombre_hash = $1", hash).Scan(&id)
 	if err == nil {
-		return id, nil // Ya existe, no hacemos commit porque fue solo lectura, rollback limpia el contexto
+		return id, nil
 	}
 
-	// Si no existe, creamos
+	encNombre, err := security.Encrypt(nombre)
+	if err != nil {
+		return 0, fmt.Errorf("error encriptando nombre cliente: %w", err)
+	}
+
 	var idInt int64
-	err = tx.QueryRow("INSERT INTO clientes (nombre) VALUES ($1) RETURNING id", nombre).Scan(&idInt)
+	err = tx.QueryRow("INSERT INTO clientes (nombre, nombre_hash) VALUES ($1, $2) RETURNING id", encNombre, hash).Scan(&idInt)
 	if err != nil {
 		return 0, err
 	}
@@ -107,11 +131,12 @@ func GetOrCreateCliente(nombre string) (int, error) {
 	return int(idInt), nil
 }
 
-// GetClienteByNombre devuelve id y telefono (0 si null) y si existe
+// GetClienteByNombre devuelve id y telefono (0 si null) y si existe; busca por HMAC
 func GetClienteByNombre(nombre string) (int, int, bool, error) {
 	var id int
-	var telefono sql.NullInt64
-	err := DB.QueryRow("SELECT id, telefono FROM clientes WHERE nombre = $1", nombre).Scan(&id, &telefono)
+	var encTelefono sql.NullString
+	hash := security.HMACField(nombre)
+	err := DB.QueryRow("SELECT id, telefono FROM clientes WHERE nombre_hash = $1", hash).Scan(&id, &encTelefono)
 	if err == sql.ErrNoRows {
 		return 0, 0, false, nil
 	}
@@ -119,37 +144,59 @@ func GetClienteByNombre(nombre string) (int, int, bool, error) {
 		return 0, 0, false, err
 	}
 	tel := 0
-	if telefono.Valid {
-		tel = int(telefono.Int64)
+	if encTelefono.Valid && encTelefono.String != "" {
+		decTel, err := security.Decrypt(encTelefono.String)
+		if err == nil {
+			fmt.Sscanf(decTel, "%d", &tel)
+		}
 	}
 	return id, tel, true, nil
 }
 
-// CreateClienteWithTelefono crea un cliente con telefono opcional
+// CreateClienteWithTelefono crea un cliente con telefono opcional (ambos encriptados)
 func CreateClienteWithTelefono(nombre string, telefono *int) (int, error) {
+	encNombre, err := security.Encrypt(nombre)
+	if err != nil {
+		return 0, fmt.Errorf("error encriptando nombre: %w", err)
+	}
+	nombreHash := security.HMACField(nombre)
+
 	var id64 int64
-	var err error
 	if telefono != nil {
-		err = DB.QueryRow("INSERT INTO clientes (nombre, telefono) VALUES ($1, $2) RETURNING id", nombre, *telefono).Scan(&id64)
+		encTel, err := security.Encrypt(fmt.Sprintf("%d", *telefono))
+		if err != nil {
+			return 0, fmt.Errorf("error encriptando telefono: %w", err)
+		}
+		err = DB.QueryRow(
+			"INSERT INTO clientes (nombre, nombre_hash, telefono) VALUES ($1, $2, $3) RETURNING id",
+			encNombre, nombreHash, encTel,
+		).Scan(&id64)
 		if err != nil {
 			return 0, err
 		}
 		return int(id64), nil
 	}
-	err = DB.QueryRow("INSERT INTO clientes (nombre) VALUES ($1) RETURNING id", nombre).Scan(&id64)
+	err = DB.QueryRow(
+		"INSERT INTO clientes (nombre, nombre_hash) VALUES ($1, $2) RETURNING id",
+		encNombre, nombreHash,
+	).Scan(&id64)
 	if err != nil {
 		return 0, err
 	}
 	return int(id64), nil
 }
 
-// UpdateClienteTelefono actualiza el telefono de un cliente
+// UpdateClienteTelefono actualiza el telefono de un cliente (encriptado)
 func UpdateClienteTelefono(id int, telefono *int) error {
 	if telefono == nil {
 		_, err := DB.Exec("UPDATE clientes SET telefono = NULL WHERE id = $1", id)
 		return err
 	}
-	_, err := DB.Exec("UPDATE clientes SET telefono = $1 WHERE id = $2", *telefono, id)
+	encTel, err := security.Encrypt(fmt.Sprintf("%d", *telefono))
+	if err != nil {
+		return fmt.Errorf("error encriptando telefono: %w", err)
+	}
+	_, err = DB.Exec("UPDATE clientes SET telefono = $1 WHERE id = $2", encTel, id)
 	return err
 }
 
@@ -280,13 +327,28 @@ func GetAllVentas(includeCanceladas bool, limit, offset int) ([]models.VentaStat
 
 	for rows.Next() {
 		v := &models.VentaStats{}
-		var telefono sql.NullInt64
-		if err := rows.Scan(&v.ID, &v.Vendedor, &v.Cliente, &telefono, &v.Total, &v.PaymentMethod, &v.Estado, &v.TipoEntrega, &v.CreatedAt); err != nil {
+		var encVendedor, encCliente string
+		var encTelefono sql.NullString
+		if err := rows.Scan(&v.ID, &encVendedor, &encCliente, &encTelefono, &v.Total, &v.PaymentMethod, &v.Estado, &v.TipoEntrega, &v.CreatedAt); err != nil {
 			return nil, err
 		}
-		if telefono.Valid {
-			tel := int(telefono.Int64)
-			v.TelefonoCliente = &tel
+		vendedor, err := security.Decrypt(encVendedor)
+		if err != nil {
+			return nil, fmt.Errorf("error desencriptando vendedor en venta %d: %w", v.ID, err)
+		}
+		v.Vendedor = vendedor
+		// El cliente puede ser 'Sin cliente' (literal no encriptado) o un nombre encriptado
+		if decCliente, err := security.Decrypt(encCliente); err == nil {
+			v.Cliente = decCliente
+		} else {
+			v.Cliente = encCliente
+		}
+		if encTelefono.Valid && encTelefono.String != "" {
+			if decTel, err := security.Decrypt(encTelefono.String); err == nil {
+				var tel int
+				fmt.Sscanf(decTel, "%d", &tel)
+				v.TelefonoCliente = &tel
+			}
 		} else {
 			v.TelefonoCliente = nil
 		}
@@ -571,9 +633,9 @@ func GetVendedoresConStats() ([]map[string]interface{}, error) {
 		pRows.Close()
 	}
 
-	// 3. Obtener lista de deudores por vendedor
+	// 3. Obtener lista de deudores por vendedor (nombres desencriptados)
 	deudoresQuery := `
-		SELECT v.vendedor_id, COALESCE(c.nombre, 'Sin cliente') as cliente, v.payment_method, v.total
+		SELECT v.vendedor_id, COALESCE(c.nombre, '') as cliente, v.payment_method, v.total
 		FROM ventas v
 		LEFT JOIN clientes c ON v.cliente_id = c.id
 		WHERE v.estado = 'sin_pagar'
@@ -582,9 +644,17 @@ func GetVendedoresConStats() ([]map[string]interface{}, error) {
 	if err == nil {
 		for dRows.Next() {
 			var vId int
-			var cliente, paymentMethod string
+			var encCliente, paymentMethod string
 			var total float64
-			if err := dRows.Scan(&vId, &cliente, &paymentMethod, &total); err == nil {
+			if err := dRows.Scan(&vId, &encCliente, &paymentMethod, &total); err == nil {
+				cliente := encCliente
+				if encCliente != "" {
+					if dec, err := security.Decrypt(encCliente); err == nil {
+						cliente = dec
+					}
+				} else {
+					cliente = "Sin cliente"
+				}
 				if vm, ok := vendedoresMap[vId]; ok {
 					deudores := vm["deudores"].([]map[string]interface{})
 					deudores = append(deudores, map[string]interface{}{
@@ -737,19 +807,25 @@ func GetProductoByID(id int) (*models.Producto, error) {
 	return &p, nil
 }
 
-// GetUserByCredentials obtiene un usuario por credenciales
+// GetUserByCredentials obtiene un usuario por credenciales; busca por HMAC del username
 func GetUserByCredentials(username, plainPassword string) (*models.User, error) {
 	var user models.User
-	var storedHash string
+	var encUsername, storedHash string
+	hash := security.HMACField(username)
 	err := DB.QueryRow(
-		"SELECT id, username, rol, password_hash FROM usuarios WHERE username = $1",
-		username).Scan(&user.ID, &user.Username, &user.Rol, &storedHash)
+		"SELECT id, username, rol, password_hash FROM usuarios WHERE username_hash = $1",
+		hash).Scan(&user.ID, &encUsername, &user.Rol, &storedHash)
 
 	if err != nil {
 		return nil, err
 	}
 
-	// Comparar la contraseña en texto plano con el hash almacenado
+	decUsername, err := security.Decrypt(encUsername)
+	if err != nil {
+		return nil, fmt.Errorf("error desencriptando username: %w", err)
+	}
+	user.Username = decUsername
+
 	if !VerifyPassword(storedHash, plainPassword) {
 		return nil, fmt.Errorf("contraseña inválida")
 	}
@@ -863,19 +939,35 @@ func DeleteProducto(id int) error {
 	return nil
 }
 
-// CreateVendedor crea un nuevo vendedor
+// CreateVendedor crea un nuevo vendedor (nombre encriptado)
 func CreateVendedor(nombre string) (int64, error) {
+	encNombre, err := security.Encrypt(nombre)
+	if err != nil {
+		return 0, fmt.Errorf("error encriptando nombre vendedor: %w", err)
+	}
+	nombreHash := security.HMACField(nombre)
 	var id int64
-	err := DB.QueryRow(`INSERT INTO vendedores (nombre) VALUES ($1) RETURNING id`, nombre).Scan(&id)
+	err = DB.QueryRow(
+		`INSERT INTO vendedores (nombre, nombre_hash) VALUES ($1, $2) RETURNING id`,
+		encNombre, nombreHash,
+	).Scan(&id)
 	if err != nil {
 		return 0, err
 	}
 	return id, nil
 }
 
-// UpdateVendedor actualiza un vendedor
+// UpdateVendedor actualiza un vendedor (nombre encriptado)
 func UpdateVendedor(id int, nombre string) error {
-	result, err := DB.Exec(`UPDATE vendedores SET nombre = $1 WHERE id = $2`, nombre, id)
+	encNombre, err := security.Encrypt(nombre)
+	if err != nil {
+		return fmt.Errorf("error encriptando nombre vendedor: %w", err)
+	}
+	nombreHash := security.HMACField(nombre)
+	result, err := DB.Exec(
+		`UPDATE vendedores SET nombre = $1, nombre_hash = $2 WHERE id = $3`,
+		encNombre, nombreHash, id,
+	)
 	if err != nil {
 		return err
 	}
@@ -903,7 +995,7 @@ func DeleteVendedor(id int) error {
 	return nil
 }
 
-// GetAllUsers obtiene todos los usuarios sin contraseñas
+// GetAllUsers obtiene todos los usuarios sin contraseñas (usernames desencriptados)
 func GetAllUsers() ([]models.User, error) {
 	rows, err := DB.Query("SELECT id, username, rol FROM usuarios ORDER BY username")
 	if err != nil {
@@ -914,9 +1006,15 @@ func GetAllUsers() ([]models.User, error) {
 	var usuarios []models.User
 	for rows.Next() {
 		var usuario models.User
-		if err := rows.Scan(&usuario.ID, &usuario.Username, &usuario.Rol); err != nil {
+		var encUsername string
+		if err := rows.Scan(&usuario.ID, &encUsername, &usuario.Rol); err != nil {
 			return nil, err
 		}
+		decUsername, err := security.Decrypt(encUsername)
+		if err != nil {
+			return nil, fmt.Errorf("error desencriptando username %d: %w", usuario.ID, err)
+		}
+		usuario.Username = decUsername
 		usuarios = append(usuarios, usuario)
 	}
 
@@ -931,25 +1029,31 @@ func GetAllUsers() ([]models.User, error) {
 	return usuarios, nil
 }
 
-// UserExists verifica si un usuario existe
+// UserExists verifica si un usuario existe buscando por HMAC del username
 func UserExists(username string) (bool, error) {
 	var exists bool
-	err := DB.QueryRow("SELECT EXISTS(SELECT 1 FROM usuarios WHERE username = $1)", username).Scan(&exists)
+	hash := security.HMACField(username)
+	err := DB.QueryRow("SELECT EXISTS(SELECT 1 FROM usuarios WHERE username_hash = $1)", hash).Scan(&exists)
 	return exists, err
 }
 
-// CreateUser crea un nuevo usuario con contraseña hasheada
+// CreateUser crea un nuevo usuario con contraseña hasheada y username encriptado
 func CreateUser(username, password, rol string) (int, error) {
-	// Hash la contraseña
-	hash, err := HashPassword(password)
+	passHash, err := HashPassword(password)
 	if err != nil {
 		return 0, err
 	}
 
+	encUsername, err := security.Encrypt(username)
+	if err != nil {
+		return 0, fmt.Errorf("error encriptando username: %w", err)
+	}
+	usernameHash := security.HMACField(username)
+
 	var id int64
 	err = DB.QueryRow(
-		"INSERT INTO usuarios (username, password_hash, rol) VALUES ($1, $2, $3) RETURNING id",
-		username, hash, rol,
+		"INSERT INTO usuarios (username, username_hash, password_hash, rol) VALUES ($1, $2, $3, $4) RETURNING id",
+		encUsername, usernameHash, passHash, rol,
 	).Scan(&id)
 	if err != nil {
 		return 0, err
@@ -958,28 +1062,35 @@ func CreateUser(username, password, rol string) (int, error) {
 	return int(id), nil
 }
 
-// UpdateUser actualiza un usuario existente
+// UpdateUser actualiza un usuario existente (username encriptado)
 func UpdateUser(id int, username, password, rol string) error {
-	var query string
-	var args []interface{}
+	encUsername, err := security.Encrypt(username)
+	if err != nil {
+		return fmt.Errorf("error encriptando username: %w", err)
+	}
+	usernameHash := security.HMACField(username)
 
+	var result sql.Result
 	if password != "" {
-		// Si se proporciona contraseña, actualizarla también
-		hash, err := HashPassword(password)
+		passHash, err := HashPassword(password)
 		if err != nil {
 			return err
 		}
-		query = "UPDATE usuarios SET username = $1, password_hash = $2, rol = $3 WHERE id = $4"
-		args = []interface{}{username, hash, rol, id}
+		result, err = DB.Exec(
+			"UPDATE usuarios SET username = $1, username_hash = $2, password_hash = $3, rol = $4 WHERE id = $5",
+			encUsername, usernameHash, passHash, rol, id,
+		)
+		if err != nil {
+			return err
+		}
 	} else {
-		// Si no se proporciona contraseña, solo actualizar username y rol
-		query = "UPDATE usuarios SET username = $1, rol = $2 WHERE id = $3"
-		args = []interface{}{username, rol, id}
-	}
-
-	result, err := DB.Exec(query, args...)
-	if err != nil {
-		return err
+		result, err = DB.Exec(
+			"UPDATE usuarios SET username = $1, username_hash = $2, rol = $3 WHERE id = $4",
+			encUsername, usernameHash, rol, id,
+		)
+		if err != nil {
+			return err
+		}
 	}
 
 	rowsAffected, _ := result.RowsAffected()

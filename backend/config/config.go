@@ -12,6 +12,7 @@ import (
 	_ "github.com/lib/pq"
 
 	"pizzas-ecos/database"
+	"pizzas-ecos/security"
 )
 
 // InitDB inicializa la conexión a PostgreSQL
@@ -43,6 +44,11 @@ func InitDB() error {
 
 	// Guardar en el package database
 	database.DB = db
+
+	// Inicializar encriptación de campos sensibles
+	if err := security.InitCrypto(); err != nil {
+		log.Fatalf("❌ Error inicializando crypto: %v", err)
+	}
 
 	log.Println("✅ Conectado a PostgreSQL exitosamente")
 	return nil
