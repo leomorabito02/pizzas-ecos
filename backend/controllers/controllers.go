@@ -248,7 +248,8 @@ func (c *VentaController) ObtenerEstadisticas(w http.ResponseWriter, r *http.Req
 // ObtenerTodasVentas retorna todas las ventas (paginadas)
 func (c *VentaController) ObtenerTodasVentas(w http.ResponseWriter, r *http.Request) {
 	limit, offset := getPaginationParams(r)
-	ventas, err := c.ventaService.ObtenerTodasVentas(limit, offset)
+	vendedor := r.URL.Query().Get("vendedor")
+	ventas, err := c.ventaService.ObtenerTodasVentas(limit, offset, vendedor)
 	if err != nil {
 		logger.Error("ObtenerTodasVentas: Error", "VENTAS_LIST_ERROR", map[string]interface{}{"error": err.Error()})
 		errors.WriteError(w, errors.ErrServerError, "Error al obtener ventas")

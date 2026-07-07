@@ -31,7 +31,7 @@ func (s *TestVentaService) ObtenerEstadisticas(limit, offset int) (map[string]in
 	return map[string]interface{}{}, nil
 }
 
-func (s *TestVentaService) ObtenerTodasVentas(limit, offset int) ([]models.VentaStats, error) {
+func (s *TestVentaService) ObtenerTodasVentas(limit, offset int, vendedor string) ([]models.VentaStats, error) {
 	return []models.VentaStats{}, nil
 }
 

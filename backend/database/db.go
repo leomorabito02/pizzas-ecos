@@ -296,10 +296,24 @@ func InsertDetalle(ventaID int, item models.ProductoItem) error {
 }
 
 // GetAllVentas retorna todas las ventas (paginadas)
-func GetAllVentas(includeCanceladas bool, limit, offset int) ([]models.VentaStats, error) {
+func GetAllVentas(includeCanceladas bool, limit, offset int, vendedorID int) ([]models.VentaStats, error) {
 	whereClause := ""
+	args := []interface{}{}
+	argCounter := 1
+
 	if !includeCanceladas {
 		whereClause = "WHERE v.estado != 'cancelada'"
+	}
+
+	if vendedorID > 0 {
+		if whereClause == "" {
+			whereClause = "WHERE "
+		} else {
+			whereClause += " AND "
+		}
+		whereClause += fmt.Sprintf("v.vendedor_id = $%d", argCounter)
+		args = append(args, vendedorID)
+		argCounter++
 	}
 
 	// 1. Obtener solo las ventas (sin detalles) con paginación
@@ -311,10 +325,11 @@ func GetAllVentas(includeCanceladas bool, limit, offset int) ([]models.VentaStat
 		LEFT JOIN clientes c ON v.cliente_id = c.id
 		` + whereClause + `
 		ORDER BY v.created_at DESC
-		LIMIT $1 OFFSET $2
-	`
+		LIMIT $` + fmt.Sprintf("%d", argCounter) + ` OFFSET $` + fmt.Sprintf("%d", argCounter+1)
+	
+	args = append(args, limit, offset)
 
-	rows, err := DB.Query(ventasQuery, limit, offset)
+	rows, err := DB.Query(ventasQuery, args...)
 	if err != nil {
 		return nil, err
 	}

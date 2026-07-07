@@ -15,8 +15,9 @@ type VentaServiceInterface interface {
 	CrearVenta(req *models.VentaRequest) (int, error)
 	ActualizarVenta(ventaID int, estado, paymentMethod, tipoEntrega string, productosEliminar []int, productos []map[string]interface{}) error
 	ObtenerEstadisticas(limit, offset int) (map[string]interface{}, error)
-	ObtenerTodasVentas(limit, offset int) ([]models.VentaStats, error)
+	ObtenerTodasVentas(limit, offset int, vendedor string) ([]models.VentaStats, error)
 }
+
 
 // ProductoServiceInterface define los métodos del servicio de productos
 type ProductoServiceInterface interface {
@@ -243,7 +244,7 @@ func (s *VentaService) ObtenerEstadisticas(limit, offset int) (map[string]interf
 		return nil, fmt.Errorf("error obteniendo vendedores: %w", err)
 	}
 
-	ventas, err := database.GetAllVentas(false, limit, offset)
+	ventas, err := database.GetAllVentas(false, limit, offset, 0)
 	if err != nil {
 		return nil, fmt.Errorf("error obteniendo ventas: %w", err)
 	}
@@ -256,8 +257,15 @@ func (s *VentaService) ObtenerEstadisticas(limit, offset int) (map[string]interf
 }
 
 // ObtenerTodasVentas retorna todas las ventas incluyendo canceladas
-func (s *VentaService) ObtenerTodasVentas(limit, offset int) ([]models.VentaStats, error) {
-	ventas, err := database.GetAllVentas(true, limit, offset)
+func (s *VentaService) ObtenerTodasVentas(limit, offset int, vendedor string) ([]models.VentaStats, error) {
+	vendedorID := 0
+	if vendedor != "" {
+		id, err := database.GetVendedorID(vendedor)
+		if err == nil {
+			vendedorID = id
+		}
+	}
+	ventas, err := database.GetAllVentas(true, limit, offset, vendedorID)
 	if err != nil {
 		return nil, fmt.Errorf("error obteniendo ventas: %w", err)
 	}

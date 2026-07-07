@@ -83,16 +83,16 @@ function inicializarFiltros() {
     const filtroPago = document.getElementById('filtroPago');
 
     // Llenar lista de vendedores en el filtro
-    if (filtroVendedor && datosVentas.ventas && datosVentas.ventas.length > 0) {
+    if (filtroVendedor && datosVentas.vendedores && datosVentas.vendedores.length > 0) {
         // Limpiar opciones previas (excepto la primera que es "Ver todos")
         while (filtroVendedor.options.length > 1) {
             filtroVendedor.remove(1);
         }
 
-        const vendedoresUnicos = [...new Set(datosVentas.ventas.map(v => v.vendedor))].filter(v => v).sort();
-        Logger.log('Vendedores únicos encontrados:', vendedoresUnicos);
+        const vendedoresNombres = datosVentas.vendedores.filter(v => v.cantidad > 0).map(v => v.nombre).sort();
+        Logger.log('Vendedores con ventas (desde backend):', vendedoresNombres);
         
-        vendedoresUnicos.forEach(vendedor => {
+        vendedoresNombres.forEach(vendedor => {
             const option = document.createElement('option');
             option.value = vendedor;
             option.textContent = vendedor;
@@ -100,7 +100,8 @@ function inicializarFiltros() {
         });
 
         filtroVendedor.addEventListener('change', () => {
-            renderizarVentas();
+            currentPage = 1;
+            cargarDatos(false);
         });
     }
 
@@ -130,14 +131,6 @@ function inicializarFiltros() {
         // Obtener todos los vendedores registrados
         const todosVendedores = datosVentas.vendedores.sort((a, b) => a.nombre.localeCompare(b.nombre));
         
-        // Contar ventas por vendedor
-        const ventasPorVendedor = {};
-        (datosVentas.ventas || []).forEach(v => {
-            if (v.vendedor) {
-                ventasPorVendedor[v.vendedor] = (ventasPorVendedor[v.vendedor] || 0) + 1;
-            }
-        });
-        
         // Obtener estado actual del primer filtro
         const estadoActual = filtroEstadoVendedores?.value || '';
         
@@ -145,9 +138,9 @@ function inicializarFiltros() {
         let vendedoresAMostrar = todosVendedores;
         
         if (estadoActual === 'con-ventas') {
-            vendedoresAMostrar = todosVendedores.filter(v => (ventasPorVendedor[v.nombre] || 0) > 0);
+            vendedoresAMostrar = todosVendedores.filter(v => v.cantidad > 0);
         } else if (estadoActual === 'sin-ventas') {
-            vendedoresAMostrar = todosVendedores.filter(v => (ventasPorVendedor[v.nombre] || 0) === 0);
+            vendedoresAMostrar = todosVendedores.filter(v => v.cantidad === 0);
         }
         
         Logger.log('Vendedores a mostrar en optgroup:', vendedoresAMostrar);
@@ -156,7 +149,7 @@ function inicializarFiltros() {
         vendedoresAMostrar.forEach(vendedor => {
             const option = document.createElement('option');
             option.value = vendedor.nombre;
-            const cantidadVentas = ventasPorVendedor[vendedor.nombre] || 0;
+            const cantidadVentas = vendedor.cantidad || 0;
             option.textContent = `${vendedor.nombre} (${cantidadVentas} ${cantidadVentas === 1 ? 'venta' : 'ventas'})`;
             optgroupVendedores.appendChild(option);
         });
@@ -211,7 +204,9 @@ async function cargarDatos(reloadGeneralStats = true) {
             datosVentas = Object.assign(datosVentas, (statsResp && statsResp.data) ? statsResp.data : statsResp || {});
         } else {
             // Si no recargamos estadísticas generales, al menos actualizamos la tabla llamando a obtenerVentas
-            const ventasData = await api.obtenerVentas(currentLimit, currentPage);
+            const filtroVendedorVal = document.getElementById('filtroVendedor')?.value;
+            const vendedorQuery = (filtroVendedorVal && filtroVendedorVal !== 'Ver todos') ? filtroVendedorVal : '';
+            const ventasData = await api.obtenerVentas(currentLimit, currentPage, vendedorQuery);
             const ventasArray = Array.isArray(ventasData) ? ventasData : (ventasData?.data || []);
             datosVentas.ventas = Array.isArray(ventasArray) ? ventasArray : [];
         }
@@ -222,6 +217,7 @@ async function cargarDatos(reloadGeneralStats = true) {
             renderizarVendedores();
         }
         renderizarVentas();
+        actualizarPaginacionDisplay();
         
         // 5. Inicializar filtros (DESPUÉS de cargar datos)
         if (reloadGeneralStats) {
@@ -280,9 +276,29 @@ function actualizarPaginacionDisplay() {
     const btnPrev = document.getElementById('btnPrevPage');
     const btnNext = document.getElementById('btnNextPage');
     
-    if (display) display.textContent = `Página ${currentPage}`;
-    if (btnPrev) btnPrev.disabled = currentPage === 1;
-    if (btnNext) btnNext.disabled = datosVentas.ventas.length < currentLimit;
+    if (display) {
+        display.textContent = `Página ${currentPage}`;
+    }
+    
+    if (btnPrev) {
+        if (currentPage <= 1) {
+            btnPrev.disabled = true;
+            btnPrev.classList.add('disabled');
+        } else {
+            btnPrev.disabled = false;
+            btnPrev.classList.remove('disabled');
+        }
+    }
+    
+    if (btnNext) {
+        if (datosVentas && datosVentas.ventas && datosVentas.ventas.length < currentLimit) {
+            btnNext.disabled = true;
+            btnNext.classList.add('disabled');
+        } else {
+            btnNext.disabled = false;
+            btnNext.classList.remove('disabled');
+        }
+    }
 }
 
 function renderizarProductosCounters() {

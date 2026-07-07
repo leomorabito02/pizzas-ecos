@@ -116,8 +116,16 @@ body {
     color: HSL(120, 60%, 25%);
 }
 
-.btn-volver:hover {
+.btn-volver:hover:not(:disabled):not(.disabled) {
     background-color: HSL(120, 40%, 82%);
+}
+
+.btn-volver:disabled,
+.btn-volver.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background-color: HSL(120, 20%, 90%);
+    color: HSL(120, 20%, 50%);
 }
 
 .btn-admin-panel {

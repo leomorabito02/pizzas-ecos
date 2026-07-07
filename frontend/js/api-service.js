@@ -234,8 +234,12 @@ class APIService {
     /**
      * GET /estadisticas - Obtener todas las ventas
      */
-    async obtenerVentas(limit = 10, page = 1) {
-        return this.request(`/estadisticas?limit=${limit}&page=${page}`);
+    async obtenerVentas(limit = 10, page = 1, vendedor = '') {
+        let url = `/estadisticas?limit=${limit}&page=${page}`;
+        if (vendedor) {
+            url += `&vendedor=${encodeURIComponent(vendedor)}`;
+        }
+        return this.request(url);
     }
 
     /**
